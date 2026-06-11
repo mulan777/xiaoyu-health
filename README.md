@@ -20,6 +20,10 @@ npm start
 
 默认端口：`3070`。
 
+## 部署文档
+
+详细部署、环境变量、备份说明见 `docs/deployment.md`。
+
 ## Docker 运行
 
 ```bash
