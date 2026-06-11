@@ -721,7 +721,7 @@
         <tbody>
           <% fitnessRecords.forEach(function(r) { %>
             <tr>
-              <td><strong><a href="#" class="child-compare-link" data-child-id="<%= r.child_id %>" onclick="openChildComparePanel(this, <%= r.child_id %>, '<%= r.child_name %>'); return false;"><%= r.child_name %></a></strong></td>
+              <td><strong><a href="#" class="child-compare-link" data-child-id="<%= r.child_id %>" data-child-name="<%= r.child_name %>"><%= r.child_name %></a></strong></td>
               <td><%= r.gender || '-' %></td>
               <td><%= r.test_date ? new Date(r.test_date).toISOString().slice(0,10) : '-' %></td>
               <td><%= r.height_cm ?? '-' %></td>
@@ -1668,18 +1668,25 @@ function closeUserChildFitnessModal() {
     return '<div class="compare-data-table-wrap"><table class="compare-data-table"><thead><tr>' + th + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
   }
 
-  window.openChildComparePanel = function(el, childId, childName) {
+  var comparePanelLoading = false;
+  window.openChildComparePanel = function(el, childId, childName, noFetch) {
+    if (comparePanelLoading) return;
     var overlay = document.getElementById('childCompareOverlay');
     var titleEl = document.getElementById('compareChildTitle');
     var metaEl = document.getElementById('compareChildMeta');
     var body = document.getElementById('comparePanelBody');
 
+    if (noFetch) {
+      // Called from event delegation — childName already set, data already loaded
+      return;
+    }
     titleEl.textContent = childName + ' · 纵向对比';
     metaEl.textContent = '加载中...';
     body.innerHTML = '<div class="compare-panel-loading">加载中...</div>';
     overlay.classList.add('is-open');
     document.body.style.overflow = 'hidden';
 
+    comparePanelLoading = true;
     fetch('/user/fitness/compare/' + childId)
       .then(function(res) { return res.json(); })
       .then(function(data) {
@@ -1703,9 +1710,11 @@ function closeUserChildFitnessModal() {
         var tableSection = renderDataTable(records);
 
         body.innerHTML = chartsRow + ratingSection + '<h4 style="margin:0 0 10px;color:#334155;">历史记录明细</h4>' + tableSection;
+        comparePanelLoading = false;
       })
       .catch(function(err) {
         body.innerHTML = '<div class="compare-panel-loading" style="color:#ef4444;">加载异常：' + err.message + '</div>';
+        comparePanelLoading = false;
       });
   };
 
@@ -1714,6 +1723,17 @@ function closeUserChildFitnessModal() {
     if (overlay) overlay.classList.remove('is-open');
     document.body.style.overflow = '';
   };
+
+  // Delegate clicks on .child-compare-link to open the panel
+  document.addEventListener('click', function(e) {
+    var link = e.target.closest('.child-compare-link');
+    if (!link) return;
+    e.preventDefault();
+    var childId = link.getAttribute('data-child-id');
+    var childName = link.getAttribute('data-child-name') || '幼儿';
+    if (!childId) return;
+    openChildComparePanel(link, Number(childId), childName);
+  });
 })();
 </script>
 
