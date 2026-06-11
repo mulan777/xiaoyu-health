@@ -5,7 +5,7 @@
 ## 项目地址
 
 - GitHub 源码：<https://github.com/mulan777/xiaoyu-health>
-- Docker 镜像：`ghcr.io/mulan777/xiaoyu-health:latest`
+- Docker 镜像：`ghcr.io/mulan777/xiaoyu-health:latest`（已推送；如果 GHCR 包还是 Private，会拉取失败，按下方“从源码构建”部署即可）
 - 默认端口：`3070`
 - 应用入口：`server.js`
 
@@ -40,16 +40,18 @@
 
 注意：GitHub 保存的是源码，不保存生产数据。生产数据主要在 MySQL 和 `public/uploads/` 里，需要单独备份。
 
-## 一、最快 Docker 部署方式
+## 一、最快 Docker 部署方式（不依赖 .env，不依赖私有镜像权限）
 
-服务器安装好 Docker 和 Docker Compose 后，执行：
+服务器安装好 Docker 和 Docker Compose 后，直接从 GitHub 拉源码构建：
 
 ```bash
-mkdir -p /opt/xiaoyu-health
-cd /opt/xiaoyu-health
-curl -L -o docker-compose.yml https://raw.githubusercontent.com/mulan777/xiaoyu-health/main/docker-compose.yml
-docker compose up -d
+git clone https://github.com/mulan777/xiaoyu-health.git
+cd xiaoyu-health
+# 可先编辑 docker-compose.yml 里的 SESSION_SECRET / MYSQL_PASSWORD / MYSQL_ROOT_PASSWORD
+docker compose up -d --build
 ```
+
+> 推荐这种方式：即使 GHCR 镜像包没有设置成 Public，也可以直接从 GitHub 源码构建运行。
 
 启动后访问：
 
@@ -70,12 +72,12 @@ docker compose logs -f app
 docker compose down
 ```
 
-更新到最新镜像：
+更新源码并重建：
 
 ```bash
-cd /opt/xiaoyu-health
-docker compose pull
-docker compose up -d
+cd xiaoyu-health
+git pull
+docker compose up -d --build
 ```
 
 ## 二、推荐生产部署方式：直接改 docker-compose.yml
@@ -280,6 +282,25 @@ Model: moonshot-v1-8k
 - API Key 只保存在服务端数据库中，页面不会明文回显，只显示掩码。
 - 如果更换供应商，只需要改 Base URL、API Key、模型名称。
 - 只要供应商兼容 OpenAI Chat Completions 协议，一般都能接入。
+
+## 六、关于 GHCR 镜像下载
+
+我已经把镜像推送到了：
+
+```bash
+ghcr.io/mulan777/xiaoyu-health:latest
+```
+
+如果执行下面命令失败：
+
+```bash
+docker pull ghcr.io/mulan777/xiaoyu-health:latest
+```
+
+通常是因为 GitHub Packages 里的 Container Package 还处于 Private。解决办法有两种：
+
+1. 直接使用本文推荐的 `git clone` + `docker compose up -d --build`，不需要拉 GHCR 镜像。
+2. 到 GitHub 网页把包改成 Public：打开 `https://github.com/users/mulan777/packages/container/package/xiaoyu-health`，进入 Package settings，把 Visibility 改为 Public。
 
 ## 六、从源码构建 Docker 镜像
 

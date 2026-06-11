@@ -1,6 +1,7 @@
 services:
   app:
-    image: ghcr.io/mulan777/xiaoyu-health:latest
+    build: .
+    image: xiaoyu-health:latest
     container_name: xiaoyu-health
     restart: unless-stopped
     environment:
