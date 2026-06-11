@@ -1,0 +1,4 @@
+[
+  { "username": "admin", "role": "admin", "name": "系统管理员", "password": "请首次部署后立即修改" },
+  { "username": "teacher", "role": "user", "name": "示例教师", "password": "请首次部署后立即修改" }
+]

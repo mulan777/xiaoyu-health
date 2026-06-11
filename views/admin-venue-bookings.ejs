@@ -1,0 +1,720 @@
+<%- include('partials/header', { pageClass: isReadonly ? 'admin-page readonly-mode' : 'admin-page' }) %>
+<%
+  const analytics = bookingAnalytics || {};
+  const overview = analytics.overview || {};
+  const crowdedVenue = analytics.crowdedVenue || null;
+  const fastestVenue = analytics.fastestVenue || null;
+  const moduleCards = Array.isArray(analytics.moduleCards) ? analytics.moduleCards : [];
+  const unbookedClasses = Array.isArray(analytics.unbookedClasses) ? analytics.unbookedClasses : [];
+  const roundDateLabel = selectedRound ? (selectedRound.round_date_text || new Date(selectedRound.round_date).toISOString().slice(0, 10)) : '';
+  const vestToneLabel = function(type) {
+    if (type === 'red') return '红马甲';
+    if (type === 'green') return '绿马甲';
+    return '黄马甲';
+  };
+  const selectedRoundStatus = selectedRound
+    ? (selectedRound.status === 'open' ? '开放中' : (selectedRound.status === 'pending' ? '待开放' : '已关闭'))
+    : '';
+  const hasCrowdedVenue = crowdedVenue && crowdedVenue.venueName;
+  const hasFastestVenue = fastestVenue && fastestVenue.venueName;
+%>
+
+<style>
+  .venue-booking-page {
+    display: grid;
+    gap: 16px;
+  }
+
+  .venue-booking-hero {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(0, 113, 227, 0.12);
+    background:
+      radial-gradient(circle at top right, rgba(0, 113, 227, 0.16), transparent 34%),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(232, 241, 253, 0.9));
+  }
+
+  .venue-booking-hero::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.28), transparent 38%);
+    pointer-events: none;
+  }
+
+  .venue-booking-hero-inner {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .venue-booking-title {
+    margin: 6px 0 0;
+    font-size: clamp(28px, 3.5vw, 40px);
+    line-height: 1.08;
+    letter-spacing: -0.03em;
+  }
+
+  .venue-booking-subtitle {
+    margin: 10px 0 0;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+
+  .venue-booking-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .venue-booking-filter {
+    display: grid;
+    gap: 14px;
+  }
+
+  .venue-booking-filter-form {
+    display: grid;
+    grid-template-columns: minmax(220px, 320px) auto;
+    gap: 12px;
+    align-items: end;
+  }
+
+  .venue-booking-meta {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .venue-booking-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(0, 113, 227, 0.1);
+    background: var(--primary-soft);
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .venue-booking-chip strong {
+    color: var(--primary);
+  }
+
+  .venue-booking-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .venue-booking-summary {
+    position: relative;
+    overflow: hidden;
+    display: grid;
+    gap: 10px;
+    padding: 18px 18px 16px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: var(--shadow);
+  }
+
+  .venue-booking-summary::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary), rgba(0, 113, 227, 0.16));
+  }
+
+  .venue-booking-summary.fast::before {
+    background: linear-gradient(90deg, #0f9f6e, rgba(15, 159, 110, 0.16));
+  }
+
+  .venue-booking-summary.pending::before {
+    background: linear-gradient(90deg, #ff8a00, rgba(255, 138, 0, 0.16));
+  }
+
+  .venue-booking-summary-label {
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 700;
+  }
+
+  .venue-booking-summary-title {
+    font-size: clamp(20px, 2.4vw, 30px);
+    font-weight: 800;
+    line-height: 1.18;
+    color: var(--text);
+  }
+
+  .venue-booking-summary-note {
+    color: var(--muted);
+    line-height: 1.6;
+    font-size: 13px;
+  }
+
+  .venue-booking-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .venue-booking-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 100%;
+    padding: 7px 10px;
+    border-radius: 999px;
+    background: rgba(245, 248, 252, 0.96);
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid rgba(0, 113, 227, 0.08);
+  }
+
+  .venue-booking-tag.empty {
+    color: var(--muted);
+    border-color: var(--border);
+  }
+
+  .venue-module-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    align-items: start;
+  }
+
+  .venue-module-card {
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-self: start;
+    gap: 12px;
+    padding: 18px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: var(--shadow);
+  }
+
+  .venue-module-card::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary), rgba(0, 113, 227, 0.16));
+  }
+
+  .venue-module-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .venue-module-name {
+    margin: 0;
+    font-size: 24px;
+    line-height: 1.1;
+    font-weight: 800;
+    color: var(--text);
+  }
+
+  .venue-module-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    margin-top: 6px;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .venue-module-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: var(--primary-soft);
+    color: var(--primary);
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .venue-module-empty {
+    padding: 18px;
+    border-radius: 16px;
+    border: 1px dashed var(--border);
+    background: rgba(245, 245, 247, 0.92);
+    color: var(--muted);
+    text-align: center;
+    font-size: 13px;
+  }
+
+  .venue-module-head-main {
+    display: grid;
+    gap: 8px;
+  }
+
+  .venue-module-count-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .venue-module-count.attention {
+    background: rgba(255, 244, 224, 0.96);
+    color: #c46b00;
+  }
+
+  .venue-module-attention {
+    display: grid;
+    gap: 8px;
+  }
+
+  .venue-module-attention-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .venue-module-attention-title {
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--text);
+  }
+
+  .venue-module-attention-summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .venue-module-attention-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+    gap: 8px;
+  }
+
+  .venue-module-attention-item {
+    display: grid;
+    gap: 6px;
+    padding: 10px 12px;
+    border-radius: 16px;
+    border: 1.5px solid rgba(245, 158, 11, 0.22);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(255, 249, 235, 0.92));
+  }
+
+  .venue-module-attention-item.vest-red {
+    border-color: rgba(220, 38, 38, 0.22);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(254, 242, 242, 0.94));
+  }
+
+  .venue-module-attention-item.vest-yellow {
+    border-color: rgba(245, 158, 11, 0.22);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(255, 251, 235, 0.94));
+  }
+
+  .venue-module-attention-item.vest-green {
+    border-color: rgba(22, 163, 74, 0.22);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(240, 253, 244, 0.94));
+  }
+
+  .venue-module-attention-meta {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .venue-module-attention-name {
+    font-size: 14px;
+    line-height: 1.35;
+    font-weight: 800;
+    color: var(--text);
+  }
+
+  .venue-module-attention-subtitle {
+    margin-top: 2px;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  .venue-vest-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 28px;
+    padding: 0 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 800;
+    white-space: nowrap;
+    border: 1px solid transparent;
+  }
+
+  .venue-vest-badge.red {
+    color: #b91c1c;
+    background: rgba(254, 226, 226, 0.96);
+    border-color: rgba(220, 38, 38, 0.18);
+  }
+
+  .venue-vest-badge.yellow {
+    color: #b45309;
+    background: rgba(254, 243, 199, 0.96);
+    border-color: rgba(245, 158, 11, 0.18);
+  }
+
+  .venue-vest-badge.green {
+    color: #15803d;
+    background: rgba(220, 252, 231, 0.96);
+    border-color: rgba(22, 163, 74, 0.18);
+  }
+
+  .venue-module-attention-reason {
+    color: var(--text);
+    font-size: 12px;
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .venue-module-booking-grid {
+    display: block;
+  }
+
+  .venue-module-booking-group {
+    display: grid;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 16px;
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    background: rgba(248, 250, 252, 0.84);
+  }
+
+  .venue-module-booking-group.confirmed {
+    border-color: rgba(22, 163, 74, 0.12);
+    background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(240,253,244,0.9));
+  }
+
+  .venue-module-booking-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .venue-module-booking-label {
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--text);
+  }
+
+  .venue-module-booking-note {
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .venue-module-chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .venue-module-chip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-height: 38px;
+    padding: 8px 10px;
+    border-radius: 14px;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    background: rgba(255, 255, 255, 0.94);
+  }
+
+  .venue-module-chip.confirmed {
+    border-color: rgba(22, 163, 74, 0.18);
+    background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(240,253,244,0.94));
+  }
+
+  .venue-module-chip-name {
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--text);
+  }
+
+  .venue-module-chip .status-badge {
+    display: none;
+  }
+
+  .venue-module-chip-action {
+    min-height: auto;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    color: var(--error-text);
+  }
+
+  @media (max-width: 1500px) {
+    .venue-module-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 1100px) {
+    .venue-booking-summary-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .venue-module-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 760px) {
+    .venue-booking-filter-form,
+    .venue-booking-actions {
+      grid-template-columns: 1fr;
+      width: 100%;
+    }
+
+    .venue-module-count-group,
+    .venue-module-attention-meta {
+      justify-content: flex-start;
+    }
+
+    .venue-module-attention-list {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<section class="card venue-booking-hero">
+  <div class="venue-booking-hero-inner">
+    <div>
+      <div class="eyebrow">预约看板</div>
+      <h1 class="venue-booking-title"><%= title %></h1>
+      <p class="venue-booking-subtitle">一页查看本轮预约热度、最快预约场地和各模块对应班级。</p>
+    </div>
+    <div class="venue-booking-actions">
+      <a class="btn" href="/admin/venues">返回场地管理</a>
+      <a class="btn" href="/admin">返回后台首页</a>
+    </div>
+  </div>
+</section>
+
+<div class="venue-booking-page">
+  <% if (message) { %>
+    <div class="alert success"><%= message %></div>
+  <% } %>
+
+  <section class="card venue-booking-filter">
+    <form method="get" action="/admin/venues/bookings" class="venue-booking-filter-form">
+      <label>
+        <span>选择轮次</span>
+        <select name="roundId">
+          <option value="">请选择轮次</option>
+          <% rounds.forEach(function(r) { %>
+            <option value="<%= r.id %>" <%= roundId == r.id ? 'selected' : '' %>>
+              <%= r.round_date_text || new Date(r.round_date).toISOString().slice(0, 10) %> · <%= r.status === 'open' ? '开放中' : (r.status === 'pending' ? '待开放' : '已关闭') %>
+            </option>
+          <% }) %>
+        </select>
+      </label>
+      <button class="btn primary" type="submit">查看结果</button>
+    </form>
+
+    <% if (selectedRound) { %>
+      <div class="venue-booking-meta">
+        <span class="venue-booking-chip"><strong>活动日期</strong><%= roundDateLabel %></span>
+        <span class="venue-booking-chip"><strong>轮次状态</strong><%= selectedRoundStatus %></span>
+        <span class="venue-booking-chip"><strong>开放时间</strong><%= selectedRound.open_time_text || '-' %></span>
+        <span class="venue-booking-chip"><strong>截止时间</strong><%= selectedRound.close_time_text || '未设置' %></span>
+        <span class="venue-booking-chip"><strong>取消率</strong><%= overview.cancellationRateText || '0%' %></span>
+      </div>
+    <% } %>
+  </section>
+
+  <% if (!selectedRound) { %>
+    <div class="venue-module-empty">选择一个轮次后查看预约结果。</div>
+  <% } else if (!bookings.length) { %>
+    <div class="venue-module-empty"><%= roundDateLabel %> 暂无预约记录。</div>
+  <% } else { %>
+    <section class="venue-booking-summary-grid">
+      <article class="venue-booking-summary">
+        <div class="venue-booking-summary-label">最火爆场地</div>
+        <div class="venue-booking-summary-title"><%= hasCrowdedVenue ? crowdedVenue.venueName : '暂无预约' %></div>
+        <div class="venue-booking-summary-note">
+          <% if (hasCrowdedVenue) { %>
+            当前确认 <strong><%= crowdedVenue.confirmedCount %></strong> 个班级，容量 <%= crowdedVenue.totalCapacity %>
+          <% } else { %>
+            本轮还没有确认预约。
+          <% } %>
+        </div>
+        <div class="venue-booking-tags">
+          <% if (hasCrowdedVenue) { %>
+            <span class="venue-booking-tag">确认 <%= crowdedVenue.confirmedCount %></span>
+            <span class="venue-booking-tag">取消 <%= crowdedVenue.cancelledCount %></span>
+          <% } else { %>
+            <span class="venue-booking-tag empty">暂无数据</span>
+          <% } %>
+        </div>
+      </article>
+
+      <article class="venue-booking-summary fast">
+        <div class="venue-booking-summary-label">最快预约场地</div>
+        <div class="venue-booking-summary-title"><%= hasFastestVenue ? fastestVenue.venueName : '暂无可统计数据' %></div>
+        <div class="venue-booking-summary-note">
+          <% if (hasFastestVenue) { %>
+            <%= fastestVenue.bookingDurationLabel %>
+          <% } else { %>
+            至少需要 2 条确认预约后才能统计速度。
+          <% } %>
+        </div>
+        <div class="venue-booking-tags">
+          <% if (hasFastestVenue) { %>
+            <span class="venue-booking-tag">首单 <%= fastestVenue.firstConfirmedLabel %></span>
+            <span class="venue-booking-tag">末单 <%= fastestVenue.lastConfirmedLabel %></span>
+          <% } else { %>
+            <span class="venue-booking-tag empty">暂无速度记录</span>
+          <% } %>
+        </div>
+      </article>
+
+      <article class="venue-booking-summary pending">
+        <div class="venue-booking-summary-label">本轮未预约班级</div>
+        <div class="venue-booking-summary-title"><%= unbookedClasses.length %> 个班级</div>
+        <div class="venue-booking-tags">
+          <% if (unbookedClasses.length) { %>
+            <% unbookedClasses.forEach(function(item) { %>
+              <span class="venue-booking-tag"><%= item.name %></span>
+            <% }) %>
+          <% } else { %>
+            <span class="venue-booking-tag empty">全部班级均已预约</span>
+          <% } %>
+        </div>
+      </article>
+    </section>
+
+    <section class="venue-module-grid">
+      <% moduleCards.forEach(function(card) { %>
+        <article class="venue-module-card">
+          <div class="venue-module-head">
+            <div class="venue-module-head-main">
+              <h2 class="venue-module-name"><%= card.venueName %></h2>
+              <div class="venue-module-meta">
+                <div><%= card.bookingDurationLabel %></div>
+                <div>容量 <%= card.totalCapacity %> · 已确认 <%= card.confirmedCount %> · 已取消 <%= card.cancelledCount %></div>
+              </div>
+            </div>
+            <div class="venue-module-count-group">
+              <div class="venue-module-count">预约名单</div>
+              <% if (card.attentionCount) { %>
+                <div class="venue-module-count attention">重点关注 <%= card.attentionCount %> 名</div>
+              <% } %>
+            </div>
+          </div>
+
+          <% if (card.confirmedEntries.length) { %>
+            <div class="venue-module-booking-grid">
+              <div class="venue-module-booking-group confirmed">
+                <div class="venue-module-booking-head">
+                  <div class="venue-module-booking-label">已预约班级</div>
+                  <div class="venue-module-booking-note"><%= card.confirmedEntries.length %> 个班级</div>
+                </div>
+                <% if (card.confirmedEntries.length) { %>
+                  <div class="venue-module-chip-list">
+                    <% card.confirmedEntries.forEach(function(entry) { %>
+                      <div class="venue-module-chip confirmed">
+                        <span class="venue-module-chip-name"><%= entry.className %></span>
+                        <% if (!isReadonly) { %>
+                          <form method="post" action="/admin/venues/bookings/<%= entry.id %>/cancel?roundId=<%= roundId %>" class="inline-form" onsubmit="return confirm('确定取消这条预约吗？')">
+                            <button class="btn small venue-module-chip-action" type="submit">取消</button>
+                          </form>
+                        <% } else { %>
+                          <span class="status-badge ok">已确认</span>
+                        <% } %>
+                      </div>
+                    <% }) %>
+                  </div>
+                <% } else { %>
+                  <div class="venue-module-empty">当前还没有确认预约的班级。</div>
+                <% } %>
+              </div>
+
+              <% if (false && card.cancelledEntries && card.cancelledEntries.length) { %>
+                <div class="venue-module-booking-group cancelled">
+                  <div class="venue-module-booking-head">
+                    <div class="venue-module-booking-label">已取消</div>
+                    <div class="venue-module-booking-note"><%= card.cancelledEntries.length %> 条记录</div>
+                  </div>
+                  <div class="venue-module-chip-list">
+                    <% card.cancelledEntries.forEach(function(entry) { %>
+                      <div class="venue-module-chip cancelled">
+                        <span class="venue-module-chip-name"><%= entry.className %></span>
+                        <span class="status-badge off">已取消</span>
+                      </div>
+                    <% }) %>
+                  </div>
+                </div>
+              <% } %>
+            </div>
+          <% } else { %>
+            <div class="venue-module-empty">该模块暂无班级预约。</div>
+          <% } %>
+
+          <% if (card.attentionChildren && card.attentionChildren.length) { %>
+            <section class="venue-module-attention">
+              <div class="venue-module-attention-head">
+                <div class="venue-module-attention-title">模块内重点关注孩子</div>
+                <div class="venue-module-attention-summary">
+                  <% if (card.attentionVestSummary.red) { %><span class="venue-vest-badge red">红马甲 <%= card.attentionVestSummary.red %></span><% } %>
+                  <% if (card.attentionVestSummary.yellow) { %><span class="venue-vest-badge yellow">黄马甲 <%= card.attentionVestSummary.yellow %></span><% } %>
+                  <% if (card.attentionVestSummary.green) { %><span class="venue-vest-badge green">绿马甲 <%= card.attentionVestSummary.green %></span><% } %>
+                </div>
+              </div>
+              <div class="venue-module-attention-list">
+                <% card.attentionChildren.forEach(function(child) { %>
+                  <div class="venue-module-attention-item vest-<%= child.vestType %>">
+                    <div class="venue-module-attention-meta">
+                      <div>
+                        <div class="venue-module-attention-name"><%= child.name %></div>
+                        <div class="venue-module-attention-subtitle"><%= child.class_name %> · <%= gradeLabel(child.grade_level) %><%= child.gender ? ' · ' + child.gender : '' %></div>
+                      </div>
+                      <span class="venue-vest-badge <%= child.vestType %>"><%= child.vestLabel || vestToneLabel(child.vestType) %></span>
+                    </div>
+                    <div class="venue-module-attention-reason"><strong>关注原因：</strong><%= child.attention_reason || '已被标记为重点关注，请活动时重点照看。' %></div>
+                  </div>
+                <% }) %>
+              </div>
+            </section>
+          <% } %>
+        </article>
+      <% }) %>
+    </section>
+  <% } %>
+</div>
+
+<%- include('partials/footer') %>

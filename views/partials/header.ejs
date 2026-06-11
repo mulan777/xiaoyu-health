@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <% 
+    const siteName = (settings && settings.siteName) || '幼儿园体适能数智化平台';
+    const siteDescription = (settings && (settings.heroDesc || settings.subtitle)) || '幼儿园体适能教研管理平台，支持体测评分、场地预约、成长档案。';
+    const siteUrl = 'https://xiaoyu.huaapi.com/';
+    const shareImage = 'https://xiaoyu.huaapi.com/static/share-cover.jpg?v=20260423';
+    const cssVer = typeof cssVersion !== 'undefined' ? cssVersion : Date.now();
+  %>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= siteName %></title>
+  <meta name="description" content="<%= siteDescription %>" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="<%= siteName %>" />
+  <meta property="og:title" content="<%= siteName %>" />
+  <meta property="og:description" content="<%= siteDescription %>" />
+  <meta property="og:url" content="<%= siteUrl %>" />
+  <meta property="og:image" content="<%= shareImage %>" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="<%= siteName %>" />
+  <meta name="twitter:description" content="<%= siteDescription %>" />
+  <meta name="twitter:image" content="<%= shareImage %>" />
+  <meta name="theme-color" content="#0f4fa8" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32.png?v=20260423" />
+  <link rel="shortcut icon" href="/favicon.ico?v=20260423" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=20260423" />
+  <link rel="apple-touch-icon" sizes="120x120" href="/apple-touch-icon-120x120.png?v=20260423" />
+  <link rel="stylesheet" href="/static/style.css?v=<%= cssVer %>" />
+</head>
+<body class="<%= typeof pageClass !== 'undefined' ? pageClass : '' %>">
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-title"><%= settings.siteName || '幼儿园体适能数智化平台' %></div>
+      <div class="brand-subtitle"><%= settings.subtitle || '' %></div>
+    </div>
+    <nav class="nav">
+      <% if (!currentUser) { %>
+        <a href="/">首页</a>
+        <a href="/login">登录</a>
+      <% } else { %>
+        <a href="<%= currentUser.role === 'admin' ? '/admin?panel=overview' : '/user' %>">控制台</a>
+        <a href="#" onclick="document.getElementById('changePwModal').style.display='flex';return false;">修改密码</a>
+        <a href="/logout">退出</a>
+      <% } %>
+    </nav>
+  </header>
+  <main class="container <%= typeof pageClass !== 'undefined' && pageClass.includes('admin-page') ? 'admin-container' : '' %>">

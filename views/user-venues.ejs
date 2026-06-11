@@ -1,0 +1,1867 @@
+<%- include('partials/header') %>
+
+<%
+  const formatAttentionPeriod = function(startDate, endDate) {
+    const start = startDate ? new Date(startDate).toISOString().slice(0, 10) : '即日起';
+    const end = endDate ? new Date(endDate).toISOString().slice(0, 10) : '长期';
+    return start + ' ~ ' + end;
+  };
+  const parseAttentionTags = function(value) {
+    return String(value || '').split(',').map(function(item) { return item.trim(); }).filter(Boolean);
+  };
+  const attentionVestKey = function(item) {
+    if (!item) return 'yellow';
+    if (item.attention_vest_type === 'red') return 'red';
+    if (item.attention_vest_type === 'green') return 'green';
+    return 'yellow';
+  };
+  const attentionVestLabel = function(item) {
+    const vest = attentionVestKey(item);
+    return vest === 'red' ? '红马甲' : (vest === 'green' ? '绿马甲' : '黄马甲');
+  };
+  const attentionVestClass = function(item) {
+    return 'attention-vest-' + attentionVestKey(item);
+  };
+  const attentionVenueLabel = function(item) {
+    if (!item) return '';
+    if (item.venueSummary) {
+      return item.venueSummary;
+    }
+    if (Number(item.sort_order || 0) > 0 && item.venue_name) {
+      return '模块' + item.sort_order + ' · ' + item.venue_name;
+    }
+    if (Number(item.sort_order || 0) > 0) {
+      return '模块' + item.sort_order;
+    }
+    return item.venue_name || '';
+  };
+  const pageConfig = {
+    round: activeRound ? {
+      status: activeRound.status,
+      openTime: activeRound.open_time_text,
+      closeTime: activeRound.close_time_text || null
+    } : null,
+    serverNow: now
+  };
+  const hasConfirmedBooking = Object.keys(bookingMap || {}).length > 0;
+  const bookedVenueSummary = bookedVenueLabel || '';
+  const attentionGroupLabel = myGrade === 'small' ? '小班' : '中大班';
+  const attentionReminderRows = Array.isArray(attentionReminderChildren) && attentionReminderChildren.length ? attentionReminderChildren : attentionChildren;
+  const venueSceneImage = function(venue) {
+    return venue.detail_image_path || venue.image_path || '';
+  };
+  const venueSceneDesc = function(venue) {
+    return myGrade === 'small'
+      ? (venue.play_desc_small || '暂无小班玩法说明')
+      : (venue.play_desc_ml || '暂无中大班玩法说明');
+  };
+  const venueHotspotPoints = function(venue) {
+    return Array.isArray(venue.hotspot_points) ? venue.hotspot_points : [];
+  };
+  const venueHotspotString = function(venue) {
+    return venueHotspotPoints(venue).map(function(point) { return point.x + ',' + point.y; }).join(' ');
+  };
+  const venueHotspotHintStyle = function(venue) {
+    return [
+      'left:' + venue.hotspot_hint_x + 'px',
+      'top:' + venue.hotspot_hint_y + 'px',
+      '--hint-color:' + (venue.hotspot_hint_color || '#2563eb'),
+      '--hint-label-size:' + (venue.hotspot_hint_label_size || 14) + 'px',
+      '--hint-size:' + (venue.hotspot_hint_size || 28) + 'px',
+      '--hint-length:' + (venue.hotspot_hint_length || 54) + 'px',
+      '--hint-bounce-ms:' + (venue.hotspot_hint_bounce_ms || 1500) + 'ms'
+    ].join(';');
+  };
+  const venueSceneBaseWidth = function(venue) {
+    return Math.max(Number(venue.detail_view_width || venue.image_width || venue.map_width || 1), 1);
+  };
+  const venueSceneBaseHeight = function(venue) {
+    return Math.max(Number(venue.detail_view_height || venue.image_height || venue.map_height || 1), 1);
+  };
+  const venueLoopGuideDesc = function(venue) {
+    return myGrade === 'small'
+      ? (venue.loop_guide_desc_small || '暂无小班大循环运动指导')
+      : (venue.loop_guide_desc_ml || '暂无中大班大循环运动指导');
+  };
+  const mediaList = function(values, fallbackValues) {
+    const output = [];
+    const pushValue = function(value) {
+      if (typeof value !== 'string') return;
+      const trimmed = value.trim();
+      if (trimmed) output.push(trimmed);
+    };
+    if (Array.isArray(values)) {
+      values.forEach(pushValue);
+    } else if (typeof values === 'string' && values.trim()) {
+      try {
+        const parsed = JSON.parse(values);
+        if (Array.isArray(parsed)) parsed.forEach(pushValue);
+        else pushValue(values);
+      } catch (error) {
+        pushValue(values);
+      }
+    }
+    (Array.isArray(fallbackValues) ? fallbackValues : [fallbackValues]).forEach(pushValue);
+    return Array.from(new Set(output));
+  };
+  const skillGuideExtraLevelType = function(guide) {
+    if (!guide) return '';
+    if (guide.extra_level_type === 'basic') return 'basic';
+    if (guide.extra_level_type === 'advanced') return 'advanced';
+    return '';
+  };
+  const skillGuideExtraLevelLabel = function(guide) {
+    return skillGuideExtraLevelType(guide) === 'basic' ? '基础级2' : '提升级2';
+  };
+  const skillGuideHasExtraLevel = function(guide) {
+    return !!(
+      skillGuideExtraLevelType(guide) &&
+      (
+        guide.extra_skill_names ||
+        guide.extra_equipment ||
+        guide.extra_action_points ||
+        guide.extra_safety_points ||
+        mediaList(guide.extra_image_paths, guide.extra_image_path).length ||
+        mediaList(guide.extra_video_paths, guide.extra_video_path).length
+      )
+    );
+  };
+  const venueHasLoopGuide = function(venue) {
+    return !!(
+      mediaList(venue.loop_guide_images, venue.loop_guide_image_path).length ||
+      mediaList(venue.loop_guide_station_images, venue.loop_guide_station_image_path).length ||
+      mediaList(venue.loop_guide_videos, venue.loop_guide_video_path).length ||
+      venue.loop_guide_desc_small ||
+      venue.loop_guide_desc_ml
+    );
+  };
+  const venueResourceDefaultTarget = function(venue) {
+    if (venue.skillGuides && venue.skillGuides.length) {
+      return 'guide-' + venue.skillGuides[0].id;
+    }
+    return venueHasLoopGuide(venue) ? 'loop' : '';
+  };
+  const venueHasResourceGuides = function(venue) {
+    return !!((venue.skillGuides && venue.skillGuides.length) || venueHasLoopGuide(venue));
+  };
+  const venueElementPercentStyle = function(venue, element) {
+    const baseWidth = venueSceneBaseWidth(venue);
+    const baseHeight = venueSceneBaseHeight(venue);
+    const left = Math.max(0, Number(element.pos_x || 0)) / baseWidth * 100;
+    const top = Math.max(0, Number(element.pos_y || 0)) / baseHeight * 100;
+    const width = Math.max(24, Number(element.box_width || 44)) / baseWidth * 100;
+    const height = Math.max(24, Number(element.box_height || 44)) / baseHeight * 100;
+    return [
+      'left:' + left.toFixed(4) + '%',
+      'top:' + top.toFixed(4) + '%',
+      'width:' + width.toFixed(4) + '%',
+      'height:' + height.toFixed(4) + '%'
+    ].join(';');
+  };
+%>
+
+<section class="dashboard-head card">
+  <div>
+    <div class="eyebrow">场地预约</div>
+    <h1>户外活动场地预约</h1>
+    <p>
+      您是 <strong><%= myGradeLabel || '-' %></strong> 教师。
+      <% if (myGrade === 'small') { %>
+        当前页面展示小班可见名额和小班玩法。
+      <% } else if (myGrade) { %>
+        当前页面展示中大班共享占用情况，同时按您本年级的真实可约名额控制预约。
+      <% } else { %>
+        当前账号尚未绑定班级。
+      <% } %>
+    </p>
+  </div>
+  <a class="btn" href="/user">返回工作台</a>
+</section>
+
+<% if (message) { %>
+  <div class="alert success"><%= message %></div>
+<% } %>
+
+<% if (!classId) { %>
+  <div class="card"><div class="empty-state">您的账号未绑定班级，请联系管理员。</div></div>
+<% } else if (!activeRound) { %>
+  <div class="card"><div class="empty-state">暂无预约活动，请等待管理员发布。</div></div>
+<% } else { %>
+
+  <% if (attentionReminderRows && attentionReminderRows.length) { %>
+    <section class="card venue-attention-card">
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">重点关注提醒</div>
+          <h3>当前已预约场地内您可见年级的重点关注幼儿（<%= attentionGroupLabel %>）</h3>
+        </div>
+        <span class="status-badge warn"><%= attentionChildren.length %> 名需关注</span>
+      </div>
+      <div class="child-mobile-list">
+        <% attentionReminderRows.forEach(function(child) { const attentionTags = parseAttentionTags(child.attention_tags); const attentionVenue = attentionVenueLabel(child); const vestType = attentionVestKey(child); %>
+          <div class="child-item attention-reminder-card <%= attentionVestClass(child) %>">
+            <div class="child-item-head attention-reminder-head">
+              <div class="attention-reminder-main">
+                <strong><%= child.name %></strong>
+                <div class="muted attention-reminder-subtitle"><%= child.class_name %> · <%= gradeLabel(child.grade_level) %><%= child.gender ? ' · ' + child.gender : '' %></div>
+              </div>
+              <div class="attention-reminder-badges">
+                <span class="vest-badge <%= vestType %>"><%= attentionVestLabel(child) %></span>
+                <span class="status-badge warn">需关注</span>
+              </div>
+            </div>
+            <div class="attention-reminder-meta">
+              <% if (attentionVenue) { %>
+                <span class="attention-reminder-meta-chip">所在模块：<%= attentionVenue %></span>
+              <% } %>
+              <span class="attention-reminder-meta-chip">有效期：<%= formatAttentionPeriod(child.attention_start_date, child.attention_end_date) %></span>
+            </div>
+            <div class="attention-reminder-detail"><strong>原因：</strong><%= child.attention_reason || '已被标记为重点关注，请活动时重点照看。' %></div>
+            <% if (attentionTags.length) { %>
+              <div class="attention-reminder-tag-row">
+                <span class="attention-reminder-label">标签</span>
+                <div class="tag-list compact-tag-list">
+                  <% attentionTags.forEach(function(tag) { %><span class="tag-pill"><%= tag %></span><% }) %>
+                </div>
+              </div>
+            <% } %>
+          </div>
+        <% }) %>
+      </div>
+    </section>
+  <% } %>
+
+  <% if (false) { %>
+    <section id="venueAttentionManage" class="card venue-attention-manage-card">
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">二次晨检</div>
+          <h3>本班重点关注维护</h3>
+          <div class="muted">
+            仅允许维护
+            <strong><%= assignedClass && assignedClass.name ? assignedClass.name : '当前班级' %></strong>
+            的幼儿。保存后会同步出现在预约成功场地的重点关注提醒里。
+          </div>
+        </div>
+        <span class="status-badge <%= ownActiveAttentionChildren.length ? 'warn' : 'ok' %>">
+          <%= ownActiveAttentionChildren.length ? (ownActiveAttentionChildren.length + ' 名需关注') : '当前无重点关注' %>
+        </span>
+      </div>
+
+      <div class="venue-attention-manage-grid">
+        <form method="post" action="/user/venues/attention/save" class="venue-attention-form" id="userVenueAttentionForm">
+          <label>
+            <span>选择幼儿</span>
+            <select name="childId" id="userVenueAttentionChild" required>
+              <option value="">请选择本班幼儿</option>
+              <% ownClassChildrenSafe.forEach(function(child) {
+                const childStart = child.attention_start_date ? new Date(child.attention_start_date).toISOString().slice(0, 10) : '';
+                const childEnd = child.attention_end_date ? new Date(child.attention_end_date).toISOString().slice(0, 10) : '';
+                const childTagsText = parseAttentionTags(child.attention_tags).join(',');
+              %>
+                <option
+                  value="<%= child.id %>"
+                  data-attention-reason="<%= child.attention_reason || '' %>"
+                  data-attention-start="<%= childStart %>"
+                  data-attention-end="<%= childEnd %>"
+                  data-attention-tags="<%= childTagsText %>"
+                  data-attention-active="<%= Number(child.needs_attention || 0) ? '1' : '0' %>"
+                >
+                  <%= child.name %><%= child.gender ? ' · ' + child.gender : '' %>
+                </option>
+              <% }) %>
+            </select>
+          </label>
+
+          <label>
+            <span>关注原因</span>
+            <input type="text" name="attentionReason" id="userVenueAttentionReason" placeholder="例如：咳嗽，减少跑跳" />
+          </label>
+
+          <div class="venue-attention-form-row">
+            <label>
+              <span>开始日期</span>
+              <input type="date" name="attentionStartDate" id="userVenueAttentionStart" value="<%= todayText || '' %>" />
+            </label>
+            <label>
+              <span>结束日期</span>
+              <input type="date" name="attentionEndDate" id="userVenueAttentionEnd" />
+            </label>
+          </div>
+
+          <label>
+            <span>关注标签</span>
+            <input type="text" name="attentionTagsExtra" id="userVenueAttentionTags" placeholder="例如：咳嗽,恢复期,扭伤，多项用逗号分隔" />
+          </label>
+
+          <div class="venue-attention-form-actions">
+            <button class="btn primary" type="submit">保存重点关注</button>
+            <span class="muted">已设置过的幼儿再次保存会直接覆盖原内容。</span>
+          </div>
+        </form>
+
+        <div class="venue-attention-current">
+          <div class="venue-attention-current-head">
+            <strong>当前本班已关注</strong>
+            <span class="muted"><%= ownActiveAttentionChildren.length %> 名</span>
+          </div>
+          <% if (ownActiveAttentionChildren.length) { %>
+            <div class="venue-attention-current-list">
+              <% ownActiveAttentionChildren.forEach(function(child) { %>
+                <div class="venue-attention-current-item">
+                  <div class="venue-attention-current-meta">
+                    <div>
+                      <strong><%= child.name %></strong>
+                      <div class="muted"><%= formatAttentionPeriod(child.attention_start_date, child.attention_end_date) %></div>
+                    </div>
+                    <form method="post" action="/user/venues/attention/clear" class="inline-form">
+                      <input type="hidden" name="childId" value="<%= child.id %>" />
+                      <button class="btn small" type="submit">取消关注</button>
+                    </form>
+                  </div>
+                  <div class="venue-scene-text"><%= child.attention_reason || '已标记为重点关注，请活动前再次确认。' %></div>
+                  <% const ownTags = parseAttentionTags(child.attention_tags); %>
+                  <% if (ownTags.length) { %>
+                    <div class="tag-list compact-tag-list">
+                      <% ownTags.forEach(function(tag) { %><span class="tag-pill"><%= tag %></span><% }) %>
+                    </div>
+                  <% } %>
+                </div>
+              <% }) %>
+            </div>
+          <% } else { %>
+            <div class="venue-resource-empty venue-attention-current-empty">当前本班还没有设置重点关注幼儿。</div>
+          <% } %>
+        </div>
+      </div>
+    </section>
+  <% } %>
+
+  <section class="card venue-round-card">
+    <div class="section-head">
+      <div>
+        <div class="eyebrow">预约轮次</div>
+        <h3>活动日期：<%= activeRound.round_date_text || new Date(activeRound.round_date).toISOString().slice(0, 10) %></h3>
+        <div class="muted">
+          开放时间：<strong><%= activeRound.open_time_text ? activeRound.open_time_text.replace(/-/g, '/') : '-' %></strong>
+          <% if (activeRound.close_time_text) { %>
+            · 截止：<%= activeRound.close_time_text.replace(/-/g, '/') %>
+          <% } %>
+        </div>
+      </div>
+      <% if (hasConfirmedBooking && bookedVenueSummary) { %>
+        <div class="venue-countdown-box">
+          <div class="venue-countdown-label">预约状态</div>
+          <div class="venue-countdown-timer">您已成功预约 <%= bookedVenueSummary %></div>
+        </div>
+      <% } else { %>
+        <div class="venue-countdown-box">
+          <div id="countdownLabel" class="venue-countdown-label"></div>
+          <div id="countdownTimer" class="venue-countdown-timer"></div>
+        </div>
+      <% } %>
+    </div>
+  </section>
+
+  <% if (venueRecommendationEnabled && Array.isArray(venueRecommendations) && venueRecommendations.length) { %>
+    <section class="card venue-recommend-card">
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">智能推荐</div>
+          <h3>推荐优先选择的区域</h3>
+          <div class="muted">结合本班体测短板、当前容量和上一次区域选择，自动给出最优与次优模块。</div>
+        </div>
+        <span class="status-badge info">已开启</span>
+      </div>
+      <div class="venue-recommend-list">
+        <% venueRecommendations.forEach(function(item) { %>
+          <article class="venue-recommend-item <%= item.rank === '最优选择' ? 'is-best' : '' %>">
+            <div class="venue-recommend-head">
+              <span class="venue-recommend-rank"><%= item.rank %></span>
+              <strong><%= item.label || item.venueName %></strong>
+            </div>
+            <ul class="venue-recommend-reasons">
+              <% (item.reasons || []).forEach(function(reason) { %>
+                <li><%= reason %></li>
+              <% }) %>
+            </ul>
+          </article>
+        <% }) %>
+      </div>
+    </section>
+  <% } %>
+
+  <section class="card venue-map-shell">
+    <div class="section-head">
+      <div>
+        <div class="eyebrow">场地地图</div>
+        <h3>超大地图居中显示，支持切换成文字列表</h3>
+        <div class="muted">桌面端默认地图模式，手机端默认文字模式。点击切换按钮可在两种 UI 间来回切换。</div>
+      </div>
+      <div class="venue-view-toolbar">
+        <span id="viewModeBadge" class="status-badge">当前：地图模式</span>
+        <button id="viewToggleBtn" class="btn small" type="button">切换UI显示</button>
+      </div>
+    </div>
+
+    <div id="venueMapView" class="venue-view-panel">
+      <div id="venueMapStage" class="venue-map-stage">
+        <div id="venueMapStageInner" class="venue-map-stage-inner">
+          <div
+            id="venueMapBoard"
+            class="venue-map-board"
+            data-board-width="<%= layoutBoardWidth %>"
+            data-board-height="<%= layoutBoardHeight %>"
+            style="width:<%= layoutBoardWidth %>px;height:<%= layoutBoardHeight %>px;"
+          >
+            <% (backgrounds || []).forEach(function(bg) { %>
+              <div
+                class="venue-background-layer <%= bg.is_fixed ? 'is-fixed' : '' %>"
+                style="left:<%= bg.map_x %>px;top:<%= bg.map_y %>px;width:<%= bg.map_width %>px;height:<%= bg.map_height %>px;z-index:<%= 1 + (bg.sort_order || 1) %>;"
+              >
+                <div
+                  class="venue-background-image"
+                  style="<%= bg.image_path ? 'background-image:url(' + bg.image_path + '?v=' + cssVersion + ');' : '' %>"
+                ></div>
+              </div>
+            <% }) %>
+            <% const hotspotVenues = venues.filter(function(v) { return venueHotspotPoints(v).length >= 3; }); %>
+            <% if (hotspotVenues.length) { %>
+              <div class="venue-map-hotspot-layer">
+                <svg class="venue-hotspot-svg" viewBox="0 0 <%= layoutBoardWidth %> <%= layoutBoardHeight %>" preserveAspectRatio="none">
+                  <% hotspotVenues.forEach(function(v) { %>
+                    <polygon
+                      class="venue-hotspot-shape js-open-venue-scene <%= bookingMap[v.id] ? 'is-mine' : '' %> <%= v._full && !bookingMap[v.id] ? 'is-pool-full' : '' %>"
+                      data-venue-id="<%= v.id %>"
+                      points="<%= venueHotspotString(v) %>"
+                    ></polygon>
+                  <% }) %>
+                </svg>
+                <% hotspotVenues.forEach(function(v) { %>
+                  <button
+                    type="button"
+                    class="venue-hotspot-hint js-open-venue-scene <%= bookingMap[v.id] ? 'is-mine' : '' %> <%= v._full && !bookingMap[v.id] ? 'is-pool-full' : '' %>"
+                    data-venue-id="<%= v.id %>"
+                    title="<%= v.hotspot_hint_label || v.name %>"
+                    aria-label="查看 <%= v.name %> 场地详情"
+                    style="<%= venueHotspotHintStyle(v) %>;"
+                  >
+                    <span class="venue-hotspot-hint-label"><%= v.hotspot_hint_label || v.name %></span>
+                  </button>
+                <% }) %>
+              </div>
+            <% } %>
+            <% venues.forEach(function(v) { %>
+              <% if (venueHotspotPoints(v).length >= 3) { return; } %>
+              <article
+                class="venue-zone <%= bookingMap[v.id] ? 'is-mine' : '' %> <%= v._full && !bookingMap[v.id] ? 'is-pool-full' : '' %>"
+                style="left:<%= v.map_x %>px;top:<%= v.map_y %>px;width:<%= v.map_width %>px;height:<%= v.map_height %>px;"
+              >
+                <button
+                  type="button"
+                  class="venue-zone-hit js-open-venue-scene"
+                  aria-label="查看 <%= v.name %> 场地详情"
+                  data-venue-id="<%= v.id %>"
+                ></button>
+                <div
+                  class="venue-zone-bg"
+                  style="<%= v.image_path ? 'background-image:url(' + v.image_path + '?v=' + cssVersion + ');' : '' %>"
+                ></div>
+
+                <div class="venue-zone-overlay"></div>
+
+                <div class="venue-zone-head">
+                  <div>
+                    <h4><%= v.name %></h4>
+                    <div class="venue-zone-meta">
+                      <% if (myGrade === 'small') { %>
+                        小班已约 <strong><%= v._bookedSmall %>/<%= v.cap_small %></strong>
+                      <% } else { %>
+                        中大班占用 <strong><%= v._booked %>/<%= v._visibleCapacity %></strong>
+                        <span class="muted">中 <%= v._bookedMiddle %>/<%= v.cap_middle %> · 大 <%= v._bookedLarge %>/<%= v.cap_large %></span>
+                      <% } %>
+                    </div>
+                  </div>
+                  <div class="venue-zone-badge"><%= v._booked %>/<%= v._visibleCapacity %></div>
+                </div>
+
+                <div class="venue-zone-foot">
+                  <div class="venue-class-list">
+                    <% if (v._visibleBookings.length) { %>
+                      <% v._visibleBookings.forEach(function(item) { %>
+                        <span class="venue-class-chip <%= Number(item.class_id) === Number(classId) ? 'is-self' : '' %>"><%= item.class_name %></span>
+                      <% }) %>
+                    <% } else { %>
+                      <span class="venue-class-empty">当前可见范围内还没有班级预约</span>
+                    <% } %>
+                  </div>
+
+                  <div class="venue-zone-actions">
+                    <div class="venue-availability">
+                      您所在<%= myGradeLabel %>可约：<strong><%= v._myPoolBooked %>/<%= v._myPoolCapacity %></strong>
+                    </div>
+
+                    <% if (bookingMap[v.id]) { %>
+                      <form method="post" action="/user/venues/cancel" class="inline-form">
+                        <input type="hidden" name="bookingId" value="<%= bookingMap[v.id].id %>" />
+                        <button class="btn small" type="submit">取消预约</button>
+                      </form>
+                    <% } else if (hasConfirmedBooking) { %>
+                      <button class="btn small" type="button" disabled>本轮已预约其他场地</button>
+                    <% } else if (v._full) { %>
+                      <button class="btn small" type="button" disabled>本年级名额已满</button>
+                    <% } else { %>
+                      <form method="post" action="/user/venues/book" class="inline-form">
+                        <input type="hidden" name="venueId" value="<%= v.id %>" />
+                        <input type="hidden" name="roundId" value="<%= activeRound.id %>" />
+                        <button class="btn small primary book-btn" type="submit" disabled>预约</button>
+                      </form>
+                    <% } %>
+                  </div>
+                </div>
+              </article>
+            <% }) %>
+          </div>
+        </div>
+      </div>
+      <div class="muted venue-map-caption">地图模式用于查看整体布局，点击模块区域可进入对应的运动资源与指导。</div>
+    </div>
+
+    <div id="venueTextView" class="venue-view-panel" hidden>
+      <div class="venue-text-list">
+        <% venues.forEach(function(v) { %>
+          <article class="venue-text-card">
+            <div class="venue-text-head">
+              <div>
+                <h4><%= v.name %></h4>
+                <div class="muted">
+                  <% if (myGrade === 'small') { %>
+                    小班已约 <strong><%= v._bookedSmall %>/<%= v.cap_small %></strong>
+                  <% } else { %>
+                    中大班占用 <strong><%= v._booked %>/<%= v._visibleCapacity %></strong>
+                    · 中 <%= v._bookedMiddle %>/<%= v.cap_middle %> · 大 <%= v._bookedLarge %>/<%= v.cap_large %>
+                  <% } %>
+                </div>
+              </div>
+              <div class="venue-zone-badge"><%= v._booked %>/<%= v._visibleCapacity %></div>
+            </div>
+
+            <div class="venue-text-body">
+              <div class="venue-text-row">
+                <strong>当前可见班级</strong>
+                <div class="venue-class-list">
+                  <% if (v._visibleBookings.length) { %>
+                    <% v._visibleBookings.forEach(function(item) { %>
+                      <span class="venue-class-chip <%= Number(item.class_id) === Number(classId) ? 'is-self' : '' %>"><%= item.class_name %></span>
+                    <% }) %>
+                  <% } else { %>
+                    <span class="venue-class-empty">还没有班级预约</span>
+                  <% } %>
+                </div>
+              </div>
+
+              <div class="venue-text-row">
+                <strong>运动资源与指导</strong>
+                <div class="venue-class-list">
+                  <span class="venue-class-empty">点击“查看场地”后，可在右侧切换技能分级指导和大循环运动指导。</span>
+                </div>
+              </div>
+
+              <div class="venue-text-actions">
+                <button
+                  type="button"
+                  class="btn small js-open-venue-scene"
+                  data-venue-id="<%= v.id %>"
+                >查看场地</button>
+
+                <% if (bookingMap[v.id]) { %>
+                  <form method="post" action="/user/venues/cancel" class="inline-form">
+                    <input type="hidden" name="bookingId" value="<%= bookingMap[v.id].id %>" />
+                    <button class="btn small" type="submit">取消预约</button>
+                  </form>
+                <% } else if (hasConfirmedBooking) { %>
+                  <button class="btn small" type="button" disabled>本轮已预约其他场地</button>
+                <% } else if (v._full) { %>
+                  <button class="btn small" type="button" disabled>本年级名额已满</button>
+                <% } else { %>
+                  <form method="post" action="/user/venues/book" class="inline-form">
+                    <input type="hidden" name="venueId" value="<%= v.id %>" />
+                    <input type="hidden" name="roundId" value="<%= activeRound.id %>" />
+                    <button class="btn small primary book-btn" type="submit" disabled>预约</button>
+                  </form>
+                <% } %>
+              </div>
+            </div>
+          </article>
+        <% }) %>
+      </div>
+    </div>
+  </section>
+<% } %>
+
+<div id="venueSceneModal" class="modal-overlay venue-scene-overlay" style="display:none;">
+  <div class="modal-box venue-scene-modal">
+    <div class="modal-header">
+      <div>
+        <h3 id="venueSceneTitle">场地详情</h3>
+      </div>
+      <button id="venueSceneClose" class="modal-close" type="button">&times;</button>
+    </div>
+    <div id="venueSceneContent" class="modal-body venue-scene-content"></div>
+  </div>
+</div>
+
+<div id="venueSceneImageModal" class="modal-overlay venue-scene-image-overlay" style="display:none;">
+  <div class="venue-scene-image-viewer">
+    <div class="venue-scene-image-toolbar">
+      <div>
+        <strong id="venueSceneImageTitle">场景图</strong>
+        <div class="venue-scene-image-hint">双击图片可快速放大或还原，也可以用滚轮继续缩放。</div>
+      </div>
+      <div class="venue-scene-image-toolbar-actions">
+        <button type="button" class="btn small" data-scene-image-action="out">缩小</button>
+        <button type="button" class="btn small" data-scene-image-action="reset">还原</button>
+        <button type="button" class="btn small primary" data-scene-image-action="in">放大</button>
+        <button id="venueSceneImageClose" class="modal-close venue-scene-image-close" type="button">&times;</button>
+      </div>
+    </div>
+    <div id="venueSceneImageViewport" class="venue-scene-image-viewport">
+      <img id="venueSceneImageFull" class="venue-scene-image-full" alt="" />
+    </div>
+  </div>
+</div>
+
+<% venues.forEach(function(v) { const sceneImage = venueSceneImage(v); const sceneDesc = venueSceneDesc(v); const loopGuideDesc = venueLoopGuideDesc(v); const defaultResourceTarget = venueResourceDefaultTarget(v); const hasResourceGuides = venueHasResourceGuides(v); const sceneAttentionChildren = (sceneAttentionRows || []).filter(function(child) { return Number(child.venue_id) === Number(v.id); }); const yellowAttentionChildren = sceneAttentionChildren.filter(function(child) { return attentionVestKey(child) === 'yellow'; }); const greenAttentionChildren = sceneAttentionChildren.filter(function(child) { return attentionVestKey(child) === 'green'; }); const redAttentionChildren = sceneAttentionChildren.filter(function(child) { return attentionVestKey(child) === 'red'; }); const defaultAttentionVest = redAttentionChildren.length ? 'red' : (yellowAttentionChildren.length ? 'yellow' : (greenAttentionChildren.length ? 'green' : 'yellow')); %>
+  <template id="venueSceneTemplate_<%= v.id %>" data-title="<%= v.name %>">
+    <div class="venue-scene-shell" data-scene-shell data-default-resource-target="<%= defaultResourceTarget %>">
+      <div class="venue-scene-visual">
+        <div class="venue-scene-switches">
+          <button type="button" class="venue-resource-mode-btn js-scene-mode-switch is-active" data-scene-mode="overview">场地总览</button>
+          <button type="button" class="venue-resource-mode-btn js-scene-mode-switch" data-scene-mode="resource" <%= hasResourceGuides ? '' : 'disabled' %>>运动资源与指导</button>
+        </div>
+
+        <div class="venue-scene-surface is-active" data-scene-mode-panel="overview">
+          <div
+            class="venue-scene-image-frame"
+            data-scene-frame
+            data-scene-width="<%= venueSceneBaseWidth(v) %>"
+            data-scene-height="<%= venueSceneBaseHeight(v) %>"
+            style="--scene-width:<%= venueSceneBaseWidth(v) %>;--scene-height:<%= venueSceneBaseHeight(v) %>;"
+          >
+            <div class="venue-scene-map" data-scene-map data-scene-width="<%= venueSceneBaseWidth(v) %>" data-scene-height="<%= venueSceneBaseHeight(v) %>">
+              <% if (sceneImage) { %>
+                <img src="<%= sceneImage %>?v=<%= cssVersion %>" alt="<%= v.name %>" data-scene-image />
+              <% } else { %>
+                <div class="venue-scene-empty">暂无场景图</div>
+              <% } %>
+            </div>
+          </div>
+          <div class="venue-scene-image-actions">
+            <p class="venue-scene-subtitle">当前展示模块场地总览，可结合右侧导航切换到“运动资源与指导”。</p>
+            <% if (sceneImage) { %>
+              <div class="venue-scene-image-tip">双击左侧场景图，可查看整图并直接放大。</div>
+            <% } %>
+            <% if (v.equipment) { %>
+              <div class="venue-resource-meta-line">器材支持：<%= v.equipment %></div>
+            <% } %>
+            <div class="venue-scene-text"><%= sceneDesc %></div>
+          </div>
+        </div>
+
+        <div class="venue-scene-surface" data-scene-mode-panel="resource" hidden>
+          <div class="venue-resource-board">
+            <% if (hasResourceGuides) { %>
+              <div class="venue-resource-head">
+                <div>
+                  <div class="venue-resource-eyebrow">运动资源与指导</div>
+                  <h3 class="venue-resource-title"><%= v.name %></h3>
+                </div>
+                <div class="venue-resource-grade-note">
+                  <%= myGrade === 'small' ? '当前账号为小班，默认显示基础级；若配置了基础级2，也会一起显示。' : '当前账号为中大班，将显示基础级、提升级、额外等级和幼小衔接指标。' %>
+                </div>
+              </div>
+
+              <div class="venue-resource-empty venue-resource-empty-placeholder" data-resource-placeholder hidden>
+                请先点击导航按钮，再查看对应的技能分级指导或大循环运动指导。
+              </div>
+
+              <% if (v.skillGuides && v.skillGuides.length) { %>
+                <% v.skillGuides.forEach(function(guide) { const target = 'guide-' + guide.id; const hasAdvanced = !!(guide.advanced_skill_names || guide.advanced_equipment || guide.advanced_action_points || guide.advanced_safety_points || mediaList(guide.advanced_image_paths, guide.advanced_image_path).length || mediaList(guide.advanced_video_paths, guide.advanced_video_path).length); const hasBridge = !!guide.bridge_indicators; const extraLevelType = skillGuideExtraLevelType(guide); const extraLevelLabel = skillGuideExtraLevelLabel(guide); const hasExtra = skillGuideHasExtraLevel(guide); const showExtra = hasExtra && (myGrade !== 'small' || extraLevelType === 'basic'); %>
+                  <article class="venue-resource-panel" data-resource-panel="<%= target %>" hidden>
+                    <div class="venue-resource-panel-head">
+                      <div>
+                        <div class="venue-resource-panel-label">技能分级指导</div>
+                        <h4><%= guide.title %></h4>
+                      </div>
+                    </div>
+
+                    <div class="venue-resource-level-tabs">
+                      <button type="button" class="venue-resource-level-btn js-resource-level is-active" data-resource-level="basic">基础级</button>
+                      <% if (myGrade !== 'small' && hasAdvanced) { %>
+                        <button type="button" class="venue-resource-level-btn js-resource-level" data-resource-level="advanced">提升级</button>
+                      <% } %>
+                      <% if (showExtra) { %>
+                        <button type="button" class="venue-resource-level-btn js-resource-level" data-resource-level="extra"><%= extraLevelLabel %></button>
+                      <% } %>
+                      <% if (myGrade !== 'small' && hasBridge) { %>
+                        <button type="button" class="venue-resource-level-btn js-resource-level" data-resource-level="bridge">幼小衔接指标</button>
+                      <% } %>
+                    </div>
+
+                    <div class="venue-resource-level-panel is-active" data-resource-level-panel="basic">
+                      <div class="venue-resource-content-grid">
+                        <section class="venue-resource-card">
+                          <strong>技能名称</strong>
+                          <div class="venue-scene-text"><%= guide.basic_skill_names || '暂无基础级技能名称' %></div>
+                        </section>
+                        <section class="venue-resource-card">
+                          <strong>对应器械</strong>
+                          <div class="venue-scene-text"><%= guide.basic_equipment || '暂无设置' %></div>
+                        </section>
+                        <section class="venue-resource-card">
+                          <strong>动作要领</strong>
+                          <div class="venue-scene-text"><%= guide.basic_action_points || '暂无基础级动作要领' %></div>
+                        </section>
+                        <section class="venue-resource-card">
+                          <strong>安全指导要点</strong>
+                          <div class="venue-scene-text"><%= guide.basic_safety_points || '暂无基础级安全指导要点' %></div>
+                        </section>
+                      </div>
+                      <% const basicImages = mediaList(guide.basic_image_paths, guide.basic_image_path); %>
+                      <% const basicVideos = mediaList(guide.basic_video_paths, guide.basic_video_path); %>
+                      <% if (basicImages.length || basicVideos.length) { %>
+                        <div class="venue-resource-media-grid">
+                          <% basicImages.forEach(function(item, index) { %>
+                            <figure class="venue-resource-figure">
+                              <img src="<%= item %>?v=<%= cssVersion %>" alt="<%= guide.title %> 基础级配图 <%= index + 1 %>" />
+                              <figcaption>基础级配图 <%= index + 1 %></figcaption>
+                            </figure>
+                          <% }) %>
+                          <% basicVideos.forEach(function(item, index) { %>
+                            <div class="venue-resource-video">
+                              <video src="<%= item %>?v=<%= cssVersion %>" controls playsinline <%= guide.basic_video_autoplay ? 'autoplay muted' : '' %>></video>
+                              <span class="muted"><%= guide.basic_video_autoplay ? '基础级视频已设置自动播放（静音）' : '基础级视频手动播放' %> · 第 <%= index + 1 %> 段</span>
+                            </div>
+                          <% }) %>
+                        </div>
+                      <% } %>
+                      <% if (false && (guide.basic_image_path || guide.basic_video_path)) { %>
+                        <div class="venue-resource-media-grid">
+                          <% if (guide.basic_image_path) { %>
+                            <figure class="venue-resource-figure">
+                              <img src="<%= guide.basic_image_path %>?v=<%= cssVersion %>" alt="<%= guide.title %> 基础级配图" />
+                              <figcaption>基础级配图</figcaption>
+                            </figure>
+                          <% } %>
+                          <% if (guide.basic_video_path) { %>
+                            <div class="venue-resource-video">
+                              <video src="<%= guide.basic_video_path %>?v=<%= cssVersion %>" controls playsinline <%= guide.basic_video_autoplay ? 'autoplay muted' : '' %>></video>
+                              <span class="muted"><%= guide.basic_video_autoplay ? '基础级视频已设置自动播放（静音）' : '基础级视频手动播放' %></span>
+                            </div>
+                          <% } %>
+                        </div>
+                      <% } %>
+                    </div>
+
+                    <% if (myGrade !== 'small' && hasAdvanced) { %>
+                      <div class="venue-resource-level-panel" data-resource-level-panel="advanced" hidden>
+                        <div class="venue-resource-content-grid">
+                          <section class="venue-resource-card">
+                            <strong>技能名称</strong>
+                            <div class="venue-scene-text"><%= guide.advanced_skill_names || '暂无提升级技能名称' %></div>
+                          </section>
+                          <section class="venue-resource-card">
+                            <strong>对应器械</strong>
+                            <div class="venue-scene-text"><%= guide.advanced_equipment || '暂无设置' %></div>
+                          </section>
+                          <section class="venue-resource-card">
+                            <strong>动作要领</strong>
+                            <div class="venue-scene-text"><%= guide.advanced_action_points || '暂无提升级动作要领' %></div>
+                          </section>
+                          <section class="venue-resource-card">
+                            <strong>安全指导要点</strong>
+                            <div class="venue-scene-text"><%= guide.advanced_safety_points || '暂无提升级安全指导要点' %></div>
+                          </section>
+                        </div>
+                        <% const advancedImages = mediaList(guide.advanced_image_paths, guide.advanced_image_path); %>
+                        <% const advancedVideos = mediaList(guide.advanced_video_paths, guide.advanced_video_path); %>
+                        <% if (advancedImages.length || advancedVideos.length) { %>
+                          <div class="venue-resource-media-grid">
+                            <% advancedImages.forEach(function(item, index) { %>
+                              <figure class="venue-resource-figure">
+                                <img src="<%= item %>?v=<%= cssVersion %>" alt="<%= guide.title %> 提升级配图 <%= index + 1 %>" />
+                                <figcaption>提升级配图 <%= index + 1 %></figcaption>
+                              </figure>
+                            <% }) %>
+                            <% advancedVideos.forEach(function(item, index) { %>
+                              <div class="venue-resource-video">
+                                <video src="<%= item %>?v=<%= cssVersion %>" controls playsinline <%= guide.advanced_video_autoplay ? 'autoplay muted' : '' %>></video>
+                                <span class="muted"><%= guide.advanced_video_autoplay ? '提升级视频已设置自动播放（静音）' : '提升级视频手动播放' %> · 第 <%= index + 1 %> 段</span>
+                              </div>
+                            <% }) %>
+                          </div>
+                        <% } %>
+                        <% if (false && (guide.advanced_image_path || guide.advanced_video_path)) { %>
+                          <div class="venue-resource-media-grid">
+                            <% if (guide.advanced_image_path) { %>
+                              <figure class="venue-resource-figure">
+                                <img src="<%= guide.advanced_image_path %>?v=<%= cssVersion %>" alt="<%= guide.title %> 提升级配图" />
+                                <figcaption>提升级配图</figcaption>
+                              </figure>
+                            <% } %>
+                            <% if (guide.advanced_video_path) { %>
+                              <div class="venue-resource-video">
+                                <video src="<%= guide.advanced_video_path %>?v=<%= cssVersion %>" controls playsinline <%= guide.advanced_video_autoplay ? 'autoplay muted' : '' %>></video>
+                                <span class="muted"><%= guide.advanced_video_autoplay ? '提升级视频已设置自动播放（静音）' : '提升级视频手动播放' %></span>
+                              </div>
+                            <% } %>
+                          </div>
+                        <% } %>
+                      </div>
+                    <% } %>
+
+                    <% if (showExtra) { %>
+                      <div class="venue-resource-level-panel" data-resource-level-panel="extra" hidden>
+                        <div class="venue-resource-content-grid">
+                          <section class="venue-resource-card">
+                            <strong>技能名称</strong>
+                            <div class="venue-scene-text"><%= guide.extra_skill_names || ('暂无' + extraLevelLabel + '技能名称') %></div>
+                          </section>
+                          <section class="venue-resource-card">
+                            <strong>对应器械</strong>
+                            <div class="venue-scene-text"><%= guide.extra_equipment || '暂无设置' %></div>
+                          </section>
+                          <section class="venue-resource-card">
+                            <strong>动作要领</strong>
+                            <div class="venue-scene-text"><%= guide.extra_action_points || ('暂无' + extraLevelLabel + '动作要领') %></div>
+                          </section>
+                          <section class="venue-resource-card">
+                            <strong>安全指导要点</strong>
+                            <div class="venue-scene-text"><%= guide.extra_safety_points || ('暂无' + extraLevelLabel + '安全指导要点') %></div>
+                          </section>
+                        </div>
+                        <% const extraImages = mediaList(guide.extra_image_paths, guide.extra_image_path); %>
+                        <% const extraVideos = mediaList(guide.extra_video_paths, guide.extra_video_path); %>
+                        <% if (extraImages.length || extraVideos.length) { %>
+                          <div class="venue-resource-media-grid">
+                            <% extraImages.forEach(function(item, index) { %>
+                              <figure class="venue-resource-figure">
+                                <img src="<%= item %>?v=<%= cssVersion %>" alt="<%= guide.title %> <%= extraLevelLabel %>配图<%= index + 1 %>" />
+                                <figcaption><%= extraLevelLabel %>配图<%= index + 1 %></figcaption>
+                              </figure>
+                            <% }) %>
+                            <% extraVideos.forEach(function(item, index) { %>
+                              <div class="venue-resource-video">
+                                <video src="<%= item %>?v=<%= cssVersion %>" controls playsinline <%= guide.extra_video_autoplay ? 'autoplay muted' : '' %>></video>
+                                <span class="muted"><%= guide.extra_video_autoplay ? (extraLevelLabel + '视频已设置自动播放（静音）') : (extraLevelLabel + '视频手动播放') %> · 第 <%= index + 1 %> 段</span>
+                              </div>
+                            <% }) %>
+                          </div>
+                        <% } %>
+                      </div>
+                    <% } %>
+
+                    <% if (myGrade !== 'small' && hasBridge) { %>
+                      <div class="venue-resource-level-panel" data-resource-level-panel="bridge" hidden>
+                        <section class="venue-resource-card">
+                          <strong>幼小衔接指标</strong>
+                          <div class="venue-scene-text"><%= guide.bridge_indicators %></div>
+                        </section>
+                      </div>
+                    <% } %>
+                  </article>
+                <% }) %>
+              <% } %>
+
+              <% if (venueHasLoopGuide(v)) { %>
+                <article class="venue-resource-panel" data-resource-panel="loop" hidden>
+                  <div class="venue-resource-panel-head">
+                    <div>
+                      <div class="venue-resource-panel-label">大循环运动指导</div>
+                      <h4>循环路线、指导站位及视频</h4>
+                    </div>
+                  </div>
+                  <% const loopGuideImages = mediaList(v.loop_guide_images, v.loop_guide_image_path); %>
+                  <% const loopGuideStationImages = mediaList(v.loop_guide_station_images, v.loop_guide_station_image_path); %>
+                  <% const loopGuideVideos = mediaList(v.loop_guide_videos, v.loop_guide_video_path); %>
+                  <div class="venue-resource-content-grid is-loop">
+                    <% loopGuideImages.forEach(function(item, index) { %>
+                      <figure class="venue-resource-figure">
+                        <img src="<%= item %>?v=<%= cssVersion %>" alt="<%= v.name %> 大循环示意图 <%= index + 1 %>" />
+                        <figcaption>循环示意图 <%= index + 1 %></figcaption>
+                      </figure>
+                    <% }) %>
+                    <% loopGuideStationImages.forEach(function(item, index) { %>
+                      <figure class="venue-resource-figure">
+                        <img src="<%= item %>?v=<%= cssVersion %>" alt="<%= v.name %> 指导站位图 <%= index + 1 %>" />
+                        <figcaption>指导站位图 <%= index + 1 %></figcaption>
+                      </figure>
+                    <% }) %>
+                    <% if (false && v.loop_guide_image_path) { %>
+                      <figure class="venue-resource-figure">
+                        <img src="<%= v.loop_guide_image_path %>?v=<%= cssVersion %>" alt="<%= v.name %> 大循环示意图" />
+                        <figcaption>循环示意图</figcaption>
+                      </figure>
+                    <% } %>
+                    <% if (false && v.loop_guide_station_image_path) { %>
+                      <figure class="venue-resource-figure">
+                        <img src="<%= v.loop_guide_station_image_path %>?v=<%= cssVersion %>" alt="<%= v.name %> 指导站位图" />
+                        <figcaption>指导站位图</figcaption>
+                      </figure>
+                    <% } %>
+                  </div>
+                  <% loopGuideVideos.forEach(function(item, index) { %>
+                    <div class="venue-resource-video">
+                      <video src="<%= item %>?v=<%= cssVersion %>" controls playsinline <%= v.loop_guide_video_autoplay ? 'autoplay muted' : '' %>></video>
+                      <span class="muted"><%= v.loop_guide_video_autoplay ? '大循环指导视频已设置自动播放（静音）' : '大循环指导视频手动播放' %> · 第 <%= index + 1 %> 段</span>
+                    </div>
+                  <% }) %>
+                  <% if (false && v.loop_guide_video_path) { %>
+                    <div class="venue-resource-video">
+                      <video src="<%= v.loop_guide_video_path %>?v=<%= cssVersion %>" controls playsinline <%= v.loop_guide_video_autoplay ? 'autoplay muted' : '' %>></video>
+                      <span class="muted"><%= v.loop_guide_video_autoplay ? '大循环指导视频已设置自动播放（静音）' : '大循环指导视频手动播放' %></span>
+                    </div>
+                  <% } %>
+                  <section class="venue-resource-card">
+                    <strong><%= myGrade === 'small' ? '小班指导要点' : '中大班指导要点' %></strong>
+                    <div class="venue-scene-text"><%= loopGuideDesc %></div>
+                  </section>
+                </article>
+              <% } %>
+            <% } else { %>
+              <div class="venue-resource-empty">
+                当前模块还没有配置“运动资源与指导”内容。
+              </div>
+            <% } %>
+          </div>
+        </div>
+      </div>
+
+      <div class="venue-scene-panel">
+        <section class="venue-scene-card venue-scene-card-stats">
+          <h2 class="venue-scene-title"><%= v.name %></h2>
+          <div class="venue-scene-meta">
+            <span class="status-badge <%= bookingMap[v.id] ? 'ok' : (v._full ? 'warn' : '') %>"><%= bookingMap[v.id] ? '已预约' : (v._full ? '名额已满' : '可预约') %></span>
+            <span class="venue-zone-badge"><%= v._booked %>/<%= v._visibleCapacity %></span>
+          </div>
+          <div class="venue-scene-grid" style="margin-top:14px;">
+            <div class="venue-scene-stat">
+              <strong><%= myGrade === 'small' ? '小班已约' : '可见占用' %></strong>
+              <span><%= myGrade === 'small' ? (v._bookedSmall + '/' + v.cap_small) : (v._booked + '/' + v._visibleCapacity) %></span>
+            </div>
+            <div class="venue-scene-stat">
+              <strong><%= myGradeLabel %>可约</strong>
+              <span><%= v._myPoolBooked %>/<%= v._myPoolCapacity %></span>
+            </div>
+            <div class="venue-scene-stat">
+              <strong>中班占用</strong>
+              <span><%= v._bookedMiddle %>/<%= v.cap_middle %></span>
+            </div>
+            <div class="venue-scene-stat">
+              <strong>大班占用</strong>
+              <span><%= v._bookedLarge %>/<%= v.cap_large %></span>
+            </div>
+          </div>
+        </section>
+
+        <section class="venue-scene-card venue-scene-card-nav">
+          <strong>运动资源与指导</strong>
+          <div class="venue-resource-nav" style="margin-top:12px;">
+            <button type="button" class="venue-resource-nav-btn js-scene-mode-switch is-active" data-scene-mode="overview">场地总览</button>
+            <button type="button" class="venue-resource-nav-btn js-scene-mode-switch" data-scene-mode="resource" <%= hasResourceGuides ? '' : 'disabled' %>>运动资源与指导</button>
+          </div>
+          <% if (hasResourceGuides) { %>
+            <% if (v.skillGuides && v.skillGuides.length) { %>
+              <div class="venue-resource-nav-group">
+                <div class="venue-resource-nav-label">技能分级指导</div>
+                <div class="venue-resource-nav-list">
+                  <% v.skillGuides.forEach(function(guide) { const target = 'guide-' + guide.id; %>
+                    <button type="button" class="venue-resource-nav-btn js-resource-target" data-resource-target="<%= target %>"><%= guide.title %></button>
+                  <% }) %>
+                </div>
+              </div>
+            <% } %>
+            <% if (venueHasLoopGuide(v)) { %>
+              <div class="venue-resource-nav-group">
+                <div class="venue-resource-nav-label">大循环运动指导</div>
+                <div class="venue-resource-nav-list">
+                  <button type="button" class="venue-resource-nav-btn js-resource-target" data-resource-target="loop">循环路线与指导</button>
+                </div>
+              </div>
+            <% } %>
+          <% } else { %>
+            <div class="venue-class-list" style="margin-top:12px;">
+              <span class="venue-class-empty">当前模块还未配置运动资源与指导。</span>
+            </div>
+          <% } %>
+        </section>
+
+        <section class="venue-scene-card venue-scene-card-classes">
+          <strong>当前可见班级</strong>
+          <div class="venue-class-list" style="margin-top:12px;">
+            <% if (v._visibleBookings.length) { %>
+              <% v._visibleBookings.forEach(function(item) { %>
+                <span class="venue-class-chip <%= Number(item.class_id) === Number(classId) ? 'is-self' : '' %>"><%= item.class_name %></span>
+              <% }) %>
+            <% } else { %>
+              <span class="venue-class-empty">还没有班级预约</span>
+            <% } %>
+          </div>
+        </section>
+
+        <% if (sceneAttentionChildren.length) { %>
+          <section class="venue-scene-card venue-scene-card-attention" data-attention-shell data-default-attention-vest="<%= defaultAttentionVest %>">
+            <strong>模块内需重点关注孩子</strong>
+            <div class="venue-attention-vest-tabs">
+              <button type="button" class="venue-resource-nav-btn js-attention-vest-tab <%= defaultAttentionVest === 'red' ? 'is-active' : '' %>" data-attention-vest="red" <%= redAttentionChildren.length ? '' : 'disabled' %>>
+                红马甲
+                <span class="venue-attention-tab-count"><%= redAttentionChildren.length %></span>
+              </button>
+              <button type="button" class="venue-resource-nav-btn js-attention-vest-tab <%= defaultAttentionVest === 'yellow' ? 'is-active' : '' %>" data-attention-vest="yellow" <%= yellowAttentionChildren.length ? '' : 'disabled' %>>
+                黄马甲
+                <span class="venue-attention-tab-count"><%= yellowAttentionChildren.length %></span>
+              </button>
+              <button type="button" class="venue-resource-nav-btn js-attention-vest-tab <%= defaultAttentionVest === 'green' ? 'is-active' : '' %>" data-attention-vest="green" <%= greenAttentionChildren.length ? '' : 'disabled' %>>
+                绿马甲
+                <span class="venue-attention-tab-count"><%= greenAttentionChildren.length %></span>
+              </button>
+            </div>
+            <% ['red', 'yellow', 'green'].forEach(function(vestType) { const vestChildren = vestType === 'red' ? redAttentionChildren : (vestType === 'green' ? greenAttentionChildren : yellowAttentionChildren); %>
+              <div class="venue-attention-vest-panel" data-attention-vest-panel="<%= vestType %>" <%= defaultAttentionVest === vestType ? '' : 'hidden' %>>
+                <% if (vestChildren.length) { %>
+                  <div class="venue-attention-child-list">
+                    <% vestChildren.forEach(function(child, index) { %>
+                      <button type="button" class="venue-attention-child-btn js-attention-child-btn <%= index === 0 ? 'is-active' : '' %> <%= attentionVestClass(child) %>" data-attention-child-id="<%= child.id %>" data-attention-vest="<%= vestType %>">
+                        <span><%= child.name %></span>
+                        <span class="vest-badge <%= vestType %>"><%= attentionVestLabel(child) %></span>
+                      </button>
+                    <% }) %>
+                  </div>
+                  <div class="venue-attention-child-detail-list">
+                    <% vestChildren.forEach(function(child, index) { const sceneTags = parseAttentionTags(child.attention_tags); %>
+                      <div class="venue-scene-attention-item <%= attentionVestClass(child) %>" data-attention-child-panel="<%= child.id %>" <%= index === 0 ? '' : 'hidden' %>>
+                        <div class="venue-scene-attention-head">
+                          <div>
+                            <strong><%= child.name %></strong>
+                            <div class="muted" style="margin-top:4px;"><%= child.class_name %></div>
+                          </div>
+                          <span class="vest-badge <%= vestType %>"><%= vestType === 'red' ? '红马甲' : (vestType === 'green' ? '绿马甲' : '黄马甲') %></span>
+                        </div>
+                        <div class="venue-scene-text"><%= child.attention_reason || '已被标记为重点关注，请活动时重点照看。' %></div>
+                        <% if (sceneTags.length) { %>
+                          <div class="tag-list compact-tag-list">
+                            <% sceneTags.forEach(function(tag) { %><span class="tag-pill"><%= tag %></span><% }) %>
+                          </div>
+                        <% } %>
+                      </div>
+                    <% }) %>
+                  </div>
+                <% } else { %>
+                  <div class="venue-resource-empty venue-attention-current-empty" style="margin-top:12px;">当前没有<%= vestType === 'red' ? '红马甲' : (vestType === 'green' ? '绿马甲' : '黄马甲') %>重点关注幼儿。</div>
+                <% } %>
+              </div>
+            <% }) %>
+          </section>
+        <% } else if (bookingMap[v.id] || sceneAttentionChildren.length) { %>
+          <section class="venue-scene-card venue-scene-card-attention">
+            <strong>本场地重点关注幼儿</strong>
+            <% if (sceneAttentionChildren.length) { %>
+              <div class="venue-scene-attention-list">
+                <% sceneAttentionChildren.forEach(function(child) { %>
+                  <div class="venue-scene-attention-item <%= attentionVestClass(child) %>">
+                    <div class="venue-scene-attention-head">
+                      <strong><%= child.name %></strong>
+                      <span class="vest-badge <%= attentionVestKey(child) %>"><%= attentionVestLabel(child) %></span>
+                    </div>
+                    <div class="venue-scene-text"><%= child.attention_reason || '已被标记为重点关注，请活动时重点照看。' %></div>
+                    <% const sceneTags = parseAttentionTags(child.attention_tags); %>
+                    <% if (sceneTags.length) { %>
+                      <div class="tag-list compact-tag-list">
+                        <% sceneTags.forEach(function(tag) { %><span class="tag-pill"><%= tag %></span><% }) %>
+                      </div>
+                    <% } %>
+                  </div>
+                <% }) %>
+              </div>
+            <% } else { %>
+              <div class="venue-resource-empty venue-attention-current-empty" style="margin-top:12px;">当前已预约班级里暂时没有重点关注幼儿。</div>
+            <% } %>
+          </section>
+        <% } %>
+
+        <section class="venue-scene-card venue-scene-card-booking">
+          <div class="venue-scene-actions">
+            <div class="venue-availability">
+              您所在 <strong><%= myGradeLabel %></strong> 可约：<strong><%= v._myPoolBooked %>/<%= v._myPoolCapacity %></strong>
+            </div>
+            <% if (bookingMap[v.id]) { %>
+              <form method="post" action="/user/venues/cancel" class="inline-form">
+                <input type="hidden" name="bookingId" value="<%= bookingMap[v.id].id %>" />
+                <button class="btn" type="submit">取消预约</button>
+              </form>
+            <% } else if (hasConfirmedBooking) { %>
+              <button class="btn" type="button" disabled>本轮已预约其他场地</button>
+            <% } else if (v._full) { %>
+              <button class="btn" type="button" disabled>当前年级名额已满</button>
+            <% } else { %>
+              <form method="post" action="/user/venues/book" class="inline-form">
+                <input type="hidden" name="venueId" value="<%= v.id %>" />
+                <input type="hidden" name="roundId" value="<%= activeRound.id %>" />
+                <button class="btn primary book-btn" type="submit" disabled>预约该场地</button>
+              </form>
+            <% } %>
+          </div>
+        </section>
+      </div>
+    </div>
+  </template>
+<% }) %>
+
+<div id="venueDetailModal" class="modal-overlay" style="display:none;">
+  <div class="modal-box venue-detail-modal">
+    <div class="modal-header">
+      <div>
+        <h3 id="venueDetailTitle">详情</h3>
+      </div>
+      <button id="venueDetailClose" class="modal-close" type="button">&times;</button>
+    </div>
+    <div class="modal-body venue-detail-body">
+      <img id="venueDetailImage" class="venue-detail-image" alt="" style="display:none;" />
+      <div id="venueDetailText" style="white-space:pre-wrap;"></div>
+    </div>
+  </div>
+</div>
+
+<script id="venue-page-config" type="application/json"><%- JSON.stringify(pageConfig) %></script>
+<script>
+  (function() {
+    var modal = document.getElementById('venueDetailModal');
+    var modalTitle = document.getElementById('venueDetailTitle');
+    var modalText = document.getElementById('venueDetailText');
+    var modalImage = document.getElementById('venueDetailImage');
+    var closeButton = document.getElementById('venueDetailClose');
+    var sceneModal = document.getElementById('venueSceneModal');
+    var sceneTitle = document.getElementById('venueSceneTitle');
+    var sceneContent = document.getElementById('venueSceneContent');
+    var sceneCloseButton = document.getElementById('venueSceneClose');
+    var sceneImageModal = document.getElementById('venueSceneImageModal');
+    var sceneImageTitle = document.getElementById('venueSceneImageTitle');
+    var sceneImageViewport = document.getElementById('venueSceneImageViewport');
+    var sceneImageFull = document.getElementById('venueSceneImageFull');
+    var sceneImageCloseButton = document.getElementById('venueSceneImageClose');
+    var config = JSON.parse(document.getElementById('venue-page-config').textContent || '{}');
+    var mapView = document.getElementById('venueMapView');
+    var textView = document.getElementById('venueTextView');
+    var toggleButton = document.getElementById('viewToggleBtn');
+    var viewModeBadge = document.getElementById('viewModeBadge');
+    var mapStage = document.getElementById('venueMapStage');
+    var mapStageInner = document.getElementById('venueMapStageInner');
+    var mapBoard = document.getElementById('venueMapBoard');
+    var viewModeKey = 'venue-view-mode';
+    var scrollLockY = 0;
+    var sceneImageZoom = 1;
+
+    function decode(value) {
+      return decodeURIComponent(value || '');
+    }
+
+    function hasVisibleModal() {
+      return (modal && modal.style.display === 'flex')
+        || (sceneModal && sceneModal.style.display === 'flex')
+        || (sceneImageModal && sceneImageModal.style.display === 'flex');
+    }
+
+    function lockPageScroll() {
+      if (document.body.classList.contains('modal-open')) return;
+      scrollLockY = window.scrollY || window.pageYOffset || 0;
+      document.body.classList.add('modal-open');
+      document.body.style.position = 'fixed';
+      document.body.style.top = '-' + scrollLockY + 'px';
+      document.body.style.left = '0';
+      document.body.style.right = '0';
+      document.body.style.width = '100%';
+    }
+
+    function unlockPageScroll() {
+      if (hasVisibleModal()) return;
+      document.body.classList.remove('modal-open');
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.left = '';
+      document.body.style.right = '';
+      document.body.style.width = '';
+      window.scrollTo(0, scrollLockY || 0);
+    }
+
+    function getBookButtons() {
+      return Array.prototype.slice.call(document.querySelectorAll('.book-btn'));
+    }
+
+    function parseChinaDateTime(text) {
+      if (!text) return null;
+      var match = String(text).trim().match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/);
+      if (!match) return null;
+      return Date.UTC(
+        Number(match[1]),
+        Number(match[2]) - 1,
+        Number(match[3]),
+        Number(match[4]) - 8,
+        Number(match[5]),
+        Number(match[6] || 0)
+      );
+    }
+
+    function isMobileViewport() {
+      return window.matchMedia('(max-width: 768px)').matches;
+    }
+
+    var mapScaleRaf = 0;
+    var lastAppliedScale = 0;
+
+    function scheduleMapScale() {
+      if (mapScaleRaf) return;
+      mapScaleRaf = window.requestAnimationFrame(function() {
+        mapScaleRaf = 0;
+        applyMapScale();
+      });
+    }
+
+    function applyMapScale() {
+      if (!mapStage || !mapStageInner || !mapBoard) return;
+      var baseWidth = Number(mapBoard.dataset.boardWidth || 0);
+      var baseHeight = Number(mapBoard.dataset.boardHeight || 0);
+      if (!baseWidth || !baseHeight) return;
+
+      var shell = document.querySelector('.venue-map-shell');
+      var host = mapView || mapStage.parentElement || mapStage;
+      var hostWidth = host ? host.clientWidth : 0;
+      var stageWidth = mapStage.clientWidth || 0;
+      var shellWidth = shell ? shell.clientWidth : 0;
+      var availableWidth = Math.max(280, Math.min(hostWidth || Infinity, stageWidth || Infinity, shellWidth || Infinity) - 24);
+      if (!isFinite(availableWidth) || availableWidth <= 0) {
+        availableWidth = Math.max(280, window.innerWidth - 40);
+      }
+
+      var stageRect = mapStage.getBoundingClientRect();
+      var viewportHeight = window.visualViewport ? window.visualViewport.height : (window.innerHeight || document.documentElement.clientHeight || 0);
+      var scaleByWidth = availableWidth / baseWidth;
+      var scale = Math.min(1, scaleByWidth);
+
+      if (viewportHeight > 0) {
+        var heightPadding = isMobileViewport() ? 28 : 72;
+        var minVisibleHeight = isMobileViewport() ? 220 : 360;
+        var availableHeight = Math.max(minVisibleHeight, viewportHeight - Math.max(stageRect.top, 0) - heightPadding);
+        var scaledHeightByWidth = baseHeight * scale;
+        if (scaledHeightByWidth > availableHeight) {
+          var scaleByHeight = availableHeight / baseHeight;
+          scale = Math.min(scale, scaleByHeight);
+        }
+      }
+
+      if (!isFinite(scale) || scale <= 0) scale = 1;
+      if (Math.abs(scale - lastAppliedScale) < 0.002) return;
+      lastAppliedScale = scale;
+
+      var scaledWidth = Math.round(baseWidth * scale);
+      var scaledHeight = Math.round(baseHeight * scale);
+      mapStage.dataset.scale = String(scale);
+      mapStage.style.minHeight = scaledHeight + 24 + 'px';
+      mapStageInner.style.width = scaledWidth + 'px';
+      mapStageInner.style.height = scaledHeight + 'px';
+      mapBoard.style.width = baseWidth + 'px';
+      mapBoard.style.height = baseHeight + 'px';
+      mapBoard.style.transform = 'scale(' + scale + ')';
+      mapBoard.style.transformOrigin = 'top left';
+      mapBoard.style.margin = '0';
+    }
+
+    function applyViewMode(mode, shouldPersist) {
+      var currentMode = mode === 'list' ? 'list' : 'map';
+      if (mapView) mapView.hidden = currentMode !== 'map';
+      if (textView) textView.hidden = currentMode !== 'list';
+      if (viewModeBadge) viewModeBadge.textContent = currentMode === 'map' ? '当前：地图模式' : '当前：文字模式';
+      if (toggleButton) toggleButton.textContent = currentMode === 'map' ? '切换UI显示：文字' : '切换UI显示：地图';
+      if (shouldPersist) {
+        localStorage.setItem(viewModeKey, currentMode);
+      }
+      if (currentMode === 'map') {
+        requestAnimationFrame(function() {
+          scheduleMapScale();
+          setTimeout(scheduleMapScale, 60);
+          setTimeout(scheduleMapScale, 220);
+        });
+      }
+    }
+
+    function openDetail(button) {
+      modalTitle.textContent = decode(button.dataset.title);
+      modalText.textContent = decode(button.dataset.desc) || '暂无说明';
+      var image = decode(button.dataset.image);
+      if (image) {
+        modalImage.src = image;
+        modalImage.style.display = 'block';
+      } else {
+        modalImage.removeAttribute('src');
+        modalImage.style.display = 'none';
+      }
+      lockPageScroll();
+      modal.style.display = 'flex';
+    }
+
+    function closeDetail() {
+      modal.style.display = 'none';
+      unlockPageScroll();
+    }
+
+    function openScene(venueId) {
+      var template = document.getElementById('venueSceneTemplate_' + venueId);
+      if (!template || !sceneModal || !sceneContent) return;
+      sceneTitle.textContent = template.dataset.title || '场地详情';
+      sceneContent.innerHTML = template.innerHTML;
+      lockPageScroll();
+      sceneModal.style.display = 'flex';
+      initSceneShellState(sceneContent);
+      requestAnimationFrame(syncSceneFrames);
+      syncBookingButtons();
+    }
+
+    function closeScene() {
+      if (!sceneModal) return;
+      closeSceneImageViewer();
+      sceneModal.style.display = 'none';
+      if (sceneContent) sceneContent.innerHTML = '';
+      unlockPageScroll();
+    }
+
+    function applySceneImageZoom(nextZoom) {
+      if (!sceneImageViewport || !sceneImageFull || !sceneImageFull.naturalWidth || !sceneImageFull.naturalHeight) return;
+      var viewportWidth = sceneImageViewport.clientWidth || 1;
+      var viewportHeight = sceneImageViewport.clientHeight || 1;
+      var fitScale = Math.min(1, viewportWidth / sceneImageFull.naturalWidth, viewportHeight / sceneImageFull.naturalHeight);
+      var previousZoom = sceneImageZoom || 1;
+      var previousScale = fitScale * previousZoom;
+      var previousWidth = sceneImageFull.naturalWidth * previousScale;
+      var previousHeight = sceneImageFull.naturalHeight * previousScale;
+      var ratioX = previousWidth > viewportWidth ? sceneImageViewport.scrollLeft / Math.max(previousWidth - viewportWidth, 1) : 0;
+      var ratioY = previousHeight > viewportHeight ? sceneImageViewport.scrollTop / Math.max(previousHeight - viewportHeight, 1) : 0;
+      sceneImageZoom = Math.max(1, Math.min(4, Number(nextZoom) || 1));
+      var nextScale = fitScale * sceneImageZoom;
+      var nextWidth = Math.round(sceneImageFull.naturalWidth * nextScale);
+      var nextHeight = Math.round(sceneImageFull.naturalHeight * nextScale);
+      sceneImageFull.style.width = nextWidth + 'px';
+      sceneImageFull.style.height = nextHeight + 'px';
+      sceneImageFull.style.cursor = sceneImageZoom > 1 ? 'zoom-out' : 'zoom-in';
+      sceneImageViewport.scrollLeft = ratioX * Math.max(nextWidth - viewportWidth, 0);
+      sceneImageViewport.scrollTop = ratioY * Math.max(nextHeight - viewportHeight, 0);
+    }
+
+    function openSceneImageViewer(source, title) {
+      if (!sceneImageModal || !sceneImageFull || !source) return;
+      if (sceneImageViewport) {
+        sceneImageViewport.scrollLeft = 0;
+        sceneImageViewport.scrollTop = 0;
+      }
+      sceneImageZoom = 1;
+      sceneImageTitle.textContent = title || '场景图';
+      sceneImageFull.style.width = '';
+      sceneImageFull.style.height = '';
+      sceneImageFull.src = source;
+      sceneImageFull.alt = title || '场景图';
+      lockPageScroll();
+      sceneImageModal.style.display = 'flex';
+      if (sceneImageFull.complete) {
+        applySceneImageZoom(1);
+      }
+    }
+
+    function closeSceneImageViewer() {
+      if (!sceneImageModal || sceneImageModal.style.display !== 'flex') return;
+      sceneImageModal.style.display = 'none';
+      if (sceneImageFull) {
+        sceneImageFull.removeAttribute('src');
+        sceneImageFull.removeAttribute('alt');
+        sceneImageFull.style.width = '';
+        sceneImageFull.style.height = '';
+      }
+      if (sceneImageViewport) {
+        sceneImageViewport.scrollLeft = 0;
+        sceneImageViewport.scrollTop = 0;
+      }
+      sceneImageZoom = 1;
+      unlockPageScroll();
+    }
+
+    function updateResourcePlaceholder(shell) {
+      if (!shell) return;
+      var placeholder = shell.querySelector('[data-resource-placeholder]');
+      if (!placeholder) return;
+      var hasActivePanel = !!shell.querySelector('[data-resource-panel].is-active:not([hidden])');
+      placeholder.hidden = hasActivePanel;
+    }
+
+    function clearResourceTarget(shell) {
+      if (!shell) return;
+      shell.querySelectorAll('.js-resource-target').forEach(function(button) {
+        button.classList.remove('is-active');
+      });
+      shell.querySelectorAll('[data-resource-panel]').forEach(function(panel) {
+        panel.hidden = true;
+        panel.classList.remove('is-active');
+      });
+      updateResourcePlaceholder(shell);
+    }
+
+    function setAttentionChild(attentionShell, childId) {
+      if (!attentionShell) return;
+      var activeVestPanel = attentionShell.querySelector('[data-attention-vest-panel]:not([hidden])');
+      if (!activeVestPanel) return;
+      activeVestPanel.querySelectorAll('.js-attention-child-btn').forEach(function(button) {
+        button.classList.toggle('is-active', button.dataset.attentionChildId === childId);
+      });
+      activeVestPanel.querySelectorAll('[data-attention-child-panel]').forEach(function(panel) {
+        var isActive = panel.dataset.attentionChildPanel === childId;
+        panel.hidden = !isActive;
+        panel.classList.toggle('is-active', isActive);
+      });
+    }
+
+    function setAttentionVest(attentionShell, vestType) {
+      if (!attentionShell) return;
+      attentionShell.querySelectorAll('.js-attention-vest-tab').forEach(function(button) {
+        button.classList.toggle('is-active', button.dataset.attentionVest === vestType);
+      });
+      var activePanel = null;
+      attentionShell.querySelectorAll('[data-attention-vest-panel]').forEach(function(panel) {
+        var isActive = panel.dataset.attentionVestPanel === vestType;
+        panel.hidden = !isActive;
+        panel.classList.toggle('is-active', isActive);
+        if (isActive) activePanel = panel;
+      });
+      if (!activePanel) return;
+      var activeChildButton = activePanel.querySelector('.js-attention-child-btn.is-active') || activePanel.querySelector('.js-attention-child-btn');
+      if (activeChildButton) {
+        setAttentionChild(attentionShell, activeChildButton.dataset.attentionChildId);
+      }
+    }
+
+    function initAttentionShellState(root) {
+      if (!root) return;
+      root.querySelectorAll('[data-attention-shell]').forEach(function(attentionShell) {
+        var defaultVest = attentionShell.dataset.defaultAttentionVest || '';
+        var initialVestButton = attentionShell.querySelector('.js-attention-vest-tab[data-attention-vest="' + defaultVest + '"]:not([disabled])')
+          || attentionShell.querySelector('.js-attention-vest-tab:not([disabled])');
+        if (!initialVestButton) return;
+        setAttentionVest(attentionShell, initialVestButton.dataset.attentionVest);
+      });
+    }
+
+    function setSceneMode(shell, mode) {
+      if (!shell) return;
+      var activeMode = mode === 'resource' ? 'resource' : 'overview';
+      shell.querySelectorAll('.js-scene-mode-switch').forEach(function(button) {
+        button.classList.toggle('is-active', button.dataset.sceneMode === activeMode);
+      });
+      shell.querySelectorAll('[data-scene-mode-panel]').forEach(function(panel) {
+        var isActive = panel.dataset.sceneModePanel === activeMode;
+        panel.hidden = !isActive;
+        panel.classList.toggle('is-active', isActive);
+      });
+      if (activeMode === 'resource') {
+        var activeTargetButton = shell.querySelector('.js-resource-target.is-active');
+        if (!activeTargetButton && !isMobileViewport()) {
+          var defaultTarget = shell.dataset.defaultResourceTarget || '';
+          if (defaultTarget) {
+            setResourceTarget(shell, defaultTarget, { preserveMode: true });
+          }
+        }
+        updateResourcePlaceholder(shell);
+        return;
+      }
+      requestAnimationFrame(syncSceneFrames);
+    }
+
+    function setResourceLevel(panel, level) {
+      if (!panel) return;
+      panel.querySelectorAll('.js-resource-level').forEach(function(button) {
+        button.classList.toggle('is-active', button.dataset.resourceLevel === level);
+      });
+      panel.querySelectorAll('[data-resource-level-panel]').forEach(function(levelPanel) {
+        var isActive = levelPanel.dataset.resourceLevelPanel === level;
+        levelPanel.hidden = !isActive;
+        levelPanel.classList.toggle('is-active', isActive);
+      });
+    }
+
+    function setResourceTarget(shell, target, options) {
+      if (!shell) return;
+      options = options || {};
+      if (!target) {
+        clearResourceTarget(shell);
+        if (!options.preserveMode) setSceneMode(shell, 'resource');
+        return;
+      }
+      shell.querySelectorAll('.js-resource-target').forEach(function(button) {
+        button.classList.toggle('is-active', button.dataset.resourceTarget === target);
+      });
+      var activePanel = null;
+      shell.querySelectorAll('[data-resource-panel]').forEach(function(panel) {
+        var isActive = panel.dataset.resourcePanel === target;
+        panel.hidden = !isActive;
+        panel.classList.toggle('is-active', isActive);
+        if (isActive) activePanel = panel;
+      });
+      if (activePanel) {
+        var activeLevelButton = activePanel.querySelector('.js-resource-level.is-active') || activePanel.querySelector('.js-resource-level');
+        if (activeLevelButton) {
+          setResourceLevel(activePanel, activeLevelButton.dataset.resourceLevel);
+        }
+      }
+      updateResourcePlaceholder(shell);
+      if (!options.preserveMode) {
+        setSceneMode(shell, 'resource');
+      }
+    }
+
+    function initSceneShellState(root) {
+      if (!root) return;
+      root.querySelectorAll('[data-scene-shell]').forEach(function(shell) {
+        clearResourceTarget(shell);
+        if (!isMobileViewport()) {
+          var defaultTarget = shell.dataset.defaultResourceTarget || '';
+          if (defaultTarget) {
+            setResourceTarget(shell, defaultTarget, { preserveMode: true });
+          }
+        }
+        setSceneMode(shell, 'overview');
+      });
+      initAttentionShellState(root);
+    }
+
+    function resizeSceneFrame(frame) {
+      if (!frame) return;
+      var map = frame.querySelector('[data-scene-map]');
+      if (!map) return;
+      var image = map.querySelector('[data-scene-image]');
+      frame.classList.toggle('is-zoomable', !!(image && image.getAttribute('src')));
+      if (image && image.getAttribute('src')) {
+        frame.setAttribute('title', '双击查看整图');
+      } else {
+        frame.removeAttribute('title');
+      }
+      var configuredWidth = Math.max(Number(frame.dataset.sceneWidth || map.dataset.sceneWidth || 960), 1);
+      var configuredHeight = Math.max(Number(frame.dataset.sceneHeight || map.dataset.sceneHeight || 640), 1);
+      var naturalWidth = image && image.naturalWidth ? image.naturalWidth : configuredWidth;
+      var naturalHeight = image && image.naturalHeight ? image.naturalHeight : configuredHeight;
+      var aspectWidth = naturalWidth;
+      var aspectHeight = naturalHeight;
+
+      if (!naturalWidth || !naturalHeight) {
+        aspectWidth = configuredWidth;
+        aspectHeight = configuredHeight;
+      }
+
+      frame.style.setProperty('--scene-width', String(aspectWidth));
+      frame.style.setProperty('--scene-height', String(aspectHeight));
+
+      var availableWidth = Math.max(frame.clientWidth || 0, 240);
+      var viewportMaxHeight = Math.max(320, Math.min(window.innerHeight - 280, 780));
+      var renderWidth = availableWidth;
+      var renderHeight = renderWidth * aspectHeight / aspectWidth;
+
+      if (renderHeight > viewportMaxHeight) {
+        renderHeight = viewportMaxHeight;
+        renderWidth = renderHeight * aspectWidth / aspectHeight;
+      }
+
+      frame.style.height = Math.round(renderHeight) + 'px';
+      map.style.width = Math.round(renderWidth) + 'px';
+      map.style.height = Math.round(renderHeight) + 'px';
+    }
+
+    function syncSceneFrames() {
+      if (!sceneContent) return;
+      sceneContent.querySelectorAll('[data-scene-frame]').forEach(function(frame) {
+        resizeSceneFrame(frame);
+        var image = frame.querySelector('[data-scene-image]');
+        if (!image || image.dataset.sceneBound === '1') return;
+        image.dataset.sceneBound = '1';
+        image.addEventListener('load', function() {
+          resizeSceneFrame(frame);
+        });
+      });
+    }
+
+    document.addEventListener('click', function(event) {
+      var elementTrigger = event.target.closest('.js-open-element');
+      if (elementTrigger) {
+        event.preventDefault();
+        event.stopPropagation();
+        openDetail(elementTrigger);
+        return;
+      }
+
+      var venueTrigger = event.target.closest('.js-open-venue-scene');
+      if (venueTrigger) {
+        event.preventDefault();
+        event.stopPropagation();
+        openScene(venueTrigger.dataset.venueId);
+      }
+    });
+
+    document.addEventListener('keydown', function(event) {
+      if (event.key === 'Escape') {
+        if (sceneImageModal && sceneImageModal.style.display === 'flex') {
+          closeSceneImageViewer();
+          return;
+        }
+        if (sceneModal && sceneModal.style.display === 'flex') {
+          closeScene();
+          return;
+        }
+        if (modal && modal.style.display === 'flex') {
+          closeDetail();
+          return;
+        }
+      }
+      var target = event.target;
+      if (!target || !(target.classList && (target.classList.contains('js-open-element') || target.classList.contains('js-open-venue-scene')))) return;
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      if (target.classList.contains('js-open-element')) {
+        openDetail(target);
+      } else {
+        openScene(target.dataset.venueId);
+      }
+    });
+
+    closeButton.addEventListener('click', closeDetail);
+    modal.addEventListener('click', function(event) {
+      if (event.target === modal) closeDetail();
+    });
+    if (sceneCloseButton) sceneCloseButton.addEventListener('click', closeScene);
+    if (sceneModal) {
+      sceneModal.addEventListener('click', function(event) {
+        if (event.target === sceneModal) closeScene();
+      });
+    }
+    if (sceneContent) {
+      sceneContent.addEventListener('click', function(event) {
+        var modeButton = event.target.closest('.js-scene-mode-switch');
+        if (modeButton) {
+          event.preventDefault();
+          if (modeButton.disabled) return;
+          setSceneMode(modeButton.closest('[data-scene-shell]'), modeButton.dataset.sceneMode);
+          return;
+        }
+
+        var targetButton = event.target.closest('.js-resource-target');
+        if (targetButton) {
+          event.preventDefault();
+          if (targetButton.disabled) return;
+          setResourceTarget(targetButton.closest('[data-scene-shell]'), targetButton.dataset.resourceTarget);
+          return;
+        }
+
+        var attentionVestButton = event.target.closest('.js-attention-vest-tab');
+        if (attentionVestButton) {
+          event.preventDefault();
+          if (attentionVestButton.disabled) return;
+          setAttentionVest(attentionVestButton.closest('[data-attention-shell]'), attentionVestButton.dataset.attentionVest);
+          return;
+        }
+
+        var attentionChildButton = event.target.closest('.js-attention-child-btn');
+        if (attentionChildButton) {
+          event.preventDefault();
+          setAttentionChild(attentionChildButton.closest('[data-attention-shell]'), attentionChildButton.dataset.attentionChildId);
+          return;
+        }
+
+        var levelButton = event.target.closest('.js-resource-level');
+        if (levelButton) {
+          event.preventDefault();
+          setResourceLevel(levelButton.closest('[data-resource-panel]'), levelButton.dataset.resourceLevel);
+        }
+      });
+      sceneContent.addEventListener('dblclick', function(event) {
+        var image = event.target.closest('[data-scene-image]');
+        if (!image) return;
+        event.preventDefault();
+        openSceneImageViewer(image.currentSrc || image.src, image.alt || sceneTitle.textContent || '场景图');
+      });
+    }
+
+    if (sceneImageFull) {
+      sceneImageFull.addEventListener('load', function() {
+        applySceneImageZoom(1);
+      });
+      sceneImageFull.addEventListener('dblclick', function(event) {
+        event.preventDefault();
+        applySceneImageZoom(sceneImageZoom > 1 ? 1 : 2);
+      });
+    }
+    if (sceneImageCloseButton) {
+      sceneImageCloseButton.addEventListener('click', closeSceneImageViewer);
+    }
+    if (sceneImageModal) {
+      sceneImageModal.addEventListener('click', function(event) {
+        if (event.target === sceneImageModal) {
+          closeSceneImageViewer();
+          return;
+        }
+        var actionButton = event.target.closest('[data-scene-image-action]');
+        if (!actionButton) return;
+        event.preventDefault();
+        if (actionButton.dataset.sceneImageAction === 'in') {
+          applySceneImageZoom(sceneImageZoom + 0.25);
+        } else if (actionButton.dataset.sceneImageAction === 'out') {
+          applySceneImageZoom(sceneImageZoom - 0.25);
+        } else {
+          applySceneImageZoom(1);
+        }
+      });
+    }
+    if (sceneImageViewport) {
+      sceneImageViewport.addEventListener('wheel', function(event) {
+        if (!sceneImageModal || sceneImageModal.style.display !== 'flex') return;
+        event.preventDefault();
+        applySceneImageZoom(sceneImageZoom + (event.deltaY < 0 ? 0.2 : -0.2));
+      }, { passive: false });
+    }
+
+    window.addEventListener('resize', function() {
+      if (sceneModal && sceneModal.style.display === 'flex') {
+        syncSceneFrames();
+      }
+      if (sceneImageModal && sceneImageModal.style.display === 'flex') {
+        applySceneImageZoom(sceneImageZoom);
+      }
+    });
+
+    if (toggleButton) {
+      toggleButton.addEventListener('click', function() {
+        var currentMode = textView && !textView.hidden ? 'list' : 'map';
+        applyViewMode(currentMode === 'map' ? 'list' : 'map', true);
+      });
+    }
+
+    var savedMode = localStorage.getItem(viewModeKey);
+    var initialMode = savedMode === 'list' || savedMode === 'map' ? savedMode : 'map';
+    applyViewMode(initialMode, false);
+    window.addEventListener('resize', scheduleMapScale, { passive: true });
+    window.addEventListener('scroll', scheduleMapScale, { passive: true });
+    document.addEventListener('scroll', scheduleMapScale, { passive: true });
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', scheduleMapScale, { passive: true });
+      window.visualViewport.addEventListener('scroll', scheduleMapScale, { passive: true });
+    }
+    if (window.ResizeObserver && mapStage) {
+      var resizeObserver = new ResizeObserver(function() {
+        scheduleMapScale();
+      });
+      resizeObserver.observe(mapStage);
+      if (mapView) resizeObserver.observe(mapView);
+    }
+
+    if (!config.round) return;
+
+    var label = document.getElementById('countdownLabel');
+    var timer = document.getElementById('countdownTimer');
+    if (!label || !timer) return;
+    var openTime = parseChinaDateTime(config.round.openTime);
+    var closeTime = config.round.closeTime ? parseChinaDateTime(config.round.closeTime) : null;
+    var status = config.round.status;
+    var drift = Date.now() - Number(config.serverNow || Date.now());
+
+    function pad(num) {
+      return num < 10 ? '0' + num : String(num);
+    }
+
+    function enableButtons() {
+      getBookButtons().forEach(function(button) {
+        button.disabled = false;
+      });
+    }
+
+    function disableButtons() {
+      getBookButtons().forEach(function(button) {
+        button.disabled = true;
+      });
+    }
+
+    function syncBookingButtons() {
+      var now = Date.now() - drift;
+      if (status === 'closed' || (closeTime && now >= closeTime)) {
+        disableButtons();
+        return;
+      }
+      if (status === 'pending' && now < openTime) {
+        disableButtons();
+        return;
+      }
+      enableButtons();
+    }
+
+    function tick() {
+      var now = Date.now() - drift;
+
+      if (status === 'closed' || (closeTime && now >= closeTime)) {
+        label.textContent = '预约已结束';
+        timer.textContent = '';
+        disableButtons();
+        return;
+      }
+
+      if (status === 'pending' && now < openTime) {
+        var diffBeforeOpen = openTime - now;
+        var hoursBefore = Math.floor(diffBeforeOpen / 3600000);
+        var minutesBefore = Math.floor((diffBeforeOpen % 3600000) / 60000);
+        var secondsBefore = Math.floor((diffBeforeOpen % 60000) / 1000);
+        label.textContent = '距离开放还有';
+        timer.textContent = pad(hoursBefore) + ':' + pad(minutesBefore) + ':' + pad(secondsBefore);
+        disableButtons();
+        setTimeout(tick, 1000);
+        return;
+      }
+
+      label.textContent = '预约进行中';
+      enableButtons();
+
+      if (closeTime) {
+        var diffBeforeClose = closeTime - now;
+        if (diffBeforeClose > 0) {
+          var hoursClose = Math.floor(diffBeforeClose / 3600000);
+          var minutesClose = Math.floor((diffBeforeClose % 3600000) / 60000);
+          var secondsClose = Math.floor((diffBeforeClose % 60000) / 1000);
+          timer.textContent = '剩余 ' + pad(hoursClose) + ':' + pad(minutesClose) + ':' + pad(secondsClose);
+          setTimeout(tick, 1000);
+        } else {
+          timer.textContent = '';
+        }
+      } else {
+        timer.textContent = '';
+      }
+    }
+
+    tick();
+
+    setInterval(function() {
+      fetch('/api/venue-round/status')
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+          if (!data.active || data.status === 'closed') {
+            status = 'closed';
+            tick();
+            return;
+          }
+          openTime = parseChinaDateTime(data.openTime);
+          closeTime = data.closeTime ? parseChinaDateTime(data.closeTime) : null;
+          drift = Date.now() - Number(data.serverTime || Date.now());
+          status = data.status;
+        })
+        .catch(function() {});
+    }, 30000);
+  })();
+</script>
+
+<%- include('partials/footer') %>

@@ -1,0 +1,1020 @@
+<%- include('partials/header', { pageClass: 'admin-page' + (typeof isReadonly !== 'undefined' && isReadonly ? ' readonly-mode' : '') }) %>
+
+
+<%
+  const activeFilters = filters || {};
+  const dateOptions = Array.isArray(fitnessRecordDates) ? fitnessRecordDates : [];
+  const selectedDetailBatchDateValue = (typeof selectedBatchDate !== 'undefined' && selectedBatchDate) ? selectedBatchDate : ((dateOptions[0] && dateOptions[0].label) || '');
+  const selectedAnalysisBatchDateValue = (activeFilters.batchDate || ((dateOptions[1] && dateOptions[1].label) || ''));
+  const ratingOptions = ['', '优秀', '良好', '合格', '不合格'];
+  function buildQuery(pairs) {
+    return pairs
+      .filter(function(pair) { return pair[1] !== undefined && pair[1] !== null && String(pair[1]) !== ''; })
+      .map(function(pair) { return encodeURIComponent(pair[0]) + '=' + encodeURIComponent(String(pair[1])); })
+      .join('&');
+  }
+  const scopePairs = [
+    ['view', viewMode || 'all'],
+    ['childId', childId || ''],
+    ['classId', classId || ''],
+    ['gradeLevel', gradeLevel || '']
+  ];
+  const filterPairs = [
+    ['batchDate', selectedAnalysisBatchDateValue || ''],
+    ['detailBatchDate', selectedDetailBatchDateValue || ''],
+    ['keyword', activeFilters.keyword || ''],
+    ['rating', activeFilters.rating || ''],
+    ['sortField', activeFilters.sortField || 'test_date'],
+    ['sortOrder', activeFilters.sortOrder || 'desc']
+  ];
+  const sortOptions = [
+    ['test_date', '测试日期'],
+    ['child_name', '幼儿姓名'],
+    ['height_score', '身高分'],
+    ['bmi_score', 'BMI分'],
+    ['grip_score', '握力分'],
+    ['jump_score', '跳远分'],
+    ['sit_score', '体前屈分'],
+    ['djump_score', '双脚跳分'],
+    ['obstacle_score', '障碍跑分'],
+    ['balance_score', '平衡木分'],
+    ['total_score', '综合得分']
+  ];
+  const fitnessPaginationData = fitnessPagination || { currentPage: 1, totalPages: 1, total: allRecordsCount || records.length, startIndex: records.length ? 1 : 0, endIndex: records.length, hasPrev: false, hasNext: false, prevPage: 1, nextPage: 1 };
+  const paginationFilterPairs = filterPairs.concat([['page', fitnessPaginationData.currentPage]]);
+  const viewBaseQuery = buildQuery(scopePairs);
+  const currentViewHref = '/admin/fitness' + (viewBaseQuery ? '?' + viewBaseQuery : '');
+  const exportQuery = buildQuery(scopePairs.concat(filterPairs));
+  const exportHref = '/admin/fitness/export' + (exportQuery ? '?' + exportQuery : '');
+  const selectedChildIdText = childId ? String(childId) : '';
+  const currentFullHref = '/admin/fitness' + (buildQuery(scopePairs.concat(paginationFilterPairs)) ? '?' + buildQuery(scopePairs.concat(paginationFilterPairs)) : '');
+  const editQueryBase = buildQuery(scopePairs.concat(paginationFilterPairs));
+  const currentScopeLabel = viewMode === 'child'
+    ? '当前为个人视图，可继续按评级 / 日期筛选该幼儿数据'
+    : viewMode === 'class'
+      ? '当前为班级视图，可继续按关键词 / 评级 / 日期缩小范围'
+      : viewMode === 'grade'
+        ? '当前为年级视图，可继续按关键词 / 评级 / 日期缩小范围'
+        : '当前为全园视图，可先筛选再导出';
+%>
+
+<section class="admin-hero card">
+  <div>
+    <div class="eyebrow">体测数据管理</div>
+    <h1><%= title %></h1>
+    <p>录入体测数据后，系统自动计算 BMI、各项得分、综合得分和评级。支持按个人 / 班级 / 年级 / 全园查看、筛选和导出。</p>
+  </div>
+  <div class="admin-hero-actions">
+    <% if (typeof hasPerm === 'function' && hasPerm('data.fitness.view')) { %>
+      <button type="button" class="btn primary" id="ai-fitness-report-btn" data-export-href="<%= exportHref %>">🤖 AI 智能分析报告</button>
+    <% } %>
+    <% if (typeof hasPerm === 'function' && hasPerm('data.fitness.export') && !isReadonly) { %><a class="btn primary" href="<%= exportHref %>">导出当前筛选结果</a><% } %>
+    <a class="btn" href="/admin">← 返回后台</a>
+  </div>
+</section>
+
+<!-- AI 智能分析报告弹窗 -->
+<div id="ai-fitness-modal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9999;align-items:flex-start;justify-content:center;padding:40px 16px;overflow:auto;">
+  <div style="width:min(880px,100%);background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden;display:flex;flex-direction:column;max-height:calc(100vh - 80px);">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #e2e8f0;background:#f8fafc;">
+      <div>
+        <div style="font-size:13px;color:#64748b;letter-spacing:.05em;">AI 智能分析报告</div>
+        <div id="ai-modal-title" style="font-size:18px;font-weight:600;color:#0f172a;">正在调用大模型……</div>
+        <div id="ai-modal-meta" style="font-size:12px;color:#94a3b8;margin-top:2px;"></div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button type="button" class="btn small" id="ai-modal-copy" style="display:none;">复制全文</button>
+        <button type="button" class="btn small" id="ai-modal-download" style="display:none;">📄 下载 Markdown</button>
+        <button type="button" class="btn small" id="ai-modal-stop">中断</button>
+        <button type="button" class="btn small" id="ai-modal-close">关闭</button>
+      </div>
+    </div>
+    <div id="ai-modal-error" style="display:none;padding:12px 20px;color:#b91c1c;background:#fef2f2;border-bottom:1px solid #fecaca;"></div>
+    <details id="ai-modal-reasoning-wrap" style="display:none;border-bottom:1px solid #e2e8f0;background:#f8fafc;">
+      <summary style="padding:10px 20px;cursor:pointer;font-size:13px;color:#475569;">🧠 思维链（展开查看模型思考过程）<span id="ai-modal-reasoning-count" style="color:#94a3b8;font-weight:normal;margin-left:6px;"></span></summary>
+      <div id="ai-modal-reasoning" style="padding:0 20px 16px 20px;font-size:13px;color:#64748b;line-height:1.7;white-space:pre-wrap;max-height:240px;overflow:auto;background:#f8fafc;"></div>
+    </details>
+    <div id="ai-modal-body" style="padding:20px;line-height:1.8;color:#1e293b;font-size:15px;white-space:pre-wrap;overflow:auto;"></div>
+    <div id="ai-modal-status" style="padding:8px 20px;font-size:12px;color:#94a3b8;border-top:1px solid #e2e8f0;background:#f8fafc;">准备中……</div>
+  </div>
+</div>
+
+<script>
+(function() {
+  var trigger = document.getElementById('ai-fitness-report-btn');
+  if (!trigger) return;
+  var modal = document.getElementById('ai-fitness-modal');
+  var titleEl = document.getElementById('ai-modal-title');
+  var metaEl = document.getElementById('ai-modal-meta');
+  var bodyEl = document.getElementById('ai-modal-body');
+  var statusEl = document.getElementById('ai-modal-status');
+  var errorEl = document.getElementById('ai-modal-error');
+  var stopBtn = document.getElementById('ai-modal-stop');
+  var closeBtn = document.getElementById('ai-modal-close');
+  var copyBtn = document.getElementById('ai-modal-copy');
+  var downloadBtn = document.getElementById('ai-modal-download');
+  var reasoningWrap = document.getElementById('ai-modal-reasoning-wrap');
+  var reasoningEl = document.getElementById('ai-modal-reasoning');
+  var reasoningCountEl = document.getElementById('ai-modal-reasoning-count');
+  var es = null;
+  var collected = '';
+  var reasoningCollected = '';
+  var streamFinished = false;
+
+  function buildSseUrl() {
+    var exportHref = trigger.getAttribute('data-export-href') || '/admin/fitness';
+    var qs = '';
+    var idx = exportHref.indexOf('?');
+    if (idx >= 0) qs = exportHref.slice(idx);
+    return '/admin/fitness/ai-report' + qs;
+  }
+
+  function openModal() {
+    collected = '';
+    reasoningCollected = '';
+    streamFinished = false;
+    bodyEl.textContent = '';
+    reasoningEl.textContent = '';
+    reasoningWrap.style.display = 'none';
+    reasoningWrap.open = true;
+    if (reasoningCountEl) reasoningCountEl.textContent = '';
+    errorEl.style.display = 'none';
+    errorEl.textContent = '';
+    metaEl.textContent = '';
+    statusEl.textContent = '连接中……';
+    titleEl.textContent = '正在调用大模型……';
+    copyBtn.style.display = 'none';
+    downloadBtn.style.display = 'none';
+    stopBtn.disabled = false;
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  }
+  function closeModal() {
+    if (es) { try { es.close(); } catch(e){} es = null; }
+    modal.style.display = 'none';
+    document.body.style.overflow = '';
+  }
+  closeBtn.addEventListener('click', closeModal);
+  modal.addEventListener('click', function(e) { if (e.target === modal) closeModal(); });
+
+  stopBtn.addEventListener('click', function() {
+    if (es) { try { es.close(); } catch(e){} es = null; }
+    statusEl.textContent = '已手动中断。';
+    stopBtn.disabled = true;
+    if (collected) { copyBtn.style.display = ''; downloadBtn.style.display = ''; }
+  });
+  copyBtn.addEventListener('click', function() {
+    if (!collected) return;
+    try {
+      navigator.clipboard.writeText(collected).then(function(){
+        statusEl.textContent = '✅ 已复制全文。';
+      }, function(){
+        statusEl.textContent = '❌ 复制失败，请手动选择复制。';
+      });
+    } catch(e) {
+      statusEl.textContent = '❌ 当前浏览器不支持一键复制。';
+    }
+  });
+  downloadBtn.addEventListener('click', function() {
+    if (!collected) return;
+    try {
+      var titleText = (titleEl.textContent || 'AI体质报告').trim();
+      var ts = new Date();
+      var pad = function(n){ return n < 10 ? '0' + n : '' + n; };
+      var stamp = ts.getFullYear() + pad(ts.getMonth()+1) + pad(ts.getDate()) + '-' + pad(ts.getHours()) + pad(ts.getMinutes());
+      var header = '# AI 体质分析报告 - ' + titleText + '\n\n> 生成时间：' + ts.toLocaleString('zh-CN') + '\n>\n> ' + (metaEl.textContent || '') + '\n\n---\n\n';
+      var blob = new Blob([header + collected], { type: 'text/markdown;charset=utf-8' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = 'AI体质报告-' + titleText.replace(/[\\\/:*?"<>|]/g, '_') + '-' + stamp + '.md';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); }, 300);
+      statusEl.textContent = '✅ 报告已下载。';
+    } catch(e) {
+      statusEl.textContent = '❌ 下载失败：' + (e && e.message || e);
+    }
+  });
+
+  trigger.addEventListener('click', function() {
+    openModal();
+    var url = buildSseUrl();
+    es = new EventSource(url, { withCredentials: true });
+    es.addEventListener('meta', function(e) {
+      try {
+        var data = JSON.parse(e.data);
+        titleEl.textContent = data.scope || 'AI 体质分析报告';
+        metaEl.textContent = '样本 '+ (data.recordsCount || 0) +' 条·' + new Date(data.generatedAt).toLocaleString('zh-CN');
+        statusEl.textContent = '正在生成，内容会逐段出现……';
+      } catch(err) {}
+    });
+    es.addEventListener('reasoning', function(e) {
+      try {
+        var data = JSON.parse(e.data);
+        if (data && data.content) {
+          if (!reasoningCollected) {
+            reasoningWrap.style.display = '';
+            statusEl.textContent = '🧠 模型正在思考（展开“思维链”可看过程）……';
+          }
+          reasoningCollected += data.content;
+          reasoningEl.textContent = reasoningCollected;
+          reasoningEl.scrollTop = reasoningEl.scrollHeight;
+          if (reasoningCountEl) reasoningCountEl.textContent = '· ' + reasoningCollected.length + ' 字';
+        }
+      } catch(err) {}
+    });
+    es.addEventListener('delta', function(e) {
+      try {
+        var data = JSON.parse(e.data);
+        if (data && data.content) {
+          if (!collected && reasoningCollected) {
+            statusEl.textContent = '✅ 思考完成，正在输出报告……';
+          }
+          collected += data.content;
+          bodyEl.textContent = collected;
+          bodyEl.scrollTop = bodyEl.scrollHeight;
+        }
+      } catch(err) {}
+    });
+    es.addEventListener('error', function(e) {
+      var msg = '';
+      try { var data = JSON.parse(e.data); msg = data && data.message || ''; } catch(err) {}
+      if (msg) {
+        errorEl.style.display = '';
+        errorEl.textContent = msg;
+      }
+    });
+    es.addEventListener('done', function(e) {
+      streamFinished = true;
+      try {
+        var data = JSON.parse(e.data);
+        if (data && data.ok) {
+          var extra = data.reasoningLength ? '，思维链 ' + data.reasoningLength + ' 字' : '';
+          statusEl.textContent = '✅ 生成完成，正文 ' + (data.length || collected.length) + ' 字' + extra + '。';
+          copyBtn.style.display = '';
+          downloadBtn.style.display = '';
+        } else {
+          statusEl.textContent = '❌ 未能完成。';
+          if (collected) { copyBtn.style.display = ''; downloadBtn.style.display = ''; }
+        }
+      } catch(err) {}
+      stopBtn.disabled = true;
+      if (es) { try { es.close(); } catch(err){} es = null; }
+    });
+    es.onerror = function() {
+      // 正常结束后 EventSource 会触发 onerror，只有未完成才提示
+      if (streamFinished) return;
+      if (!collected && !reasoningCollected) {
+        errorEl.style.display = '';
+        errorEl.textContent = errorEl.textContent || '连接中断或接口异常，请检查后台 AI 接入设置。';
+      } else {
+        statusEl.textContent = '⚠️ 连接中断（已接收部分内容）';
+      }
+    };
+  });
+})();
+</script>
+
+<% if (message) { %>
+  <div class="alert success"><%= message %></div>
+<% } %>
+<% if (error) { %>
+  <div class="alert error"><%= error %></div>
+<% } %>
+
+<div class="admin-layout">
+  <aside class="admin-sidebar card">
+    <div class="sidebar-brand">
+      <div class="sidebar-title">体测导航</div>
+    </div>
+    <nav class="fitness-nav" aria-label="体测导航">
+      <a class="fitness-nav-root <%= viewMode === 'all' ? 'active' : '' %>" href="/admin/fitness?view=all">全园数据</a>
+      <% ['small', 'middle', 'large'].forEach(function(gl) { 
+           const gradeClasses = (classes || [])
+             .filter(function(cls) { return cls.grade_level === gl; })
+             .slice()
+             .sort(function(a, b) {
+               function extractOrder(name) {
+                 const raw = String(name || '');
+                 const chineseMap = { '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9, '十': 10 };
+                 const matchNum = raw.match(/[0-9]+/);
+                 if (matchNum) return Number(matchNum[0]);
+                 const matchCn = raw.match(/[一二三四五六七八九十]/);
+                 if (matchCn) return chineseMap[matchCn[0]] || 999;
+                 return 999;
+               }
+               const ao = extractOrder(a.name);
+               const bo = extractOrder(b.name);
+               if (ao !== bo) return ao - bo;
+               return String(a.name || '').localeCompare(String(b.name || ''), 'zh-Hans-CN');
+             });
+           const gradeActive = (viewMode === 'grade' && gradeLevel === gl) || (viewMode === 'class' && gradeClasses.some(function(cls) { return String(cls.id) === String(classId); })); %>
+        <section class="fitness-nav-group <%= gradeActive ? 'open' : '' %>">
+          <a class="fitness-nav-grade-link <%= gradeActive ? 'active' : '' %>" href="/admin/fitness?view=grade&gradeLevel=<%= gl %>">
+            <span class="fitness-nav-grade-title"><%= gradeLabel(gl) %>年级</span>
+            <span class="fitness-nav-grade-meta">
+              <span class="fitness-nav-count"><%= gradeClasses.length %></span>
+              <span class="fitness-nav-chevron" aria-hidden="true"><%= gradeActive ? '▾' : '▸' %></span>
+            </span>
+          </a>
+          <% if (gradeActive && gradeClasses.length) { %>
+            <div class="fitness-nav-classes" style="display:flex;flex-direction:column;gap:10px;">
+              <% gradeClasses.forEach(function(cls) { %>
+                <a class="fitness-nav-class <%= (viewMode === 'class' && String(classId) === String(cls.id)) ? 'active' : '' %>" style="display:block;width:100%;box-sizing:border-box;" href="/admin/fitness?view=class&classId=<%= cls.id %>"><%= cls.name %></a>
+              <% }) %>
+            </div>
+          <% } %>
+        </section>
+      <% }) %>
+    </nav>
+    <div class="sidebar-footer muted" style="margin-top:16px;">
+      <div class="toolbar-links stacked-links">
+        <% if (typeof hasPerm === 'function' && hasPerm('data.fitness.export') && !isReadonly) { %><a class="btn small primary" href="<%= exportHref %>">导出当前筛选结果</a><% } %>
+        <% if (typeof hasPerm === 'function' && hasPerm('data.fitness.import') && !isReadonly) { %><a class="btn small" href="/admin/fitness/template">下载体测导入模板</a><% } %>
+      </div>
+      <% if (typeof hasPerm === 'function' && hasPerm('data.fitness.import') && !isReadonly) { %>
+      <form method="post" action="/admin/fitness/import" enctype="multipart/form-data" style="margin-top:10px;">
+        <input type="hidden" name="currentView" value="<%= viewMode %>" />
+        <input type="hidden" name="currentChildId" value="<%= childId || '' %>" />
+        <input type="hidden" name="currentClassId" value="<%= classId || '' %>" />
+        <input type="hidden" name="currentGradeLevel" value="<%= gradeLevel || '' %>" />
+        <input type="hidden" name="currentKeyword" value="<%= activeFilters.keyword || '' %>" />
+        <input type="hidden" name="currentRating" value="<%= activeFilters.rating || '' %>" />
+        <input type="hidden" name="currentDateFrom" value="<%= activeFilters.dateFrom || '' %>" />
+        <input type="hidden" name="currentDateTo" value="<%= activeFilters.dateTo || '' %>" />
+        <input type="file" name="file" accept=".xlsx,.xls,.csv" required style="font-size:13px;" />
+        <button class="btn small primary" type="submit" style="margin-top:6px;">批量导入体测数据</button>
+      </form>
+      <% } %>
+    </div>
+  </aside>
+
+  <div class="admin-main" data-ajax-panel="admin-fitness-main">
+    <!-- 统计卡片 -->
+    <section class="stats-grid overview-stats" style="margin-bottom:20px;">
+      <div class="card stat-card">
+        <div class="stat-label">所选批次记录条数</div>
+        <div class="stat-number"><%= allRecordsCount || 0 %></div>
+        <div class="muted" style="margin-top:6px;"><%= selectedDetailBatchDateValue || '-' %></div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-label">最新批次分析平均综合得分</div>
+        <div class="stat-number"><%= avgScore || '-' %></div>
+        <form method="get" action="/admin/fitness" class="admin-analysis-batch-form" style="margin-top:8px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+          <% scopePairs.forEach(function(pair) { if (pair[1]) { %><input type="hidden" name="<%= pair[0] %>" value="<%= pair[1] %>" /><% } }) %>
+          <input type="hidden" name="detailBatchDate" value="<%= selectedDetailBatchDateValue || '' %>" />
+          <select name="batchDate" style="max-width:150px;">
+            <option value="">对比批次</option>
+            <% dateOptions.forEach(function(item) { %><option value="<%= item.label %>" <%= selectedAnalysisBatchDateValue === item.label ? 'selected' : '' %>><%= item.label %></option><% }) %>
+          </select>
+          <button class="btn small" type="submit">筛选批次</button>
+        </form>
+      </div>
+      <% (ratingSummary || []).forEach(function(item) { %>
+        <div class="card stat-card">
+          <div class="stat-label"><%= item.label %></div>
+          <div class="stat-number" style="color:<%= item.label === '优秀' ? '#34c759' : item.label === '良好' ? '#0071e3' : item.label === '合格' ? '#ff9f0a' : '#ff3b30' %>;"><%= item.count %></div>
+          <div class="muted" style="margin-top:6px;">占比 <%= item.percent %>%</div>
+        </div>
+      <% }) %>
+    </section>
+
+    <section class="card chart-card" style="margin-bottom:20px;">
+      <div class="section-head">
+        <div>
+          <h3>体能结构雷达图</h3>
+          <div class="muted no-margin">用雷达图展示当前范围内各单项能力健康度（100% - 需提升占比）</div>
+        </div>
+      </div>
+      <div class="visual-grid">
+        <div class="radar-card" data-radar-root>
+          <%
+            const radarData = radarChartData || {
+              metrics: (metricHealthSummary || []).map(function(item) {
+                return { key: item.key, label: item.label };
+              }),
+              series: [{
+                key: 'current',
+                label: '当前范围',
+                color: '#0f172a',
+                fillColor: 'rgba(15, 23, 42, 0.12)',
+                dasharray: 'none',
+                strokeWidth: 3,
+                visible: true,
+                values: (metricHealthSummary || []).map(function(item) { return Number(item.score || 0); })
+              }]
+            };
+            const radarMetrics = radarData.metrics || [];
+            const radarSeries = radarData.series || [];
+            const radarCx = 160;
+            const radarCy = 160;
+            const radarRadius = 110;
+            function buildRadarPolygon(values) {
+              return radarMetrics.map(function(metric, index) {
+                const angle = (-Math.PI / 2) + (Math.PI * 2 * index / Math.max(1, radarMetrics.length));
+                const score = Math.max(0, Math.min(100, Number((values && values[index]) || 0)));
+                const length = radarRadius * score / 100;
+                const x = radarCx + Math.cos(angle) * length;
+                const y = radarCy + Math.sin(angle) * length;
+                return x.toFixed(1) + ',' + y.toFixed(1);
+              }).join(' ');
+            }
+          %>
+          <div class="radar-card-head">
+            <div class="radar-toggle-list">
+              <% radarSeries.forEach(function(series) { %>
+                <button
+                  type="button"
+                  class="radar-toggle <%= series.visible === false ? '' : 'is-active' %>"
+                  data-radar-toggle="<%= series.key %>"
+                  aria-pressed="<%= series.visible === false ? 'false' : 'true' %>"
+                  style="--radar-toggle-color:<%= series.color %>;"
+                >
+                  <span class="radar-toggle-swatch" style="background:<%= series.color %>;"></span>
+                  <span><%= series.label %></span>
+                </button>
+              <% }) %>
+            </div>
+          </div>
+          <svg class="radar-svg" viewBox="0 0 320 320" role="img" aria-label="体能结构雷达图">
+            <% for (let ring = 1; ring <= 4; ring++) { %>
+              <polygon class="radar-ring" points="<%= buildRadarPolygon(radarMetrics.map(function() { return ring * 25; })) %>"></polygon>
+            <% } %>
+            <% radarMetrics.forEach(function(item, i) {
+              const angle = (-Math.PI / 2) + (Math.PI * 2 * i / Math.max(1, radarMetrics.length));
+              const axisX = radarCx + Math.cos(angle) * radarRadius;
+              const axisY = radarCy + Math.sin(angle) * radarRadius;
+              const lx = radarCx + Math.cos(angle) * (radarRadius + 20);
+              const ly = radarCy + Math.sin(angle) * (radarRadius + 20);
+            %>
+              <line class="radar-axis" x1="<%= radarCx %>" y1="<%= radarCy %>" x2="<%= axisX.toFixed(1) %>" y2="<%= axisY.toFixed(1) %>"></line>
+              <text class="radar-label" x="<%= lx.toFixed(1) %>" y="<%= ly.toFixed(1) %>"><%= item.label %></text>
+            <% }) %>
+            <% radarSeries.forEach(function(series) { %>
+              <g class="radar-series <%= series.key === 'current' ? 'radar-series-current' : 'radar-series-reference' %><%= series.visible === false ? ' is-hidden' : '' %>" data-radar-series="<%= series.key %>">
+                <polygon
+                  class="radar-series-shape"
+                  points="<%= buildRadarPolygon(series.values || []) %>"
+                  style="fill:<%= series.fillColor || 'transparent' %>;stroke:<%= series.color %>;stroke-width:<%= series.strokeWidth || 2 %>;stroke-dasharray:<%= series.dasharray && series.dasharray !== 'none' ? series.dasharray : 'none' %>;"
+                ></polygon>
+                <% if (series.key === 'current') { %>
+                  <% radarMetrics.forEach(function(item, i) {
+                    const angle = (-Math.PI / 2) + (Math.PI * 2 * i / Math.max(1, radarMetrics.length));
+                    const score = Math.max(0, Math.min(100, Number(((series.values || [])[i]) || 0)));
+                    const length = radarRadius * score / 100;
+                    const x = radarCx + Math.cos(angle) * length;
+                    const y = radarCy + Math.sin(angle) * length;
+                  %>
+                    <circle class="radar-series-dot" cx="<%= x.toFixed(1) %>" cy="<%= y.toFixed(1) %>" r="4" style="fill:<%= series.color %>;"></circle>
+                  <% }) %>
+                <% } %>
+              </g>
+            <% }) %>
+          </svg>
+        </div>
+        <div class="trend-card">
+          <h4>单项提升建议</h4>
+          <div class="narrative-list">
+            <% (metricNeedTrainingSummary || []).forEach(function(item) { %>
+              <details class="narrative-item fitness-detail-card">
+                <summary>
+                  <strong><%= item.label %></strong>
+                  <span class="muted" style="margin-left:8px;"><%= item.count %> / <%= item.total %> 人需重点跟进</span>
+                </summary>
+                <div><%= item.narrative %></div>
+                <div class="muted" style="margin-top:6px;">对应人员：
+                  <% if (item.nameLinks && item.nameLinks.length) { %>
+                    <% item.nameLinks.forEach(function(link) { const quick = (childQuickLookup && childQuickLookup[link.name]) || null; %>
+                      <button type="button" class="btn small" style="margin:4px 6px 0 0;" onclick='openChildFitnessModal(<%- JSON.stringify(quick || { childName: link.name }) %>)'><%= link.name %></button>
+                    <% }) %>
+                  <% } else { %>
+                    暂无
+                  <% } %>
+                </div>
+              </details>
+            <% }) %>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card chart-card" style="margin-bottom:20px;">
+      <div class="section-head">
+        <div>
+          <h3>体测趋势波形图</h3>
+          <div class="muted no-margin">近 8 个测试日期综合得分均值走势，适合园所汇报展示</div>
+        </div>
+      </div>
+      <div class="wave-chart-wrap">
+        <% const trendItems = trendSummary || []; const chartWidth = 760; const chartHeight = 220; const padX = 36; const padY = 24; const innerWidth = chartWidth - padX * 2; const innerHeight = chartHeight - padY * 2; const validTrend = trendItems.filter(function(item) { return item.avgScore != null; }); const minScore = validTrend.length ? Math.min.apply(null, validTrend.map(function(item) { return Number(item.avgScore); })) : 0; const maxScore = validTrend.length ? Math.max.apply(null, validTrend.map(function(item) { return Number(item.avgScore); })) : 100; const scoreGap = Math.max(1, maxScore - minScore); %>
+        <svg class="wave-chart-svg" viewBox="0 0 760 220" role="img" aria-label="体测趋势波形图">
+          <line class="wave-grid" x1="36" y1="24" x2="36" y2="196"></line>
+          <line class="wave-grid" x1="36" y1="196" x2="724" y2="196"></line>
+          <% let points = []; %>
+          <% trendItems.forEach(function(item, index) { const x = trendItems.length <= 1 ? padX : padX + innerWidth * index / Math.max(1, trendItems.length - 1); const y = item.avgScore == null ? (padY + innerHeight) : (padY + innerHeight - ((Number(item.avgScore) - minScore) / scoreGap) * innerHeight); points.push(x.toFixed(1) + ',' + y.toFixed(1)); %>
+            <circle class="wave-point" cx="<%= x.toFixed(1) %>" cy="<%= y.toFixed(1) %>" r="4"></circle>
+            <text class="wave-label" x="<%= x.toFixed(1) %>" y="210"><%= (item.label || '').slice(5) %></text>
+            <% if (item.avgScore != null) { %><text class="wave-value" x="<%= x.toFixed(1) %>" y="<%= (y - 10).toFixed(1) %>"><%= item.avgScore %></text><% } %>
+          <% }) %>
+          <% if (points.length) { %><polyline class="wave-line" points="<%= points.join(' ') %>"></polyline><% } %>
+        </svg>
+      </div>
+    </section>
+
+    <section class="card" style="margin-bottom:20px;">
+      <div class="section-head">
+        <div>
+          <h3>单项需锻炼分析</h3>
+          <div class="muted no-margin">按当前范围统计各项目得分低于 60 分的幼儿占比</div>
+        </div>
+      </div>
+      <div class="stats-grid overview-stats">
+        <% (metricNeedTrainingSummary || []).forEach(function(item) { %>
+          <details class="card stat-card fitness-detail-card">
+            <summary style="cursor:pointer;list-style:none;">
+              <div class="stat-label"><%= item.label %></div>
+              <div class="stat-number"><%= item.percent %>%</div>
+              <div class="muted"><%= item.count %> / <%= item.total %> 人需重点提升</div>
+              <div class="muted" style="margin-top:6px;">点击查看对应人员名单</div>
+            </summary>
+            <div class="muted" style="margin-top:10px;">对应人员：
+              <% if (item.nameLinks && item.nameLinks.length) { %>
+                <% item.nameLinks.forEach(function(link) { const quick = (childQuickLookup && childQuickLookup[link.name]) || null; %>
+                  <button type="button" class="btn small" style="margin:4px 6px 0 0;" onclick='openChildFitnessModal(<%- JSON.stringify(quick || { childName: link.name }) %>)'><%= link.name %></button>
+                <% }) %>
+              <% } else { %>
+                暂无
+              <% } %>
+            </div>
+          </details>
+        <% }) %>
+      </div>
+    </section>
+
+    <!-- 录入表单 -->
+    <div class="card" style="margin-bottom:20px;">
+      <% if (typeof hasPerm === 'function' && hasPerm('data.fitness.create') && !isReadonly) { %>
+      <div class="section-head"><h3>录入体测数据</h3></div>
+      <form method="post" action="/admin/fitness/add" class="form-grid" style="grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));">
+        <input type="hidden" name="currentView" value="<%= viewMode %>" />
+        <input type="hidden" name="currentChildId" value="<%= childId || '' %>" />
+        <input type="hidden" name="currentClassId" value="<%= classId || '' %>" />
+        <input type="hidden" name="currentGradeLevel" value="<%= gradeLevel || '' %>" />
+        <input type="hidden" name="currentKeyword" value="<%= activeFilters.keyword || '' %>" />
+        <input type="hidden" name="currentRating" value="<%= activeFilters.rating || '' %>" />
+        <input type="hidden" name="currentDateFrom" value="<%= activeFilters.dateFrom || '' %>" />
+        <input type="hidden" name="currentDateTo" value="<%= activeFilters.dateTo || '' %>" />
+        <label><span>选择幼儿</span>
+          <select name="childId" required>
+            <option value="">请选择</option>
+            <% allChildren.forEach(function(ch) { %>
+              <option value="<%= ch.id %>" <%= selectedChildIdText === String(ch.id) ? 'selected' : '' %>><%= ch.class_name ? ch.class_name + ' - ' : '' %><%= ch.name %><%= ch.gender ? '(' + ch.gender + ')' : '' %></option>
+            <% }) %>
+          </select>
+        </label>
+        <label><span>测试日期</span><input type="date" name="testDate" value="<%= new Date().toISOString().slice(0,10) %>" required /></label>
+        <label><span>身高(CM)</span><input type="number" name="heightCm" step="0.1" placeholder="如 110.5" /></label>
+        <label><span>体重(KG)</span><input type="number" name="weightKg" step="0.01" placeholder="如 18.50" /></label>
+        <label><span>握力(KG)</span><input type="number" name="gripKg" step="0.01" placeholder="如 7.0" /></label>
+        <label><span>立定跳远(CM)</span><input type="number" name="longJumpCm" step="0.1" placeholder="如 85" /></label>
+        <label><span>坐位体前屈(CM)</span><input type="number" name="sitReachCm" step="0.1" placeholder="如 9" /></label>
+        <label><span>双脚连续跳(秒)</span><input type="number" name="doubleJumpSec" step="0.01" placeholder="如 7.5" /></label>
+        <label><span>15米绕障碍跑(秒)</span><input type="number" name="obstacleRunSec" step="0.01" placeholder="如 8.0" /></label>
+        <label><span>走平衡木(秒)</span><input type="number" name="balanceBeamSec" step="0.01" placeholder="如 15" /></label>
+        <div style="grid-column: 1 / -1;">
+          <button class="btn primary" type="submit">提交并自动计算得分</button>
+        </div>
+      </form>
+      <div class="muted" style="margin-top:8px;">提交后系统会按标准表和测试当天月龄计算身高、BMI及各项得分；缺少任一指标时不计算综合得分。如果幼儿没有填写出生日期和性别，评分可能不准确。</div>
+      <% } %>
+    </div>
+
+    <% if (editRecord && typeof hasPerm === 'function' && hasPerm('data.fitness.edit') && !isReadonly) { %>
+      <div class="card" style="margin-bottom:20px;border:1px solid #f59e0b;">
+        <div class="section-head">
+          <div>
+            <h3>修正体测记录</h3>
+            <div class="muted no-margin"><%= editRecord.class_name || '-' %> / <%= editRecord.child_name %> / 原测试日期：<%= editRecord.test_date ? new Date(editRecord.test_date).toISOString().slice(0,10) : '-' %></div>
+          </div>
+          <div class="toolbar-links">
+            <a class="btn small" href="<%= currentFullHref %>">取消修正</a>
+          </div>
+        </div>
+        <form method="post" action="/admin/fitness/<%= editRecord.id %>/update" class="form-grid" style="grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));">
+          <input type="hidden" name="currentView" value="<%= viewMode %>" />
+          <input type="hidden" name="currentChildId" value="<%= childId || '' %>" />
+          <input type="hidden" name="currentClassId" value="<%= classId || '' %>" />
+          <input type="hidden" name="currentGradeLevel" value="<%= gradeLevel || '' %>" />
+          <input type="hidden" name="currentKeyword" value="<%= activeFilters.keyword || '' %>" />
+          <input type="hidden" name="currentRating" value="<%= activeFilters.rating || '' %>" />
+          <input type="hidden" name="currentDateFrom" value="<%= activeFilters.dateFrom || '' %>" />
+          <input type="hidden" name="currentDateTo" value="<%= activeFilters.dateTo || '' %>" />
+          <label><span>测试日期</span><input type="date" name="testDate" value="<%= editRecord.test_date ? new Date(editRecord.test_date).toISOString().slice(0,10) : '' %>" required /></label>
+          <label><span>身高(CM)</span><input type="number" name="heightCm" step="0.1" value="<%= editRecord.height_cm ?? '' %>" required /></label>
+          <label><span>体重(KG)</span><input type="number" name="weightKg" step="0.01" value="<%= editRecord.weight_kg ?? '' %>" required /></label>
+          <label><span>握力(KG)</span><input type="number" name="gripKg" step="0.01" value="<%= editRecord.grip_kg ?? '' %>" required /></label>
+          <label><span>立定跳远(CM)</span><input type="number" name="longJumpCm" step="0.1" value="<%= editRecord.long_jump_cm ?? '' %>" required /></label>
+          <label><span>坐位体前屈(CM)</span><input type="number" name="sitReachCm" step="0.1" value="<%= editRecord.sit_reach_cm ?? '' %>" required /></label>
+          <label><span>双脚连续跳(秒)</span><input type="number" name="doubleJumpSec" step="0.01" value="<%= editRecord.double_jump_sec ?? '' %>" required /></label>
+          <label><span>15米绕障碍跑(秒)</span><input type="number" name="obstacleRunSec" step="0.01" value="<%= editRecord.obstacle_run_sec ?? '' %>" required /></label>
+          <label><span>走平衡木(秒)</span><input type="number" name="balanceBeamSec" step="0.01" value="<%= editRecord.balance_beam_sec ?? '' %>" required /></label>
+          <div style="grid-column: 1 / -1;">
+            <button class="btn primary" type="submit">保存修正并重新计算</button>
+          </div>
+        </form>
+      </div>
+    <% } %>
+
+    <!-- 数据表 -->
+    <div class="card" data-ajax-panel="fitness-records">
+      <div class="section-head" style="margin-bottom:12px;">
+        <div>
+          <h3>筛选 / 快速定位 / 导出</h3>
+          <div class="muted no-margin"><%= currentScopeLabel %></div>
+        </div>
+        <div class="toolbar-links">
+          <% if (typeof hasPerm === 'function' && hasPerm('data.fitness.export') && !isReadonly) { %><a class="btn small primary" href="<%= exportHref %>">导出当前筛选结果</a><% } %>
+          <a class="btn small" href="<%= currentViewHref %>">清空筛选</a>
+        </div>
+      </div>
+      <form method="get" action="/admin/fitness" class="form-grid fitness-filter-form" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin-bottom:12px;">
+        <input type="hidden" name="view" value="<%= viewMode %>" />
+        <input type="hidden" name="childId" value="<%= childId || '' %>" />
+        <input type="hidden" name="classId" value="<%= classId || '' %>" />
+        <input type="hidden" name="gradeLevel" value="<%= gradeLevel || '' %>" />
+        <label><span>关键词</span><input type="search" name="keyword" value="<%= activeFilters.keyword || '' %>" placeholder="幼儿姓名 / 班级 / 性别" /></label>
+        <label><span>评级</span>
+          <select name="rating">
+            <% ratingOptions.forEach(function(item) { %>
+              <option value="<%= item %>" <%= (activeFilters.rating || '') === item ? 'selected' : '' %>><%= item || '全部评级' %></option>
+            <% }) %>
+          </select>
+        </label>
+        <label><span>历史批次</span>
+          <select name="detailBatchDate">
+            <% dateOptions.forEach(function(item) { %>
+              <option value="<%= item.label %>" <%= selectedDetailBatchDateValue === item.label ? 'selected' : '' %>><%= item.label %>（<%= item.recordCount || 0 %>条，均分<%= item.avgScore == null ? '-' : item.avgScore %>）</option>
+            <% }) %>
+          </select>
+        </label>
+        <label><span>排序字段</span>
+          <select name="sortField">
+            <% sortOptions.forEach(function(item) { %>
+              <option value="<%= item[0] %>" <%= (activeFilters.sortField || 'test_date') === item[0] ? 'selected' : '' %>><%= item[1] %></option>
+            <% }) %>
+          </select>
+        </label>
+        <label><span>排序方式</span>
+          <select name="sortOrder">
+            <option value="desc" <%= (activeFilters.sortOrder || 'desc') === 'desc' ? 'selected' : '' %>>从大到小 / 最新优先</option>
+            <option value="asc" <%= (activeFilters.sortOrder || 'desc') === 'asc' ? 'selected' : '' %>>从小到大 / 最早优先</option>
+          </select>
+        </label>
+        <div class="tool-row full-row">
+          <button class="btn" type="submit">应用筛选</button>
+          <a class="btn" href="<%= currentViewHref %>">重置筛选</a>
+          <% if (typeof hasPerm === 'function' && hasPerm('data.fitness.export') && !isReadonly) { %><a class="btn small primary" href="<%= exportHref %>">导出当前筛选结果</a><% } %>
+        </div>
+      </form>
+      <form method="get" action="/admin/fitness" class="form-grid fitness-filter-form" style="grid-template-columns: minmax(260px, 1.4fr) auto; align-items:end; margin-bottom:14px;">
+        <input type="hidden" name="view" value="child" />
+        <label><span>快速查看某个幼儿</span>
+          <select name="childId">
+            <option value="">请选择幼儿</option>
+            <% allChildren.forEach(function(ch) { %>
+              <option value="<%= ch.id %>" <%= selectedChildIdText === String(ch.id) ? 'selected' : '' %>><%= ch.class_name ? ch.class_name + ' - ' : '' %><%= ch.name %><%= ch.gender ? '(' + ch.gender + ')' : '' %></option>
+            <% }) %>
+          </select>
+        </label>
+        <button class="btn" type="submit">查看该幼儿记录</button>
+      </form>
+      <div class="section-head">
+        <div>
+          <h3>体测记录明细</h3>
+          <div class="muted no-margin">所选批次 <strong><%= selectedDetailBatchDateValue || '-' %></strong> 明细：共 <%= allRecordsCount || 0 %> 条记录，每页 10 条</div>
+        </div>
+        <div class="toolbar-links">
+          <% if (typeof hasPerm === 'function' && hasPerm('data.fitness.export') && !isReadonly) { %><a class="btn small primary" href="<%= exportHref %>">导出当前筛选结果</a><% } %>
+        </div>
+      </div>
+
+      <% if (!records.length) { %>
+        <div class="empty-state">暂无体测记录。请通过上方表单录入，或下载模板后批量导入。</div>
+      <% } else { %>
+        <div class="table-wrap">
+          <table class="data-table admin-table" style="min-width:1400px;">
+            <thead>
+              <tr>
+                <th>班级</th>
+                <th>姓名</th>
+                <th>性别</th>
+                <th>测试日期</th>
+                <th>身高</th>
+                <th>身高分</th>
+                <th>体重</th>
+                <th>BMI</th>
+                <th>BMI分</th>
+                <th>握力</th>
+                <th>握力分</th>
+                <th>跳远</th>
+                <th>跳远分</th>
+                <th>体前屈</th>
+                <th>体前屈分</th>
+                <th>双脚跳</th>
+                <th>双脚跳分</th>
+                <th>障碍跑</th>
+                <th>障碍跑分</th>
+                <th>平衡木</th>
+                <th>平衡木分</th>
+                <th>综合得分</th>
+                <th>评级</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% records.forEach(function(r) { %>
+                <tr>
+                  <td><%= r.class_name || '-' %></td>
+                  <td><strong><%= r.child_name %></strong></td>
+                  <td><%= r.gender || '-' %></td>
+                  <td><%= r.test_date ? new Date(r.test_date).toISOString().slice(0,10) : '-' %></td>
+                  <td><%= r.height_cm ?? '-' %></td>
+                  <td><%= r.height_score ?? '-' %></td>
+                  <td><%= r.weight_kg ?? '-' %></td>
+                  <td><%= r.bmi ?? '-' %></td>
+                  <td><%= r.bmi_score ?? '-' %></td>
+                  <td><%= r.grip_kg ?? '-' %></td>
+                  <td><%= r.grip_score ?? '-' %></td>
+                  <td><%= r.long_jump_cm ?? '-' %></td>
+                  <td><%= r.jump_score ?? '-' %></td>
+                  <td><%= r.sit_reach_cm ?? '-' %></td>
+                  <td><%= r.sit_score ?? '-' %></td>
+                  <td><%= r.double_jump_sec ?? '-' %></td>
+                  <td><%= r.djump_score ?? '-' %></td>
+                  <td><%= r.obstacle_run_sec ?? '-' %></td>
+                  <td><%= r.obstacle_score ?? '-' %></td>
+                  <td><%= r.balance_beam_sec ?? '-' %></td>
+                  <td><%= r.balance_score ?? '-' %></td>
+                  <td><strong><%= r.total_score ?? '-' %></strong></td>
+                  <td>
+                    <% if (r.rating === '优秀') { %><span class="status-badge ok"><%= r.rating %></span>
+                    <% } else if (r.rating === '良好') { %><span class="status-badge" style="background:#e8f1fd;color:#0071e3;"><%= r.rating %></span>
+                    <% } else if (r.rating === '合格') { %><span class="status-badge" style="background:#fff8e1;color:#f09300;"><%= r.rating %></span>
+                    <% } else if (r.rating === '不合格') { %><span class="status-badge" style="background:#fce8e8;color:#ff3b30;"><%= r.rating %></span>
+                    <% } else { %>-<% } %>
+                  </td>
+                  <td>
+                    <div class="toolbar-links stacked-links">
+                      <a class="btn small" href="/admin/fitness?view=child&childId=<%= r.child_id %>">查看</a>
+                      <button class="btn small primary" type="button" onclick="openFitnessEditModal({id:<%= r.id %>,className:'<%= (r.class_name || '').replace(/'/g,"\\'") %>',childName:'<%= (r.child_name || '').replace(/'/g,"\\'") %>',testDate:'<%= r.test_date ? new Date(r.test_date).toISOString().slice(0,10) : '' %>',heightCm:<%= r.height_cm ?? 'null' %>,weightKg:<%= r.weight_kg ?? 'null' %>,gripKg:<%= r.grip_kg ?? 'null' %>,longJumpCm:<%= r.long_jump_cm ?? 'null' %>,sitReachCm:<%= r.sit_reach_cm ?? 'null' %>,doubleJumpSec:<%= r.double_jump_sec ?? 'null' %>,obstacleRunSec:<%= r.obstacle_run_sec ?? 'null' %>,balanceBeamSec:<%= r.balance_beam_sec ?? 'null' %>})">修正</button>
+                      <% if (typeof hasPerm === 'function' && hasPerm('data.fitness.delete') && !isReadonly) { %>
+                        <form method="post" action="/admin/fitness/<%= r.id %>/delete" onsubmit="return confirm('确定删除 <%= r.child_name %> 在 <%= r.test_date ? new Date(r.test_date).toISOString().slice(0,10) : '-' %> 的体测记录吗？删除后不可恢复。');" style="margin:0;">
+                          <input type="hidden" name="currentView" value="<%= viewMode %>" />
+                          <input type="hidden" name="currentChildId" value="<%= childId || '' %>" />
+                          <input type="hidden" name="currentClassId" value="<%= classId || '' %>" />
+                          <input type="hidden" name="currentGradeLevel" value="<%= gradeLevel || '' %>" />
+                          <input type="hidden" name="currentKeyword" value="<%= activeFilters.keyword || '' %>" />
+                          <input type="hidden" name="currentRating" value="<%= activeFilters.rating || '' %>" />
+                          <input type="hidden" name="currentDateFrom" value="<%= activeFilters.dateFrom || '' %>" />
+                          <input type="hidden" name="currentDateTo" value="<%= activeFilters.dateTo || '' %>" />
+                          <input type="hidden" name="currentSortField" value="<%= activeFilters.sortField || 'test_date' %>" />
+                          <input type="hidden" name="currentSortOrder" value="<%= activeFilters.sortOrder || 'desc' %>" />
+                          <input type="hidden" name="currentPage" value="<%= fitnessPaginationData.currentPage || 1 %>" />
+                          <button class="btn small danger" type="submit">删除</button>
+                        </form>
+                      <% } %>
+                    </div>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+        <div class="muted" style="margin-top:10px;">当前显示第 <strong><%= fitnessPaginationData.startIndex || 0 %></strong> - <strong><%= fitnessPaginationData.endIndex || 0 %></strong> 条</div>
+        <% if (fitnessPaginationData.totalPages > 1) { %>
+          <div class="pagination-bar">
+            <% if (fitnessPaginationData.hasPrev) { %><a class="pagination-link pagination-nav" href="/admin/fitness?<%= buildQuery(scopePairs.concat(filterPairs)) %>&page=<%= fitnessPaginationData.prevPage %>">上一页</a><% } %>
+            <% for (let pageNo = 1; pageNo <= fitnessPaginationData.totalPages; pageNo++) { %>
+              <a class="pagination-link <%= fitnessPaginationData.currentPage === pageNo ? 'active' : '' %>" href="/admin/fitness?<%= buildQuery(scopePairs.concat(filterPairs)) %>&page=<%= pageNo %>"><%= pageNo %></a>
+            <% } %>
+            <% if (fitnessPaginationData.hasNext) { %><a class="pagination-link pagination-nav" href="/admin/fitness?<%= buildQuery(scopePairs.concat(filterPairs)) %>&page=<%= fitnessPaginationData.nextPage %>">下一页</a><% } %>
+          </div>
+        <% } %>
+      <% } %>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  function bindRadarToggles(root) {
+    (root || document).querySelectorAll('[data-radar-root]').forEach(function (card) {
+      card.querySelectorAll('[data-radar-toggle]').forEach(function (button) {
+        if (button.dataset.radarBound === '1') return;
+        button.dataset.radarBound = '1';
+        button.addEventListener('click', function () {
+          var key = button.getAttribute('data-radar-toggle');
+          if (!key) return;
+          var isActive = button.classList.toggle('is-active');
+          button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+          card.querySelectorAll('[data-radar-series="' + key + '"]').forEach(function (seriesNode) {
+            seriesNode.classList.toggle('is-hidden', !isActive);
+          });
+        });
+      });
+    });
+  }
+  function replacePanelFromHtml(html, selector) {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const incoming = doc.querySelector(selector);
+    const current = document.querySelector(selector);
+    if (incoming && current) current.outerHTML = incoming.outerHTML;
+  }
+  async function loadFitnessRecords(url, push) {
+    const res = await fetch(url, { headers: { 'X-Requested-With': 'fetch' }, credentials: 'same-origin' });
+    if (!res.ok) { window.location.href = url; return; }
+    const html = await res.text();
+    replacePanelFromHtml(html, '[data-ajax-panel="fitness-records"]');
+    if (push) window.history.pushState({ kind: 'fitness-records', url: url }, '', url);
+    bindFitnessPagination();
+  }
+  async function loadAdminFitnessMain(url, push) {
+    const res = await fetch(url, { headers: { 'X-Requested-With': 'fetch' }, credentials: 'same-origin' });
+    if (!res.ok) { window.location.href = url; return; }
+    const html = await res.text();
+    replacePanelFromHtml(html, '[data-ajax-panel="admin-fitness-main"]');
+    if (push) window.history.pushState({ kind: 'admin-fitness-main', url: url }, '', url);
+    bindFitnessPagination();
+  }
+  function scrollToFitnessPanel() {
+    const panel = document.querySelector('[data-ajax-panel="fitness-records"]');
+    if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  function bindFitnessPagination() {
+    document.querySelectorAll('form.admin-analysis-batch-form').forEach(function (form) {
+      if (form.dataset.ajaxBound === '1') return;
+      form.dataset.ajaxBound = '1';
+      form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        const action = form.getAttribute('action') || window.location.pathname;
+        const url = new URL(action, window.location.origin);
+        const formData = new FormData(form);
+        formData.forEach(function (value, key) {
+          if (value !== null && String(value) !== '') url.searchParams.set(key, String(value));
+        });
+        loadAdminFitnessMain(url.toString(), true).catch(function () { window.location.href = url.toString(); });
+      });
+    });
+    document.querySelectorAll('[data-ajax-panel="fitness-records"] .pagination-link').forEach(function (link) {
+      if (link.dataset.ajaxBound === '1') return;
+      link.dataset.ajaxBound = '1';
+      link.addEventListener('click', function (event) {
+        event.preventDefault();
+        loadFitnessRecords(event.currentTarget.href, true).then(scrollToFitnessPanel).catch(function () { window.location.href = event.currentTarget.href; });
+      });
+    });
+    document.querySelectorAll('[data-ajax-panel="fitness-records"] form.fitness-filter-form').forEach(function (form) {
+      if (form.dataset.ajaxBound === '1') return;
+      form.dataset.ajaxBound = '1';
+      form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        const action = form.getAttribute('action') || window.location.pathname;
+        const url = new URL(action, window.location.origin);
+        const formData = new FormData(form);
+        formData.forEach(function (value, key) {
+          if (value !== null && String(value) !== '') url.searchParams.set(key, String(value));
+        });
+        loadFitnessRecords(url.toString(), true).then(scrollToFitnessPanel).catch(function () { window.location.href = url.toString(); });
+      });
+    });
+    bindRadarToggles(document.querySelector('[data-ajax-panel="admin-fitness-main"]') || document.querySelector('[data-ajax-panel="fitness-records"]'));
+  }
+  window.addEventListener('popstate', function () {
+    if (!document.querySelector('[data-ajax-panel="fitness-records"]')) return;
+    loadFitnessRecords(window.location.href, false).catch(function () { window.location.reload(); });
+  });
+  bindRadarToggles(document);
+  bindFitnessPagination();
+})();
+
+function openChildFitnessModal(data) {
+  var overlay = document.getElementById('childFitnessOverlay');
+  var title = document.getElementById('childFitnessTitle');
+  var meta = document.getElementById('childFitnessMeta');
+  var scores = document.getElementById('childFitnessScores');
+  var train = document.getElementById('childFitnessTraining');
+  var viewBtn = document.getElementById('childFitnessViewBtn');
+  if (!overlay) return;
+  var birthText = data && data.birthDate ? String(data.birthDate).slice(0, 10) : '-';
+  title.textContent = (data && data.childName) || '幼儿体测详情';
+  meta.innerHTML = '班级：' + ((data && data.className) || '-')
+    + '　|　性别：' + ((data && data.gender) || '-')
+    + '　|　出生日期：' + birthText
+    + '<br>最近体测：' + ((data && data.testDate) || '-')
+    + '　|　综合得分：' + ((data && data.totalScore) || '-')
+    + '　|　评级：' + ((data && data.rating) || '-');
+  scores.innerHTML = [
+    '身高：' + ((data && data.heightCm) || '-') + ' cm',
+    '体重：' + ((data && data.weightKg) || '-') + ' kg',
+    'BMI：' + ((data && data.bmi) || '-'),
+    '握力：' + ((data && data.gripKg) || '-') + ' kg（' + ((data && data.gripScore) || '-') + '分）',
+    '立定跳远：' + ((data && data.longJumpCm) || '-') + ' cm（' + ((data && data.jumpScore) || '-') + '分）',
+    '坐位体前屈：' + ((data && data.sitReachCm) || '-') + ' cm（' + ((data && data.sitScore) || '-') + '分）',
+    '双脚连续跳：' + ((data && data.doubleJumpSec) || '-') + ' 秒（' + ((data && data.djumpScore) || '-') + '分）',
+    '15米绕障碍跑：' + ((data && data.obstacleRunSec) || '-') + ' 秒（' + ((data && data.obstacleScore) || '-') + '分）',
+    '走平衡木：' + ((data && data.balanceBeamSec) || '-') + ' 秒（' + ((data && data.balanceScore) || '-') + '分）'
+  ].map(function (line) { return '<div style="margin:6px 0;">' + line + '</div>'; }).join('');
+  train.textContent = data && data.needTraining && data.needTraining.length ? '建议重点加强：' + data.needTraining.join('、') : '当前暂无明显薄弱项';
+  if (viewBtn) viewBtn.href = data && data.childId ? '/admin/fitness?view=child&childId=' + encodeURIComponent(String(data.childId)) : '/admin/fitness';
+  overlay.style.display = 'flex';
+}
+function closeChildFitnessModal() {
+  var overlay = document.getElementById('childFitnessOverlay');
+  if (overlay) overlay.style.display = 'none';
+}
+</script>
+
+<div id="childFitnessOverlay" class="modal-overlay" style="display:none;" onclick="if(event.target===this) closeChildFitnessModal()">
+  <div class="modal-box" style="width:min(92vw,680px);max-height:86vh;overflow:auto;">
+    <div class="modal-header" style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
+      <div>
+        <h3 id="childFitnessTitle" style="margin:0;">幼儿体测详情</h3>
+        <div id="childFitnessMeta" class="muted" style="margin-top:8px;"></div>
+      </div>
+      <button class="modal-close" type="button" onclick="closeChildFitnessModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="card" style="margin-bottom:12px;">
+        <div class="section-head"><h3>最近一次体测</h3></div>
+        <div id="childFitnessScores"></div>
+      </div>
+      <div class="card">
+        <div class="section-head"><h3>训练建议</h3></div>
+        <div id="childFitnessTraining" class="muted"></div>
+      </div>
+      <div class="toolbar-links" style="margin-top:16px;">
+        <a id="childFitnessViewBtn" class="btn primary" href="/admin/fitness">查看完整记录</a>
+        <button class="btn" type="button" onclick="closeChildFitnessModal()">关闭</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 修正体测记录弹框 -->
+<div id="fitnessEditOverlay" class="venue-editor-overlay" onclick="closeFitnessEditModal()"></div>
+<div id="fitnessEditDrawer" class="venue-editor-drawer" style="width:480px;">
+  <div class="venue-editor-header">
+    <h3 id="fitnessEditTitle">修正体测记录</h3>
+    <button class="btn small" type="button" onclick="closeFitnessEditModal()">✕ 关闭</button>
+  </div>
+  <div class="venue-editor-body">
+    <div id="fitnessEditMeta" class="muted" style="margin-bottom:12px;"></div>
+    <form id="fitnessEditForm" method="post" action="" class="form-grid" style="grid-template-columns:1fr 1fr;gap:10px;">
+      <input type="hidden" name="currentView" value="<%= viewMode %>" />
+      <input type="hidden" name="currentChildId" value="<%= childId || '' %>" />
+      <input type="hidden" name="currentClassId" value="<%= classId || '' %>" />
+      <input type="hidden" name="currentGradeLevel" value="<%= gradeLevel || '' %>" />
+      <input type="hidden" name="currentKeyword" value="<%= activeFilters.keyword || '' %>" />
+      <input type="hidden" name="currentRating" value="<%= activeFilters.rating || '' %>" />
+      <input type="hidden" name="currentDateFrom" value="<%= activeFilters.dateFrom || '' %>" />
+      <input type="hidden" name="currentDateTo" value="<%= activeFilters.dateTo || '' %>" />
+      <label><span>测试日期</span><input type="date" name="testDate" id="fEditTestDate" required /></label>
+      <label><span>身高(CM)</span><input type="number" name="heightCm" id="fEditHeight" step="0.1" required /></label>
+      <label><span>体重(KG)</span><input type="number" name="weightKg" id="fEditWeight" step="0.01" required /></label>
+      <label><span>握力(KG)</span><input type="number" name="gripKg" id="fEditGrip" step="0.01" required /></label>
+      <label><span>立定跳远(CM)</span><input type="number" name="longJumpCm" id="fEditJump" step="0.1" required /></label>
+      <label><span>坐位体前屈(CM)</span><input type="number" name="sitReachCm" id="fEditSit" step="0.1" required /></label>
+      <label><span>双脚连续跳(秒)</span><input type="number" name="doubleJumpSec" id="fEditDJump" step="0.01" required /></label>
+      <label><span>15米绕障碍跑(秒)</span><input type="number" name="obstacleRunSec" id="fEditObstacle" step="0.01" required /></label>
+      <label><span>走平衡木(秒)</span><input type="number" name="balanceBeamSec" id="fEditBalance" step="0.01" required /></label>
+      <div style="grid-column:1/-1;margin-top:8px;"><button class="btn primary full" type="submit">保存修正并重新计算</button></div>
+    </form>
+  </div>
+</div>
+
+
+<script>
+function openFitnessEditModal(data) {
+  document.getElementById('fitnessEditForm').action = '/admin/fitness/' + data.id + '/update';
+  document.getElementById('fitnessEditMeta').textContent = (data.className || '-') + ' / ' + (data.childName || '-');
+  document.getElementById('fEditTestDate').value = data.testDate || '';
+  document.getElementById('fEditHeight').value = data.heightCm ?? '';
+  document.getElementById('fEditWeight').value = data.weightKg ?? '';
+  document.getElementById('fEditGrip').value = data.gripKg ?? '';
+  document.getElementById('fEditJump').value = data.longJumpCm ?? '';
+  document.getElementById('fEditSit').value = data.sitReachCm ?? '';
+  document.getElementById('fEditDJump').value = data.doubleJumpSec ?? '';
+  document.getElementById('fEditObstacle').value = data.obstacleRunSec ?? '';
+  document.getElementById('fEditBalance').value = data.balanceBeamSec ?? '';
+  document.getElementById('fitnessEditOverlay').classList.add('open');
+  document.getElementById('fitnessEditDrawer').classList.add('open');
+}
+function closeFitnessEditModal() {
+  document.getElementById('fitnessEditOverlay').classList.remove('open');
+  document.getElementById('fitnessEditDrawer').classList.remove('open');
+}
+</script>
+
+<%- include('partials/footer') %>

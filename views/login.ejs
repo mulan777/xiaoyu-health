@@ -1,0 +1,31 @@
+<%- include('partials/header') %>
+
+<section class="auth-wrapper">
+  <div class="auth-card card">
+    <div class="eyebrow">账号登录</div>
+    <h1>登录平台</h1>
+    <p>Admin 与 User 分角色登录，手机和电脑均可访问。</p>
+
+    <% if (error) { %>
+      <div class="alert error"><%= error %></div>
+    <% } %>
+
+    <form method="post" action="/login" class="form-grid" role="form" aria-label="登录表单">
+      <label>
+        <span>用户名</span>
+        <input type="text" name="username" placeholder="请输入用户名" required autocomplete="username" aria-label="用户名" />
+      </label>
+      <label>
+        <span>密码</span>
+        <input type="password" name="password" placeholder="请输入密码" required autocomplete="current-password" aria-label="密码" />
+      </label>
+      <button class="btn primary full" type="submit">登录</button>
+    </form>
+
+    <div class="tips compact">
+      <div>如需开通账号、重置密码或调整权限，请联系管理员处理。</div>
+    </div>
+  </div>
+</section>
+
+<%- include('partials/footer') %>

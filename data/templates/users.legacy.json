@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1,
+    "username": "admin",
+    "passwordHash": "$2a$10$PO2kkKlYHRQOJQxcKgXSFe710oXthDDc0wnwQGmMImAkGZsZx9/46",
+    "role": "admin",
+    "name": "系统管理员",
+    "enabled": true,
+    "createdAt": "2026-04-07T05:15:41.624Z"
+  },
+  {
+    "id": 2,
+    "username": "teacher",
+    "passwordHash": "$2a$10$ikHLzBonIG3c3yqSHuoWKO9Nsg6R4j0Rn5rVST8DzqRwJ7MKSBTvG",
+    "role": "user",
+    "name": "示例教师",
+    "enabled": true,
+    "createdAt": "2026-04-07T05:15:41.719Z"
+  }
+]

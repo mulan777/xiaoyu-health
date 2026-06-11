@@ -1,0 +1,614 @@
+<%- include('partials/header') %>
+
+<%
+  const formatAttentionPeriod = function(startDate, endDate) {
+    const start = startDate ? new Date(startDate).toISOString().slice(0, 10) : '即日起';
+    const end = endDate ? new Date(endDate).toISOString().slice(0, 10) : '长期';
+    return start + ' ~ ' + end;
+  };
+  const parseAttentionTags = function(value) {
+    return String(value || '').split(',').map(function(item) { return item.trim(); }).filter(Boolean);
+  };
+  const pageConfig = {
+    round: activeRound ? {
+      status: activeRound.status,
+      openTime: activeRound.open_time_text,
+      closeTime: activeRound.close_time_text || null
+    } : null,
+    serverNow: now
+  };
+  const hasConfirmedBooking = Object.keys(bookingMap || {}).length > 0;
+%>
+
+<section class="dashboard-head card">
+  <div>
+    <div class="eyebrow">场地预约</div>
+    <h1>户外活动场地预约</h1>
+    <p>
+      您是 <strong><%= myGradeLabel || '-' %></strong> 教师。
+      <% if (myGrade === 'small') { %>
+        当前页面展示小班可见名额和小班玩法。
+      <% } else if (myGrade) { %>
+        当前页面展示中大班共享占用情况，同时按您本年级的真实可约名额控制预约。
+      <% } else { %>
+        当前账号尚未绑定班级。
+      <% } %>
+    </p>
+  </div>
+  <a class="btn" href="/user">返回工作台</a>
+</section>
+
+<% if (message) { %>
+  <div class="alert success"><%= message %></div>
+<% } %>
+
+<% if (!classId) { %>
+  <div class="card"><div class="empty-state">您的账号未绑定班级，请联系管理员。</div></div>
+<% } else if (!activeRound) { %>
+  <div class="card"><div class="empty-state">暂无预约活动，请等待管理员发布。</div></div>
+<% } else { %>
+
+  <% if (attentionChildren && attentionChildren.length) { %>
+    <section class="card venue-attention-card">
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">重点关注提醒</div>
+          <h3>当前已预约场地的共同关注幼儿</h3>
+        </div>
+        <span class="status-badge warn"><%= attentionChildren.length %> 名需关注</span>
+      </div>
+      <div class="child-mobile-list">
+        <% attentionChildren.forEach(function(child) { %>
+          <div class="child-item" style="background:#fffef7;">
+            <div class="child-item-head" style="align-items:flex-start;">
+              <div>
+                <strong><%= child.name %></strong>
+                <div class="muted" style="margin-top:4px;"><%= child.class_name %> · <%= gradeLabel(child.grade_level) %><%= child.gender ? ' · ' + child.gender : '' %></div>
+              </div>
+              <span class="status-badge warn">需关注</span>
+            </div>
+            <div><strong>原因：</strong><%= child.attention_reason || '已被标记为重点关注，请活动时重点照看。' %></div>
+            <div><strong>有效期：</strong><%= formatAttentionPeriod(child.attention_start_date, child.attention_end_date) %></div>
+            <% const attentionTags = parseAttentionTags(child.attention_tags); %>
+            <% if (attentionTags.length) { %>
+              <div>
+                <strong>标签：</strong>
+                <span class="tag-list compact-tag-list">
+                  <% attentionTags.forEach(function(tag) { %><span class="tag-pill"><%= tag %></span><% }) %>
+                </span>
+              </div>
+            <% } %>
+          </div>
+        <% }) %>
+      </div>
+    </section>
+  <% } %>
+
+  <section class="card venue-round-card">
+    <div class="section-head">
+      <div>
+        <div class="eyebrow">预约轮次</div>
+        <h3>活动日期：<%= activeRound.round_date_text || new Date(activeRound.round_date).toISOString().slice(0, 10) %></h3>
+        <div class="muted">
+          开放时间：<strong><%= activeRound.open_time_text ? activeRound.open_time_text.replace(/-/g, '/') : '-' %></strong>
+          <% if (activeRound.close_time_text) { %>
+            · 截止：<%= activeRound.close_time_text.replace(/-/g, '/') %>
+          <% } %>
+        </div>
+      </div>
+      <div class="venue-countdown-box">
+        <div id="countdownLabel" class="venue-countdown-label"></div>
+        <div id="countdownTimer" class="venue-countdown-timer"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card venue-map-shell">
+    <div class="section-head">
+      <div>
+        <div class="eyebrow">场地地图</div>
+        <h3>超大地图居中显示，支持切换成文字列表</h3>
+        <div class="muted">桌面端默认地图模式，手机端默认文字模式。点击切换按钮可在两种 UI 间来回切换。</div>
+      </div>
+      <div class="venue-view-toolbar">
+        <span id="viewModeBadge" class="status-badge">当前：地图模式</span>
+        <button id="viewToggleBtn" class="btn small" type="button">切换UI显示</button>
+      </div>
+    </div>
+
+    <div id="venueMapView" class="venue-view-panel">
+      <div id="venueMapStage" class="venue-map-stage">
+        <div id="venueMapStageInner" class="venue-map-stage-inner">
+          <div
+            id="venueMapBoard"
+            class="venue-map-board"
+            data-board-width="<%= layoutBoardWidth %>"
+            data-board-height="<%= layoutBoardHeight %>"
+            style="width:<%= layoutBoardWidth %>px;height:<%= layoutBoardHeight %>px;"
+          >
+            <% (backgrounds || []).forEach(function(bg) { %>
+              <div
+                class="venue-background-layer <%= bg.is_fixed ? 'is-fixed' : '' %>"
+                style="left:<%= bg.map_x %>px;top:<%= bg.map_y %>px;width:<%= bg.map_width %>px;height:<%= bg.map_height %>px;z-index:<%= 1 + (bg.sort_order || 1) %>;"
+              >
+                <div
+                  class="venue-background-image"
+                  style="<%= bg.image_path ? 'background-image:url(' + bg.image_path + '?v=' + cssVersion + ');' : '' %>"
+                ></div>
+              </div>
+            <% }) %>
+            <% venues.forEach(function(v) {
+                 const venueDesc = myGrade === 'small' ? (v.play_desc_small || '暂无小班玩法说明') : (v.play_desc_ml || '暂无中大班玩法说明');
+            %>
+              <article
+                class="venue-zone <%= bookingMap[v.id] ? 'is-mine' : '' %> <%= v._full && !bookingMap[v.id] ? 'is-pool-full' : '' %>"
+                style="left:<%= v.map_x %>px;top:<%= v.map_y %>px;width:<%= v.map_width %>px;height:<%= v.map_height %>px;"
+              >
+                <button
+                  type="button"
+                  class="venue-zone-hit js-open-venue"
+                  aria-label="查看 <%= v.name %> 玩法"
+                  data-title="<%= encodeURIComponent(v.name + ' · ' + (myGrade === 'small' ? '小班玩法' : '中大班玩法')) %>"
+                  data-desc="<%= encodeURIComponent(venueDesc) %>"
+                  data-image="<%= encodeURIComponent(v.image_path ? (v.image_path + '?v=' + cssVersion) : '') %>"
+                ></button>
+                <div
+                  class="venue-zone-bg"
+                  style="<%= v.image_path ? 'background-image:url(' + v.image_path + '?v=' + cssVersion + ');' : '' %>"
+                ></div>
+
+                <div class="venue-zone-overlay"></div>
+
+                <div class="venue-zone-head">
+                  <div>
+                    <h4><%= v.name %></h4>
+                    <div class="venue-zone-meta">
+                      <% if (myGrade === 'small') { %>
+                        小班已约 <strong><%= v._bookedSmall %>/<%= v.cap_small %></strong>
+                      <% } else { %>
+                        中大班占用 <strong><%= v._booked %>/<%= v._visibleCapacity %></strong>
+                        <span class="muted">中 <%= v._bookedMiddle %>/<%= v.cap_middle %> · 大 <%= v._bookedLarge %>/<%= v.cap_large %></span>
+                      <% } %>
+                    </div>
+                  </div>
+                  <div class="venue-zone-badge"><%= v._booked %>/<%= v._visibleCapacity %></div>
+                </div>
+
+                <% if (v.elements && v.elements.length) { %>
+                  <% v.elements.forEach(function(element) {
+                       const detailImage = myGrade === 'small' ? (element.detail_image_small || '') : (element.detail_image_ml || '');
+                       const detailDesc = myGrade === 'small' ? (element.detail_desc_small || '暂无小班说明') : (element.detail_desc_ml || '暂无中大班说明');
+                  %>
+                    <button
+                      type="button"
+                      class="venue-marker js-open-element"
+                      style="left:<%= element.pos_x %>px;top:<%= element.pos_y %>px;width:<%= element.box_width %>px;height:<%= element.box_height %>px;"
+                      data-title="<%= encodeURIComponent(element.element_name) %>"
+                      data-desc="<%= encodeURIComponent(detailDesc) %>"
+                      data-image="<%= encodeURIComponent(detailImage ? (detailImage + '?v=' + cssVersion) : '') %>"
+                    >
+                      <% if (element.icon_path) { %>
+                        <img src="<%= element.icon_path %>?v=<%= cssVersion %>" alt="<%= element.element_name %>" />
+                      <% } else { %>
+                        <span><%= element.element_name.slice(0, 2) %></span>
+                      <% } %>
+                    </button>
+                  <% }) %>
+                <% } %>
+
+                <div class="venue-zone-foot">
+                  <div class="venue-class-list">
+                    <% if (v._visibleBookings.length) { %>
+                      <% v._visibleBookings.forEach(function(item) { %>
+                        <span class="venue-class-chip <%= Number(item.class_id) === Number(classId) ? 'is-self' : '' %>"><%= item.class_name %></span>
+                      <% }) %>
+                    <% } else { %>
+                      <span class="venue-class-empty">当前可见范围内还没有班级预约</span>
+                    <% } %>
+                  </div>
+
+                  <div class="venue-zone-actions">
+                    <div class="venue-availability">
+                      您所在<%= myGradeLabel %>可约：<strong><%= v._myPoolBooked %>/<%= v._myPoolCapacity %></strong>
+                    </div>
+
+                    <% if (bookingMap[v.id]) { %>
+                      <form method="post" action="/user/venues/cancel" class="inline-form">
+                        <input type="hidden" name="bookingId" value="<%= bookingMap[v.id].id %>" />
+                        <button class="btn small" type="submit">取消预约</button>
+                      </form>
+                    <% } else if (hasConfirmedBooking) { %>
+                      <button class="btn small" type="button" disabled>本轮已预约其他场地</button>
+                    <% } else if (v._full) { %>
+                      <button class="btn small" type="button" disabled>本年级名额已满</button>
+                    <% } else { %>
+                      <form method="post" action="/user/venues/book" class="inline-form">
+                        <input type="hidden" name="venueId" value="<%= v.id %>" />
+                        <input type="hidden" name="roundId" value="<%= activeRound.id %>" />
+                        <button class="btn small primary book-btn" type="submit" disabled>预约</button>
+                      </form>
+                    <% } %>
+                  </div>
+                </div>
+              </article>
+            <% }) %>
+          </div>
+        </div>
+      </div>
+      <div class="muted venue-map-caption">地图模式适合大屏查看整体布局，支持点击区域和标记查看详情。</div>
+    </div>
+
+    <div id="venueTextView" class="venue-view-panel" hidden>
+      <div class="venue-text-list">
+        <% venues.forEach(function(v) { %>
+          <article class="venue-text-card">
+            <div class="venue-text-head">
+              <div>
+                <h4><%= v.name %></h4>
+                <div class="muted">
+                  <% if (myGrade === 'small') { %>
+                    小班已约 <strong><%= v._bookedSmall %>/<%= v.cap_small %></strong>
+                  <% } else { %>
+                    中大班占用 <strong><%= v._booked %>/<%= v._visibleCapacity %></strong>
+                    · 中 <%= v._bookedMiddle %>/<%= v.cap_middle %> · 大 <%= v._bookedLarge %>/<%= v.cap_large %>
+                  <% } %>
+                </div>
+              </div>
+              <div class="venue-zone-badge"><%= v._booked %>/<%= v._visibleCapacity %></div>
+            </div>
+
+            <div class="venue-text-body">
+              <div class="venue-text-row">
+                <strong>当前可见班级</strong>
+                <div class="venue-class-list">
+                  <% if (v._visibleBookings.length) { %>
+                    <% v._visibleBookings.forEach(function(item) { %>
+                      <span class="venue-class-chip <%= Number(item.class_id) === Number(classId) ? 'is-self' : '' %>"><%= item.class_name %></span>
+                    <% }) %>
+                  <% } else { %>
+                    <span class="venue-class-empty">还没有班级预约</span>
+                  <% } %>
+                </div>
+              </div>
+
+              <div class="venue-text-row">
+                <strong>可点击游戏点</strong>
+                <div class="venue-class-list">
+                  <% if (v.elements && v.elements.length) { %>
+                    <% v.elements.forEach(function(element) {
+                         const detailImage = myGrade === 'small' ? (element.detail_image_small || '') : (element.detail_image_ml || '');
+                         const detailDesc = myGrade === 'small' ? (element.detail_desc_small || '暂无小班说明') : (element.detail_desc_ml || '暂无中大班说明');
+                    %>
+                      <button
+                        type="button"
+                        class="venue-class-chip venue-chip-button js-open-element"
+                        data-title="<%= encodeURIComponent(element.element_name) %>"
+                        data-desc="<%= encodeURIComponent(detailDesc) %>"
+                        data-image="<%= encodeURIComponent(detailImage ? (detailImage + '?v=' + cssVersion) : '') %>"
+                      ><%= element.element_name %></button>
+                    <% }) %>
+                  <% } else { %>
+                    <span class="venue-class-empty">当前没有设置标记</span>
+                  <% } %>
+                </div>
+              </div>
+
+              <div class="venue-text-actions">
+                <button
+                  type="button"
+                  class="btn small js-open-venue"
+                  data-title="<%= encodeURIComponent(v.name + ' · ' + (myGrade === 'small' ? '小班玩法' : '中大班玩法')) %>"
+                  data-desc="<%= encodeURIComponent(myGrade === 'small' ? (v.play_desc_small || '暂无小班玩法说明') : (v.play_desc_ml || '暂无中大班玩法说明')) %>"
+                  data-image="<%= encodeURIComponent(v.image_path ? (v.image_path + '?v=' + cssVersion) : '') %>"
+                >查看玩法</button>
+
+                <% if (bookingMap[v.id]) { %>
+                  <form method="post" action="/user/venues/cancel" class="inline-form">
+                    <input type="hidden" name="bookingId" value="<%= bookingMap[v.id].id %>" />
+                    <button class="btn small" type="submit">取消预约</button>
+                  </form>
+                <% } else if (hasConfirmedBooking) { %>
+                  <button class="btn small" type="button" disabled>本轮已预约其他场地</button>
+                <% } else if (v._full) { %>
+                  <button class="btn small" type="button" disabled>本年级名额已满</button>
+                <% } else { %>
+                  <form method="post" action="/user/venues/book" class="inline-form">
+                    <input type="hidden" name="venueId" value="<%= v.id %>" />
+                    <input type="hidden" name="roundId" value="<%= activeRound.id %>" />
+                    <button class="btn small primary book-btn" type="submit" disabled>预约</button>
+                  </form>
+                <% } %>
+              </div>
+            </div>
+          </article>
+        <% }) %>
+      </div>
+    </div>
+  </section>
+<% } %>
+
+<div id="venueDetailModal" class="modal-overlay" style="display:none;">
+  <div class="modal-box venue-detail-modal">
+    <div class="modal-header">
+      <div>
+        <h3 id="venueDetailTitle">详情</h3>
+      </div>
+      <button id="venueDetailClose" class="modal-close" type="button">&times;</button>
+    </div>
+    <div class="modal-body venue-detail-body">
+      <img id="venueDetailImage" class="venue-detail-image" alt="" style="display:none;" />
+      <div id="venueDetailText" style="white-space:pre-wrap;"></div>
+    </div>
+  </div>
+</div>
+
+<script id="venue-page-config" type="application/json"><%- JSON.stringify(pageConfig) %></script>
+<script>
+  (function() {
+    var modal = document.getElementById('venueDetailModal');
+    var modalTitle = document.getElementById('venueDetailTitle');
+    var modalText = document.getElementById('venueDetailText');
+    var modalImage = document.getElementById('venueDetailImage');
+    var closeButton = document.getElementById('venueDetailClose');
+    var config = JSON.parse(document.getElementById('venue-page-config').textContent || '{}');
+    var mapView = document.getElementById('venueMapView');
+    var textView = document.getElementById('venueTextView');
+    var toggleButton = document.getElementById('viewToggleBtn');
+    var viewModeBadge = document.getElementById('viewModeBadge');
+    var mapStage = document.getElementById('venueMapStage');
+    var mapStageInner = document.getElementById('venueMapStageInner');
+    var mapBoard = document.getElementById('venueMapBoard');
+    var viewModeKey = 'venue-view-mode';
+
+    function decode(value) {
+      return decodeURIComponent(value || '');
+    }
+
+    function parseChinaDateTime(text) {
+      if (!text) return null;
+      var match = String(text).trim().match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/);
+      if (!match) return null;
+      return Date.UTC(
+        Number(match[1]),
+        Number(match[2]) - 1,
+        Number(match[3]),
+        Number(match[4]) - 8,
+        Number(match[5]),
+        Number(match[6] || 0)
+      );
+    }
+
+    function isMobileViewport() {
+      return window.matchMedia('(max-width: 768px)').matches;
+    }
+
+    var mapScaleRaf = 0;
+    var lastAppliedScale = 0;
+
+    function scheduleMapScale() {
+      if (mapScaleRaf) return;
+      mapScaleRaf = window.requestAnimationFrame(function() {
+        mapScaleRaf = 0;
+        applyMapScale();
+      });
+    }
+
+    function applyMapScale() {
+      if (!mapStage || !mapStageInner || !mapBoard) return;
+      var baseWidth = Number(mapBoard.dataset.boardWidth || 0);
+      var baseHeight = Number(mapBoard.dataset.boardHeight || 0);
+      if (!baseWidth || !baseHeight) return;
+
+      var shell = document.querySelector('.venue-map-shell');
+      var host = mapView || mapStage.parentElement || mapStage;
+      var hostWidth = host ? host.clientWidth : 0;
+      var stageWidth = mapStage.clientWidth || 0;
+      var shellWidth = shell ? shell.clientWidth : 0;
+      var availableWidth = Math.max(280, Math.min(hostWidth || Infinity, stageWidth || Infinity, shellWidth || Infinity) - 24);
+      if (!isFinite(availableWidth) || availableWidth <= 0) {
+        availableWidth = Math.max(280, window.innerWidth - 40);
+      }
+
+      var stageRect = mapStage.getBoundingClientRect();
+      var viewportHeight = window.visualViewport ? window.visualViewport.height : (window.innerHeight || document.documentElement.clientHeight || 0);
+      var scaleByWidth = availableWidth / baseWidth;
+      var scale = Math.min(1, scaleByWidth);
+
+      if (viewportHeight > 0) {
+        var heightPadding = isMobileViewport() ? 28 : 72;
+        var minVisibleHeight = isMobileViewport() ? 220 : 360;
+        var availableHeight = Math.max(minVisibleHeight, viewportHeight - Math.max(stageRect.top, 0) - heightPadding);
+        var scaledHeightByWidth = baseHeight * scale;
+        if (scaledHeightByWidth > availableHeight) {
+          var scaleByHeight = availableHeight / baseHeight;
+          scale = Math.min(scale, scaleByHeight);
+        }
+      }
+
+      if (!isFinite(scale) || scale <= 0) scale = 1;
+      if (Math.abs(scale - lastAppliedScale) < 0.002) return;
+      lastAppliedScale = scale;
+
+      var scaledWidth = Math.round(baseWidth * scale);
+      var scaledHeight = Math.round(baseHeight * scale);
+      mapStage.dataset.scale = String(scale);
+      mapStage.style.minHeight = scaledHeight + 24 + 'px';
+      mapStageInner.style.width = scaledWidth + 'px';
+      mapStageInner.style.height = scaledHeight + 'px';
+      mapBoard.style.width = baseWidth + 'px';
+      mapBoard.style.height = baseHeight + 'px';
+      mapBoard.style.transform = 'scale(' + scale + ')';
+      mapBoard.style.transformOrigin = 'top left';
+      mapBoard.style.margin = '0';
+    }
+
+    function applyViewMode(mode, shouldPersist) {
+      var currentMode = mode === 'list' ? 'list' : 'map';
+      if (mapView) mapView.hidden = currentMode !== 'map';
+      if (textView) textView.hidden = currentMode !== 'list';
+      if (viewModeBadge) viewModeBadge.textContent = currentMode === 'map' ? '当前：地图模式' : '当前：文字模式';
+      if (toggleButton) toggleButton.textContent = currentMode === 'map' ? '切换UI显示：文字' : '切换UI显示：地图';
+      if (shouldPersist) {
+        localStorage.setItem(viewModeKey, currentMode);
+      }
+      if (currentMode === 'map') {
+        requestAnimationFrame(function() {
+          scheduleMapScale();
+          setTimeout(scheduleMapScale, 60);
+          setTimeout(scheduleMapScale, 220);
+        });
+      }
+    }
+
+    function openDetail(button) {
+      modalTitle.textContent = decode(button.dataset.title);
+      modalText.textContent = decode(button.dataset.desc) || '暂无说明';
+      var image = decode(button.dataset.image);
+      if (image) {
+        modalImage.src = image;
+        modalImage.style.display = 'block';
+      } else {
+        modalImage.removeAttribute('src');
+        modalImage.style.display = 'none';
+      }
+      modal.style.display = 'flex';
+    }
+
+    function closeDetail() {
+      modal.style.display = 'none';
+    }
+
+    document.querySelectorAll('.js-open-venue, .js-open-element').forEach(function(button) {
+      button.addEventListener('click', function(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        openDetail(button);
+      });
+      if (button.classList.contains('js-open-element')) {
+        button.addEventListener('keydown', function(event) {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            openDetail(button);
+          }
+        });
+      }
+    });
+
+    closeButton.addEventListener('click', closeDetail);
+    modal.addEventListener('click', function(event) {
+      if (event.target === modal) closeDetail();
+    });
+
+    if (toggleButton) {
+      toggleButton.addEventListener('click', function() {
+        var currentMode = textView && !textView.hidden ? 'list' : 'map';
+        applyViewMode(currentMode === 'map' ? 'list' : 'map', true);
+      });
+    }
+
+    var savedMode = localStorage.getItem(viewModeKey);
+    applyViewMode(savedMode || (isMobileViewport() ? 'list' : 'map'), false);
+    window.addEventListener('resize', scheduleMapScale, { passive: true });
+    window.addEventListener('scroll', scheduleMapScale, { passive: true });
+    document.addEventListener('scroll', scheduleMapScale, { passive: true });
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', scheduleMapScale, { passive: true });
+      window.visualViewport.addEventListener('scroll', scheduleMapScale, { passive: true });
+    }
+    if (window.ResizeObserver && mapStage) {
+      var resizeObserver = new ResizeObserver(function() {
+        scheduleMapScale();
+      });
+      resizeObserver.observe(mapStage);
+      if (mapView) resizeObserver.observe(mapView);
+    }
+
+    if (!config.round) return;
+
+    var label = document.getElementById('countdownLabel');
+    var timer = document.getElementById('countdownTimer');
+    var bookButtons = document.querySelectorAll('.book-btn');
+    var openTime = parseChinaDateTime(config.round.openTime);
+    var closeTime = config.round.closeTime ? parseChinaDateTime(config.round.closeTime) : null;
+    var status = config.round.status;
+    var drift = Date.now() - Number(config.serverNow || Date.now());
+
+    function pad(num) {
+      return num < 10 ? '0' + num : String(num);
+    }
+
+    function enableButtons() {
+      bookButtons.forEach(function(button) {
+        button.disabled = false;
+      });
+    }
+
+    function disableButtons() {
+      bookButtons.forEach(function(button) {
+        button.disabled = true;
+      });
+    }
+
+    function tick() {
+      var now = Date.now() - drift;
+
+      if (status === 'closed' || (closeTime && now >= closeTime)) {
+        label.textContent = '预约已结束';
+        timer.textContent = '';
+        disableButtons();
+        return;
+      }
+
+      if (status === 'pending' && now < openTime) {
+        var diffBeforeOpen = openTime - now;
+        var hoursBefore = Math.floor(diffBeforeOpen / 3600000);
+        var minutesBefore = Math.floor((diffBeforeOpen % 3600000) / 60000);
+        var secondsBefore = Math.floor((diffBeforeOpen % 60000) / 1000);
+        label.textContent = '距离开放还有';
+        timer.textContent = pad(hoursBefore) + ':' + pad(minutesBefore) + ':' + pad(secondsBefore);
+        disableButtons();
+        setTimeout(tick, 1000);
+        return;
+      }
+
+      label.textContent = '预约进行中';
+      enableButtons();
+
+      if (closeTime) {
+        var diffBeforeClose = closeTime - now;
+        if (diffBeforeClose > 0) {
+          var hoursClose = Math.floor(diffBeforeClose / 3600000);
+          var minutesClose = Math.floor((diffBeforeClose % 3600000) / 60000);
+          var secondsClose = Math.floor((diffBeforeClose % 60000) / 1000);
+          timer.textContent = '剩余 ' + pad(hoursClose) + ':' + pad(minutesClose) + ':' + pad(secondsClose);
+          setTimeout(tick, 1000);
+        } else {
+          timer.textContent = '';
+        }
+      } else {
+        timer.textContent = '';
+      }
+    }
+
+    tick();
+
+    setInterval(function() {
+      fetch('/api/venue-round/status')
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+          if (!data.active || data.status === 'closed') {
+            status = 'closed';
+            tick();
+            return;
+          }
+          openTime = parseChinaDateTime(data.openTime);
+          closeTime = data.closeTime ? parseChinaDateTime(data.closeTime) : null;
+          drift = Date.now() - Number(data.serverTime || Date.now());
+          status = data.status;
+        })
+        .catch(function() {});
+    }, 30000);
+  })();
+</script>
+
+<%- include('partials/footer') %>

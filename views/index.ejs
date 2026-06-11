@@ -1,0 +1,68 @@
+<%- include('partials/header') %>
+
+<% const ft = content.features || []; %>
+<% const ql = content.quickLinks || []; %>
+
+<section class="apple-hero">
+  <div class="apple-hero-inner">
+    <div class="apple-eyebrow"><%= settings.subtitle || '教研管理平台' %></div>
+    <h1 class="apple-hero-title"><%= settings.heroTitle || settings.siteName %></h1>
+    <p class="apple-hero-desc"><%= settings.heroDesc || '' %></p>
+    <div class="apple-hero-actions">
+      <a class="apple-btn apple-btn-primary" href="/login">立即登录</a>
+    </div>
+  </div>
+</section>
+
+<section class="apple-stats card">
+  <div class="apple-stat-item">
+    <div class="apple-stat-value">8</div>
+    <div class="apple-stat-label">体测评分维度</div>
+  </div>
+  <div class="apple-stat-item">
+    <div class="apple-stat-value">一体化</div>
+    <div class="apple-stat-label">档案与教研协同</div>
+  </div>
+  <div class="apple-stat-item">
+    <div class="apple-stat-value">24/7</div>
+    <div class="apple-stat-label">在线场地预约</div>
+  </div>
+  <div class="apple-stat-item">
+    <div class="apple-stat-value">Excel</div>
+    <div class="apple-stat-label">批量导入导出</div>
+  </div>
+</section>
+
+<% if (ft.length) { %>
+<section class="apple-section">
+  <div class="apple-section-head">
+    <div class="apple-section-kicker">核心能力</div>
+    <h2>专注体适能教研场景</h2>
+    <p>围绕幼儿园日常管理与体测教学流程，提供简洁、稳定、易落地的数字化工作台。</p>
+  </div>
+  <div class="apple-feature-grid">
+    <% ft.forEach(function(item) { %>
+      <article class="apple-feature-card">
+        <h3><%= item.title %></h3>
+        <p><%= item.desc %></p>
+      </article>
+    <% }) %>
+  </div>
+</section>
+<% } %>
+
+<section class="apple-split-grid">
+  <div class="apple-panel card">
+    <div class="apple-section-kicker">教师端</div>
+    <h3>移动优先，随时录入</h3>
+    <p><%= settings.mobileHint || '教师端已适配手机 H5，可通过微信直接访问，随时录入体测数据和管理场地预约。' %></p>
+  </div>
+  <div class="apple-panel card">
+    <div class="apple-section-kicker">管理端</div>
+    <h3>统一维护，清晰可控</h3>
+    <p><%= settings.adminNotice || '管理员可在后台统一管理用户权限、班级设置、幼儿档案、体测数据和场地配置。' %></p>
+  </div>
+</section>
+
+
+<%- include('partials/footer') %>

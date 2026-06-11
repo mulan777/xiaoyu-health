@@ -1,0 +1,1971 @@
+<%- include('partials/header', { pageClass: isReadonly ? 'admin-page readonly-mode' : 'admin-page' }) %>
+
+<%
+  const readonlyMode = !!isReadonly;
+  const adminHotspotConfig = {
+    boardWidth: layoutBoardWidth,
+    boardHeight: layoutBoardHeight,
+    backgrounds: (backgrounds || []).map(function(bg) {
+      return {
+        id: bg.id,
+        name: bg.name,
+        image_path: bg.image_path || '',
+        map_x: bg.map_x || 0,
+        map_y: bg.map_y || 0,
+        map_width: bg.map_width || 0,
+        map_height: bg.map_height || 0,
+        sort_order: bg.sort_order || 1,
+        is_fixed: !!bg.is_fixed,
+        enabled: !!bg.enabled
+      };
+    }),
+    venues: (venues || []).map(function(venue) {
+      return {
+        id: venue.id,
+        name: venue.name,
+        hotspot_points: Array.isArray(venue.hotspot_points) ? venue.hotspot_points : [],
+        hotspot_hint_x: venue.hotspot_hint_x == null ? null : venue.hotspot_hint_x,
+        hotspot_hint_y: venue.hotspot_hint_y == null ? null : venue.hotspot_hint_y
+      };
+    })
+  };
+  const toJson = function(value) {
+    return JSON.stringify(value || []);
+  };
+  const mediaList = function(values, fallback) {
+    const output = [];
+    const pushValue = function(value) {
+      if (typeof value !== 'string') return;
+      const trimmed = value.trim();
+      if (trimmed) output.push(trimmed);
+    };
+
+    if (Array.isArray(values)) {
+      values.forEach(pushValue);
+    } else if (typeof values === 'string' && values.trim()) {
+      try {
+        const parsed = JSON.parse(values);
+        if (Array.isArray(parsed)) parsed.forEach(pushValue);
+        else pushValue(values);
+      } catch (error) {
+        pushValue(values);
+      }
+    }
+
+    (Array.isArray(fallback) ? fallback : [fallback]).forEach(pushValue);
+    return Array.from(new Set(output));
+  };
+%>
+
+<style>
+  .venue-round-section {
+    margin-bottom: 20px;
+  }
+
+  .venue-round-create {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    margin-bottom: 16px;
+    padding: 18px;
+    border-radius: 18px;
+    background: linear-gradient(180deg, #f7fbff, #f2f7fd);
+    border: 1px solid rgba(15, 23, 42, 0.06);
+  }
+
+  .venue-round-create-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .venue-round-table .status-badge {
+    white-space: nowrap;
+  }
+
+  .venue-round-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .round-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-width: 220px;
+  }
+
+  .round-actions .inline-form {
+    margin: 0;
+  }
+
+  .round-action-btn {
+    min-height: auto;
+    padding: 8px 14px;
+    border-radius: 999px;
+  }
+
+  .round-action-btn.is-primary {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+  }
+
+  .round-action-btn.is-danger {
+    color: var(--error-text);
+  }
+
+  .readonly-mode .round-actions > button.round-action-btn {
+    display: none !important;
+  }
+
+  @media (max-width: 760px) {
+    .venue-round-create-actions {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+
+    .round-actions {
+      min-width: 0;
+      width: 100%;
+    }
+
+    .round-actions .inline-form,
+    .round-actions .btn {
+      width: auto;
+    }
+  }
+</style>
+
+<section class="admin-hero card">
+  <div>
+    <div class="eyebrow">场地预约管理</div>
+    <h1><%= title %></h1>
+    <% if (readonlyMode) { %>
+      <p style="margin-bottom:10px;color:var(--primary);font-weight:600;">只读账号当前仅展示预约轮次和预约结果，场地布局与场地列表已隐藏。</p>
+    <% } %>
+    <p>管理场地信息、布局地图和预约轮次。点击场地卡片可编辑详细信息。</p>
+  </div>
+  <div class="admin-hero-actions">
+    <a class="btn" href="/admin">返回后台</a>
+    <a class="btn" href="/admin/venues/bookings">查看预约结果</a>
+  </div>
+</section>
+
+<% if (message) { %>
+  <div class="alert success"><%= message %></div>
+<% } %>
+
+<!-- 预约轮次 -->
+<% if (readonlyMode) { %>
+  <div class="card" style="margin-bottom:20px;border:1px solid rgba(0,113,227,0.12);background:linear-gradient(135deg, rgba(255,255,255,0.96), rgba(232,241,253,0.9));">
+    <div class="section-head" style="margin-bottom:0;">
+      <div>
+        <div class="eyebrow">只读模式</div>
+        <div class="muted">当前页面仅保留预约轮次和“查看预约”入口，编辑布局、维护场地和取消预约等写操作都已关闭。</div>
+      </div>
+      <span class="status-badge info">仅查看</span>
+    </div>
+  </div>
+  <% } %>
+
+<section class="card venue-round-section">
+  <div class="section-head">
+    <div>
+      <div class="eyebrow">智能推荐</div>
+      <h3>教师端区域推荐开关</h3>
+      <div class="muted" style="margin-top:8px;">开启后，教师预约页会结合体测数据、容量和上次选择推荐最优/次优区域；关闭后不显示推荐。</div>
+    </div>
+    <span class="status-badge <%= venueRecommendationEnabled ? 'ok' : 'off' %>"><%= venueRecommendationEnabled ? '已开启' : '已关闭' %></span>
+  </div>
+  <% if (!readonlyMode) { %>
+    <form method="post" action="/admin/venues/recommendation/toggle" class="venue-round-create" style="grid-template-columns:1fr auto;align-items:center;">
+      <label class="setting-check-row" style="margin:0;">
+        <input type="checkbox" name="venueRecommendationEnabled" value="1" <%= venueRecommendationEnabled ? 'checked' : '' %> />
+        <span>开启教师端场地智能推荐</span>
+        <small>保存后立即生效，不影响已有预约记录。</small>
+      </label>
+      <button class="btn primary" type="submit">保存开关</button>
+    </form>
+  <% } %>
+</section>
+
+<section class="card venue-round-section">
+  <div class="section-head">
+    <div>
+      <div class="eyebrow">预约轮次</div>
+      <h3>统一配置开放时间</h3>
+      <div class="muted" style="margin-top:8px;">创建后可以随时编辑活动日期、开放时间和截止时间，不用再删掉重建轮次。</div>
+    </div>
+  </div>
+  <% if (!readonlyMode) { %>
+  <form method="post" action="/admin/venues/round/add" class="form-grid venue-round-create">
+    <label><span>活动日期</span><input type="date" name="roundDate" required /></label>
+    <label><span>开放时间</span><input type="datetime-local" name="openTime" required /></label>
+    <label><span>截止时间</span><input type="datetime-local" name="closeTime" /></label>
+    <div class="venue-round-create-actions">
+      <button class="btn primary" type="submit">创建轮次</button>
+      <div class="muted" style="margin-top:8px;">建议先确定开放窗口，再通知教师统一预约。</div>
+    </div>
+  </form>
+  <% } %>
+  <% if (rounds.length) { %>
+    <div class="table-wrap venue-round-table">
+      <table class="data-table admin-table">
+        <thead><tr><th>活动日期</th><th>开放时间</th><th>截止时间</th><th>状态</th><th>预约概况</th><th>操作</th></tr></thead>
+        <tbody>
+          <% rounds.forEach(function(round) { %>
+            <tr>
+              <td><strong><%= round.round_date_text || new Date(round.round_date).toISOString().slice(0, 10) %></strong></td>
+              <td><%= round.open_time_text || '-' %></td>
+              <td><%= round.close_time_text || '-' %></td>
+              <td><span class="status-badge <%= round.status === 'open' ? 'ok' : round.status === 'closed' ? 'off' : '' %>"><%= round.status === 'open' ? '开放中' : round.status === 'closed' ? '已关闭' : '待开放' %></span></td>
+              <td>
+                <div class="venue-round-summary">
+                  <% if (true) { %>
+                  <span class="status-badge" style="background:#eef4ff;color:#2156c4;">总预约 <%= round.bookingSummary.totalCount %></span>
+                  <span class="status-badge ok">确认 <%= round.bookingSummary.confirmedCount %></span>
+                  <span class="status-badge" style="background:#fff1f1;color:#d53c4b;">取消 <%= round.bookingSummary.cancelledCount %></span>
+                <% } else { %>
+                <a class="btn small round-action-btn is-primary readonly-keep" href="/admin/venues/bookings?roundId=<%= round.id %>">查看预约</a>
+                <% } %>
+                </div>
+              </td>
+              <td>
+                <div class="round-actions">
+                <button
+                  class="btn small round-action-btn"
+                  type="button"
+                  onclick='openRoundEditor(<%- JSON.stringify({
+                    id: round.id,
+                    roundDate: round.round_date_text || '',
+                    openTime: round.open_time_input || '',
+                    closeTime: round.close_time_input || '',
+                    status: round.status,
+                    totalCount: round.bookingSummary.totalCount || 0,
+                    confirmedCount: round.bookingSummary.confirmedCount || 0,
+                    cancelledCount: round.bookingSummary.cancelledCount || 0
+                  }) %>)'
+                >编辑时间</button>
+                <% if (round.status === 'pending') { %>
+                  <form method="post" action="/admin/venues/round/<%= round.id %>/status" class="inline-form"><input type="hidden" name="status" value="open" /><button class="btn small round-action-btn is-primary" type="submit">立即开放</button></form>
+                <% } %>
+                <% if (round.status === 'open') { %>
+                  <form method="post" action="/admin/venues/round/<%= round.id %>/status" class="inline-form"><input type="hidden" name="status" value="closed" /><button class="btn small round-action-btn" type="submit">关闭</button></form>
+                <% } %>
+                <% if (round.status === 'closed') { %>
+                  <form method="post" action="/admin/venues/round/<%= round.id %>/status" class="inline-form"><input type="hidden" name="status" value="open" /><button class="btn small round-action-btn" type="submit">重新开放</button></form>
+                <% } %>
+                <a class="btn small round-action-btn is-primary" href="/admin/venues/bookings?roundId=<%= round.id %>">查看预约</a>
+                <form method="post" action="/admin/venues/round/<%= round.id %>/delete" class="inline-form" onsubmit="return confirm('删除该轮次及对应预约记录？')"><button class="btn small round-action-btn is-danger" type="submit">删除</button></form>
+                </div>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } else { %>
+    <div class="empty-state">还没有预约轮次。</div>
+  <% } %>
+</section>
+
+<!-- 地图布局 -->
+<% if (!readonlyMode) { %>
+<section class="card" style="margin-bottom:20px;">
+  <div class="section-head">
+    <div>
+      <div class="eyebrow">布局编辑</div>
+      <h3>拖动模块位置，拖动右下角调整尺寸</h3>
+    </div>
+    <form id="venueLayoutForm" method="post" action="/admin/venues/layout">
+      <input id="layoutJsonInput" type="hidden" name="layoutJson" value="" />
+      <button id="saveLayoutBtn" class="btn primary" type="button">保存布局</button>
+    </form>
+  </div>
+  <!-- 批量工具栏 -->
+  <div class="layout-batch-toolbar" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;padding:0 4px;">
+    <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px;"><input type="checkbox" id="layoutSelectAll" /> 全选</label>
+    <span style="color:var(--muted);font-size:12px;" id="layoutSelectedCount">已选 0 个</span>
+    <span style="color:var(--border);font-size:12px;">|</span>
+    <label style="font-size:12px;">宽 <input type="number" id="batchWidth" value="100" min="40" max="600" style="width:60px;" /></label>
+    <label style="font-size:12px;">高 <input type="number" id="batchHeight" value="65" min="30" max="600" style="width:60px;" /></label>
+    <button class="btn small" type="button" id="batchResizeBtn">统一大小</button>
+    <button class="btn small" type="button" id="batchAutoArrangeBtn">自动排列</button>
+  </div>
+  <details class="card" style="margin-bottom:12px;padding:16px 18px;">
+    <summary style="cursor:pointer;font-weight:600;">+ 新增背景层</summary>
+    <form method="post" action="/admin/venues/backgrounds/add" enctype="multipart/form-data" class="form-grid compact-venue-form" style="margin-top:12px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));" data-background-form="add">
+      <label><span>名称</span><input type="text" name="name" value="背景层" /></label>
+      <label><span>X</span><input type="number" name="mapX" value="0" min="0" /></label>
+      <label><span>Y</span><input type="number" name="mapY" value="0" min="0" /></label>
+      <label><span>宽</span><input type="number" name="mapWidth" value="<%= layoutBoardWidth %>" min="80" /></label>
+      <label><span>高</span><input type="number" name="mapHeight" value="<%= layoutBoardHeight %>" min="80" /></label>
+      <label><span>层级</span><input type="number" name="sortOrder" value="1" min="1" /></label>
+      <label><span>固定</span><select name="isFixed"><option value="0">否</option><option value="1">是</option></select></label>
+      <label><span>状态</span><select name="enabled"><option value="1">启用</option><option value="0">停用</option></select></label>
+      <label style="grid-column:1/-1;"><span>背景图</span><input type="file" name="image" accept="image/*" data-background-image-input /></label>
+      <div class="muted" style="grid-column:1/-1;font-size:12px;">选图后会按图片比例自动重算宽高，并默认贴到左上角；保存后画布会跟着背景层重新计算。</div>
+      <div class="tool-row">
+        <button class="btn small" type="button" onclick="fitBackgroundFormToImage(this)">按图片比例铺满画布</button>
+        <button class="btn primary" type="submit">添加背景层</button>
+      </div>
+    </form>
+  </details>
+  <% if ((backgrounds || []).length) { %>
+    <div class="layout-background-toolbar">
+      <span class="muted">已有背景层：可直接点“编辑”修改图片、尺寸和位置。</span>
+      <% backgrounds.forEach(function(bg) { %>
+        <button class="btn small" type="button" onclick="openBackgroundEditor(<%= bg.id %>)">编辑：<%= bg.name || ('背景' + bg.id) %></button>
+      <% }) %>
+    </div>
+  <% } %>
+  <div class="venue-map-wrapper">
+    <div id="layoutCanvas" class="layout-canvas" style="width:<%= layoutBoardWidth %>px;height:<%= layoutBoardHeight %>px;">
+      <% (backgrounds || []).forEach(function(bg) { %>
+        <article class="layout-block layout-background-block <%= bg.is_fixed ? 'is-fixed' : '' %>" data-type="background" data-id="<%= bg.id %>" data-sort-order="<%= bg.sort_order || 1 %>" data-enabled="<%= bg.enabled ? 1 : 0 %>" data-is-fixed="<%= bg.is_fixed ? 1 : 0 %>" style="left:<%= bg.map_x %>px;top:<%= bg.map_y %>px;width:<%= bg.map_width %>px;height:<%= bg.map_height %>px;z-index:<%= 1 + (bg.sort_order || 1) %>;">
+          <input type="checkbox" class="layout-block-check" style="position:absolute;top:2px;left:2px;z-index:10;" />
+          <div class="layout-block-bg" style="<%= bg.image_path ? 'background-image:url(' + bg.image_path + ');' : '' %>"></div>
+          <div class="layout-block-overlay"></div>
+          <button class="layout-block-action" type="button" aria-label="编辑背景层" onpointerdown="event.stopPropagation()" onclick="event.stopPropagation();openBackgroundEditor(<%= bg.id %>)">编辑</button>
+          <div class="layout-drag-zone" ondblclick="openBackgroundEditor(<%= bg.id %>)">
+            <div class="layout-block-head">
+              <strong>背景：<%= bg.name || ('背景' + bg.id) %></strong>
+              <span class="status-badge <%= bg.enabled ? 'ok' : 'off' %>"><%= bg.enabled ? (bg.is_fixed ? '固定' : '启用') : '停用' %></span>
+            </div>
+            <div class="layout-block-meta"><%= bg.map_width %>×<%= bg.map_height %> @ (<%= bg.map_x %>, <%= bg.map_y %>)</div>
+          </div>
+          <button class="layout-handle" type="button" aria-label="调整尺寸"></button>
+        </article>
+      <% }) %>
+      <% venues.forEach(function(venue) { %>
+        <article class="layout-block" data-id="<%= venue.id %>" style="left:<%= venue.map_x %>px;top:<%= venue.map_y %>px;width:<%= venue.map_width %>px;height:<%= venue.map_height %>px;">
+          <input type="checkbox" class="layout-block-check" style="position:absolute;top:2px;left:2px;z-index:10;" />
+          <div class="layout-block-bg" style="<%= venue.image_path ? 'background-image:url(' + venue.image_path + ');' : '' %>"></div>
+          <div class="layout-block-overlay"></div>
+          <div class="layout-drag-zone">
+            <div class="layout-block-head">
+              <strong><%= venue.name %></strong>
+              <span class="status-badge <%= venue.enabled ? 'ok' : 'off' %>"><%= venue.enabled ? '启用' : '停用' %></span>
+            </div>
+            <div class="layout-block-meta"><%= venue.map_width %>×<%= venue.map_height %> @ (<%= venue.map_x %>, <%= venue.map_y %>)</div>
+          </div>
+          <% if (venue.elements && venue.elements.length) { %>
+            <% venue.elements.forEach(function(element) { %>
+              <span class="layout-pin <%= element.enabled ? '' : 'is-disabled' %>" style="left:<%= element.pos_x %>px;top:<%= element.pos_y %>px;width:<%= element.box_width %>px;height:<%= element.box_height %>px;" title="<%= element.element_name %>"><%= element.element_name.slice(0, 2) %></span>
+            <% }) %>
+          <% } %>
+          <button class="layout-handle" type="button" aria-label="调整尺寸"></button>
+        </article>
+      <% }) %>
+    </div>
+  </div>
+</section>
+
+<!-- 场地卡片网格 + 侧边编辑面板 -->
+<section class="card" style="margin-bottom:20px;">
+  <div class="section-head">
+    <div>
+      <div class="eyebrow">场地列表</div>
+      <h3>点击卡片编辑详细信息</h3>
+    </div>
+    <button class="btn primary" type="button" onclick="document.getElementById('addVenuePanel').classList.toggle('open')">+ 新增场地</button>
+  </div>
+
+  <!-- 新增场地面板（默认隐藏） -->
+  <div id="addVenuePanel" class="venue-slide-panel">
+    <form method="post" action="/admin/venues/add" enctype="multipart/form-data" class="form-grid compact-venue-form venue-hotspot-form" data-form-label="新增场地">
+      <h4 style="grid-column:1/-1;margin:0 0 4px 0;">新增场地</h4>
+      <label><span>名称 *</span><input type="text" name="name" required placeholder="如：东门" /></label>
+      <label><span>小班名额</span><input type="number" name="capSmall" value="1" min="0" /></label>
+      <label><span>中班名额</span><input type="number" name="capMiddle" value="2" min="0" /></label>
+      <label><span>大班名额</span><input type="number" name="capLarge" value="2" min="0" /></label>
+      <label><span>排序</span><input type="number" name="sortOrder" value="1" /></label>
+      <label><span>背景图</span><input type="file" name="image" accept="image/*" /></label>
+      <input type="hidden" name="hotspotPoints" value="[]" data-hotspot-points />
+      <input type="hidden" name="hotspotHintX" value="" data-hotspot-hint-x />
+      <input type="hidden" name="hotspotHintY" value="" data-hotspot-hint-y />
+      <input type="hidden" name="hotspotHintLabel" value="" data-hotspot-hint-label />
+      <input type="hidden" name="hotspotHintLabelSize" value="14" data-hotspot-hint-label-size />
+      <input type="hidden" name="hotspotHintColor" value="#2563eb" data-hotspot-hint-color />
+      <input type="hidden" name="hotspotHintSize" value="28" data-hotspot-hint-size />
+      <input type="hidden" name="hotspotHintLength" value="54" data-hotspot-hint-length />
+      <input type="hidden" name="hotspotHintBounceMs" value="1500" data-hotspot-hint-bounce />
+      <label><span>全屏场景图</span><input type="file" name="detailImage" accept="image/*" /></label>
+      <label><span>场景宽(px)</span><input type="number" name="detailViewWidth" value="960" min="480" max="1600" /></label>
+      <label><span>场景高(px)</span><input type="number" name="detailViewHeight" value="640" min="320" max="1200" /></label>
+      <div class="venue-hotspot-field" style="grid-column:1/-1;">
+        <div class="venue-hotspot-field-head">
+          <strong>背景热区</strong>
+          <button class="btn small" type="button" onclick="openHotspotEditor(this)">在背景上绘制</button>
+        </div>
+        <div class="muted venue-hotspot-summary" data-hotspot-summary>未绘制热区，将继续使用普通矩形布局。</div>
+        <div class="muted" style="margin-top:6px;font-size:12px;">箭头文字、颜色、大小、长度和跳动频率统一在这个弹窗里调整。</div>
+      </div>
+      <label><span>游戏材料</span><input type="text" name="equipment" placeholder="如：攀爬架、平衡木、秋千" /></label>
+      <div style="grid-column:1/-1;"><label><span>小班模块说明</span><textarea name="playDescSmall" rows="2"></textarea></label></div>
+      <div style="grid-column:1/-1;"><label><span>小班玩法图片</span><input type="file" name="playImagesSmall" accept="image/*" multiple /></label></div>
+      <div style="grid-column:1/-1;"><label><span>中大班模块说明</span><textarea name="playDescMl" rows="2"></textarea></label></div>
+      <div style="grid-column:1/-1;"><label><span>中大班玩法图片</span><input type="file" name="playImagesMl" accept="image/*" multiple /></label></div>
+      <div class="venue-hotspot-field" style="grid-column:1/-1;">
+        <div class="venue-hotspot-field-head">
+          <strong>大循环运动指导</strong>
+          <span class="muted">技能分级指导需要先创建场地后，再到编辑面板中逐项添加。</span>
+        </div>
+      </div>
+      <label><span>循环示意图</span><input type="file" name="loopGuideImage" accept="image/*" multiple /></label>
+      <label><span>指导站位图</span><input type="file" name="loopGuideStationImage" accept="image/*" multiple /></label>
+      <label><span>指导视频</span><input type="file" name="loopGuideVideo" accept="video/*" multiple /></label>
+      <label><span>视频自动播放</span><select name="loopGuideVideoAutoplay"><option value="0">否</option><option value="1">是</option></select></label>
+      <div style="grid-column:1/-1;"><label><span>小班大循环指导</span><textarea name="loopGuideDescSmall" rows="3" placeholder="填写循环路线、教师站位和安全指导要点"></textarea></label></div>
+      <div style="grid-column:1/-1;"><label><span>中大班大循环指导</span><textarea name="loopGuideDescMl" rows="3" placeholder="填写循环路线、站位分工和提升要求"></textarea></label></div>
+      <button class="btn primary" type="submit">添加场地</button>
+    </form>
+  </div>
+
+  <div class="venue-grid">
+    <% venues.forEach(function(venue, vi) { %>
+      <div class="venue-card" data-venue-id="<%= venue.id %>" onclick="openVenueEditor(<%= venue.id %>)">
+        <div class="venue-card-thumb" style="<%= venue.image_path ? 'background-image:url(' + venue.image_path + ')' : '' %>">
+          <% if (!venue.image_path) { %><span class="venue-card-no-img"><%= venue.name.slice(0,2) %></span><% } %>
+        </div>
+        <div class="venue-card-body">
+          <div class="venue-card-title"><%= venue.name %></div>
+          <div class="venue-card-info">
+            <span class="status-badge <%= venue.enabled ? 'ok' : 'off' %>" style="font-size:11px;"><%= venue.enabled ? '启用' : '停用' %></span>
+            <span class="muted" style="font-size:11px;">小<%= venue.cap_small %> 中<%= venue.cap_middle %> 大<%= venue.cap_large %></span>
+          </div>
+          <% if (venue.equipment) { %><div class="venue-card-equip muted" style="font-size:11px;margin-top:4px;">🎮 <%= venue.equipment %></div><% } %>
+        </div>
+      </div>
+    <% }) %>
+  </div>
+</section>
+
+<!-- 右侧滑出编辑面板 -->
+<% } %>
+<div id="venueEditorOverlay" class="venue-editor-overlay" onclick="closeVenueEditor()"></div>
+<div id="venueEditorDrawer" class="venue-editor-drawer">
+  <div class="venue-editor-header">
+    <h3 id="venueEditorTitle">编辑场地</h3>
+    <button class="btn small" type="button" onclick="closeVenueEditor()">✕ 关闭</button>
+  </div>
+  <div id="venueEditorContent" class="venue-editor-body">
+    <!-- JS 动态填充 -->
+  </div>
+</div>
+
+<div id="hotspotEditorOverlay" class="modal-overlay hotspot-editor-overlay" style="display:none;">
+  <div class="modal-box hotspot-editor-modal">
+    <div class="modal-header">
+      <div>
+        <h3 id="hotspotEditorTitle">编辑背景热区</h3>
+        <div class="muted" id="hotspotEditorDesc">在背景图上点击添加顶点，拖动圆点可微调。</div>
+      </div>
+      <button class="modal-close" type="button" onclick="closeHotspotEditor()">&times;</button>
+    </div>
+    <div class="modal-body hotspot-editor-body">
+      <div class="hotspot-editor-toolbar">
+        <button class="btn small primary" type="button" id="hotspotModeDrawBtn">绘制顶点</button>
+        <button class="btn small" type="button" id="hotspotModeHintBtn">放置提示按钮</button>
+        <button class="btn small" type="button" id="hotspotUndoBtn">撤销一点</button>
+        <button class="btn small" type="button" id="hotspotClearBtn">清空热区</button>
+        <button class="btn small" type="button" id="hotspotAutoHintBtn">按钮放到中心</button>
+        <span class="muted" id="hotspotPointCount">0 个顶点</span>
+      </div>
+      <div class="hotspot-editor-style-grid">
+        <label><span>箭头文字</span><input id="hotspotStyleLabel" type="text" value="" placeholder="如：模块4" /></label>
+        <label><span>文字大小</span><input id="hotspotStyleLabelSize" type="number" value="14" min="10" max="36" /></label>
+        <label><span>箭头颜色</span><input id="hotspotStyleColor" type="color" value="#2563eb" /></label>
+        <label><span>箭头大小</span><input id="hotspotStyleSize" type="number" value="28" min="12" max="96" /></label>
+        <label><span>箭头长度</span><input id="hotspotStyleLength" type="number" value="54" min="16" max="200" /></label>
+        <label><span>跳动频率</span><input id="hotspotStyleBounce" type="number" value="1500" min="400" max="4000" step="50" /></label>
+      </div>
+      <div class="hotspot-zoom-panel">
+        <span class="muted">查看比例</span>
+        <div class="hotspot-zoom-controls">
+          <button class="btn small" type="button" data-hotspot-zoom="fit">适应全图</button>
+          <button class="btn small" type="button" data-hotspot-zoom="1">100%</button>
+          <button class="btn small" type="button" data-hotspot-zoom="0.9">90%</button>
+          <button class="btn small" type="button" data-hotspot-zoom="0.8">80%</button>
+          <button class="btn small" type="button" data-hotspot-zoom="0.7">70%</button>
+        </div>
+      </div>
+      <div class="hotspot-editor-stage-wrap">
+        <div
+          id="hotspotEditorStage"
+          class="hotspot-editor-stage"
+          data-board-width="<%= layoutBoardWidth %>"
+          data-board-height="<%= layoutBoardHeight %>"
+          data-base-width="<%= layoutBoardWidth %>"
+          data-base-height="<%= layoutBoardHeight %>"
+          style="width:<%= layoutBoardWidth %>px;height:<%= layoutBoardHeight %>px;"
+        >
+          <% (backgrounds || []).forEach(function(bg) { %>
+            <div
+              class="venue-background-layer <%= bg.is_fixed ? 'is-fixed' : '' %>"
+              data-bg-id="<%= bg.id %>"
+              data-original-x="<%= bg.map_x %>"
+              data-original-y="<%= bg.map_y %>"
+              data-original-width="<%= bg.map_width %>"
+              data-original-height="<%= bg.map_height %>"
+              data-enabled="<%= bg.enabled ? 1 : 0 %>"
+              data-has-image="<%= bg.image_path ? 1 : 0 %>"
+              style="left:<%= bg.map_x %>px;top:<%= bg.map_y %>px;width:<%= bg.map_width %>px;height:<%= bg.map_height %>px;z-index:<%= 1 + (bg.sort_order || 1) %>;"
+            >
+              <div class="venue-background-image" style="<%= bg.image_path ? 'background-image:url(' + bg.image_path + ');' : '' %>"></div>
+            </div>
+          <% }) %>
+          <svg id="hotspotEditorSvg" class="hotspot-editor-svg" viewBox="0 0 <%= layoutBoardWidth %> <%= layoutBoardHeight %>" preserveAspectRatio="none">
+            <g id="hotspotExistingGroup"></g>
+            <polygon id="hotspotDraftPolygon" class="hotspot-editor-polygon" points=""></polygon>
+            <polyline id="hotspotDraftPolyline" class="hotspot-editor-polyline" points=""></polyline>
+            <g id="hotspotDraftPoints"></g>
+          </svg>
+          <button id="hotspotDraftHint" class="venue-hotspot-hint hotspot-editor-hint" type="button" aria-label="箭头提示">
+            <span class="venue-hotspot-hint-label" id="hotspotDraftHintLabel">模块</span>
+          </button>
+        </div>
+      </div>
+      <div class="hotspot-editor-footer">
+        <div class="muted" id="hotspotEditorMeta">点击背景即可落点，至少 3 个点形成热区。</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn" type="button" onclick="closeHotspotEditor()">取消</button>
+          <button class="btn primary" type="button" id="hotspotSaveBtn">保存热区</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 隐藏的编辑表单模板（每个场地一份） -->
+<% venues.forEach(function(venue) { %>
+  <template id="venueForm_<%= venue.id %>">
+    <% const elementStageWidth = Math.max(120, Number(venue.map_width || venue.image_width || 280)); %>
+    <% const elementStageHeight = Math.max(120, Number(venue.map_height || venue.image_height || 180)); %>
+    <% const elementStageImage = venue.detail_image_path || venue.image_path || ''; %>
+    <form method="post" action="/admin/venues/<%= venue.id %>/edit" enctype="multipart/form-data" class="form-grid compact-venue-form venue-hotspot-form" data-form-label="<%= venue.name %>" data-venue-id="<%= venue.id %>">
+      <label><span>名称</span><input type="text" name="name" value="<%= venue.name %>" required /></label>
+      <label><span>小班名额</span><input type="number" name="capSmall" value="<%= venue.cap_small %>" min="0" /></label>
+      <label><span>中班名额</span><input type="number" name="capMiddle" value="<%= venue.cap_middle %>" min="0" /></label>
+      <label><span>大班名额</span><input type="number" name="capLarge" value="<%= venue.cap_large %>" min="0" /></label>
+      <label><span>排序</span><input type="number" name="sortOrder" value="<%= venue.sort_order %>" /></label>
+      <label><span>更换背景图</span><input type="file" name="image" accept="image/*" /></label>
+      <label><span>图片宽(px)</span><input type="number" name="imageWidth" value="<%= venue.image_width || 280 %>" /></label>
+      <label><span>图片高(px)</span><input type="number" name="imageHeight" value="<%= venue.image_height || 180 %>" /></label>
+      <input type="hidden" name="hotspotPoints" value="<%= toJson(venue.hotspot_points) %>" data-hotspot-points />
+      <input type="hidden" name="hotspotHintX" value="<%= venue.hotspot_hint_x == null ? '' : venue.hotspot_hint_x %>" data-hotspot-hint-x />
+      <input type="hidden" name="hotspotHintY" value="<%= venue.hotspot_hint_y == null ? '' : venue.hotspot_hint_y %>" data-hotspot-hint-y />
+      <input type="hidden" name="hotspotHintLabel" value="<%= venue.hotspot_hint_label || venue.name %>" data-hotspot-hint-label />
+      <input type="hidden" name="hotspotHintLabelSize" value="<%= venue.hotspot_hint_label_size || 14 %>" data-hotspot-hint-label-size />
+      <input type="hidden" name="hotspotHintColor" value="<%= venue.hotspot_hint_color || '#2563eb' %>" data-hotspot-hint-color />
+      <input type="hidden" name="hotspotHintSize" value="<%= venue.hotspot_hint_size || 28 %>" data-hotspot-hint-size />
+      <input type="hidden" name="hotspotHintLength" value="<%= venue.hotspot_hint_length || 54 %>" data-hotspot-hint-length />
+      <input type="hidden" name="hotspotHintBounceMs" value="<%= venue.hotspot_hint_bounce_ms || 1500 %>" data-hotspot-hint-bounce />
+      <label><span>更新场景图</span><input type="file" name="detailImage" accept="image/*" /></label>
+      <label><span>场景宽(px)</span><input type="number" name="detailViewWidth" value="<%= venue.detail_view_width || 960 %>" min="480" max="1600" /></label>
+      <label><span>场景高(px)</span><input type="number" name="detailViewHeight" value="<%= venue.detail_view_height || 640 %>" min="320" max="1200" /></label>
+      <div class="venue-hotspot-field" style="grid-column:1/-1;">
+        <div class="venue-hotspot-field-head">
+          <strong>背景热区</strong>
+          <button class="btn small" type="button" onclick="openHotspotEditor(this)">在背景上绘制</button>
+        </div>
+        <div class="muted venue-hotspot-summary" data-hotspot-summary>
+          <% if (venue.hotspot_points && venue.hotspot_points.length >= 3) { %>
+            已绘制 <%= venue.hotspot_points.length %> 个顶点，提示按钮坐标：(<%= venue.hotspot_hint_x == null ? '-' : venue.hotspot_hint_x %>, <%= venue.hotspot_hint_y == null ? '-' : venue.hotspot_hint_y %>)
+          <% } else { %>
+            未绘制热区，将继续使用普通矩形布局。
+          <% } %>
+        </div>
+        <div class="muted" style="margin-top:6px;font-size:12px;">箭头文字和样式请在“在背景上绘制”弹窗中统一调整。</div>
+        <% if (venue.detail_image_path) { %>
+          <div class="venue-hotspot-scene-preview">
+            <img src="<%= venue.detail_image_path %>" alt="<%= venue.name %> 场景图" />
+          </div>
+        <% } %>
+      </div>
+      <label style="grid-column:1/-1;"><span>游戏材料</span><input type="text" name="equipment" value="<%= venue.equipment || '' %>" placeholder="如：攀爬架、平衡木、秋千" /></label>
+      <div style="grid-column:1/-1;"><label><span>小班模块说明</span><textarea name="playDescSmall" rows="2"><%= venue.play_desc_small || '' %></textarea></label></div>
+      <div style="grid-column:1/-1;">
+        <label><span>小班玩法图片</span><input type="file" name="playImagesSmall" accept="image/*" multiple /></label>
+        <% const pis = (function(){ try { return JSON.parse(venue.play_images_small || '[]'); } catch(e) { return []; } })(); %>
+        <% if (pis.length) { %>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">
+            <% pis.forEach(function(img) { %>
+              <div style="position:relative;">
+                <img src="<%= img %>" style="width:60px;height:60px;object-fit:cover;border-radius:6px;" />
+                <label style="position:absolute;top:-4px;right:-4px;background:#ff3b30;color:#fff;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;font-size:10px;cursor:pointer;" title="删除"><input type="checkbox" name="removePlayImagesSmall" value="<%= img %>" style="display:none" />✕</label>
+              </div>
+            <% }) %>
+          </div>
+          <div class="muted" style="font-size:11px;margin-top:4px;">点 ✕ 标记删除，保存后生效</div>
+        <% } %>
+      </div>
+      <div style="grid-column:1/-1;"><label><span>中大班模块说明</span><textarea name="playDescMl" rows="2"><%= venue.play_desc_ml || '' %></textarea></label></div>
+      <div style="grid-column:1/-1;">
+        <label><span>中大班玩法图片</span><input type="file" name="playImagesMl" accept="image/*" multiple /></label>
+        <% const pim = (function(){ try { return JSON.parse(venue.play_images_ml || '[]'); } catch(e) { return []; } })(); %>
+        <% if (pim.length) { %>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">
+            <% pim.forEach(function(img) { %>
+              <div style="position:relative;">
+                <img src="<%= img %>" style="width:60px;height:60px;object-fit:cover;border-radius:6px;" />
+                <label style="position:absolute;top:-4px;right:-4px;background:#ff3b30;color:#fff;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;font-size:10px;cursor:pointer;" title="删除"><input type="checkbox" name="removePlayImagesMl" value="<%= img %>" style="display:none" />✕</label>
+              </div>
+            <% }) %>
+          </div>
+          <div class="muted" style="font-size:11px;margin-top:4px;">点 ✕ 标记删除，保存后生效</div>
+        <% } %>
+      </div>
+      <div class="venue-hotspot-field" style="grid-column:1/-1;">
+        <div class="venue-hotspot-field-head">
+          <strong>大循环运动指导</strong>
+          <span class="muted">在前台“运动资源与指导”中作为独立入口展示。</span>
+        </div>
+      </div>
+      <label><span>更新循环示意图</span><input type="file" name="loopGuideImage" accept="image/*" multiple /></label>
+      <label><span>更新指导站位图</span><input type="file" name="loopGuideStationImage" accept="image/*" multiple /></label>
+      <label><span>更新指导视频</span><input type="file" name="loopGuideVideo" accept="video/*" multiple /></label>
+      <label><span>视频自动播放</span><select name="loopGuideVideoAutoplay"><option value="0" <%= !venue.loop_guide_video_autoplay ? 'selected' : '' %>>否</option><option value="1" <%= venue.loop_guide_video_autoplay ? 'selected' : '' %>>是</option></select></label>
+      <% const venueLoopGuideImages = mediaList(venue.loop_guide_images, venue.loop_guide_image_path); %>
+      <% const venueLoopGuideStationImages = mediaList(venue.loop_guide_station_images, venue.loop_guide_station_image_path); %>
+      <% const venueLoopGuideVideos = mediaList(venue.loop_guide_videos, venue.loop_guide_video_path); %>
+      <% if (venueLoopGuideImages.length) { %>
+        <div class="venue-hotspot-scene-preview">
+          <div class="muted" style="margin-bottom:8px;">当前循环示意图（可多选删除）</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <% venueLoopGuideImages.forEach(function(item) { %>
+              <label style="display:flex;flex-direction:column;gap:8px;max-width:220px;">
+                <img src="<%= item %>" alt="<%= venue.name %> 循环示意图" />
+                <span class="muted" style="display:inline-flex;gap:6px;align-items:center;"><input type="checkbox" name="removeLoopGuideImages" value="<%= item %>" /> 删除这张</span>
+              </label>
+            <% }) %>
+          </div>
+        </div>
+      <% } %>
+      <% if (venueLoopGuideStationImages.length) { %>
+        <div class="venue-hotspot-scene-preview">
+          <div class="muted" style="margin-bottom:8px;">当前指导站位图（可多选删除）</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <% venueLoopGuideStationImages.forEach(function(item) { %>
+              <label style="display:flex;flex-direction:column;gap:8px;max-width:220px;">
+                <img src="<%= item %>" alt="<%= venue.name %> 指导站位图" />
+                <span class="muted" style="display:inline-flex;gap:6px;align-items:center;"><input type="checkbox" name="removeLoopGuideStationImages" value="<%= item %>" /> 删除这张</span>
+              </label>
+            <% }) %>
+          </div>
+        </div>
+      <% } %>
+      <% if (venueLoopGuideVideos.length) { %>
+        <div class="venue-hotspot-scene-preview">
+          <div class="muted" style="margin-bottom:8px;">当前指导视频（可多选删除）</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <% venueLoopGuideVideos.forEach(function(item) { %>
+              <label style="display:flex;flex-direction:column;gap:8px;max-width:260px;">
+                <video src="<%= item %>" controls style="width:100%;border-radius:12px;background:#0f172a;"></video>
+                <span class="muted" style="display:inline-flex;gap:6px;align-items:center;"><input type="checkbox" name="removeLoopGuideVideos" value="<%= item %>" /> 删除这段</span>
+              </label>
+            <% }) %>
+          </div>
+        </div>
+      <% } %>
+      <div style="grid-column:1/-1;"><label><span>小班大循环指导</span><textarea name="loopGuideDescSmall" rows="3"><%= venue.loop_guide_desc_small || '' %></textarea></label></div>
+      <div style="grid-column:1/-1;"><label><span>中大班大循环指导</span><textarea name="loopGuideDescMl" rows="3"><%= venue.loop_guide_desc_ml || '' %></textarea></label></div>
+      <div class="tool-row"><button class="btn primary" type="submit">保存</button></div>
+    </form>
+
+    <div style="border-top:1px solid var(--border);margin-top:16px;padding-top:16px;">
+      <strong style="font-size:13px;">运动资源与指导</strong>
+      <div class="muted" style="margin-top:6px;font-size:12px;">右侧导航中的“技能分级指导”内容在这里维护。小班前台显示基础级，若额外等级选择为基础级2也会显示；中大班会显示基础级、提升级、额外等级和幼小衔接指标。</div>
+
+      <% if (venue.skillGuides && venue.skillGuides.length) { %>
+        <% venue.skillGuides.forEach(function(guide) { %>
+          <details style="margin-top:10px;background:var(--bg);border-radius:12px;padding:10px 14px;">
+            <summary style="cursor:pointer;font-size:13px;font-weight:600;"><%= guide.title %> <span class="status-badge <%= guide.enabled ? 'ok' : 'off' %>" style="font-size:10px;"><%= guide.enabled ? '启用' : '停用' %></span></summary>
+            <form method="post" action="/admin/venues/skill-guides/<%= guide.id %>/edit" enctype="multipart/form-data" class="form-grid compact-venue-form" style="margin-top:10px;">
+              <label><span>技能分类名称</span><input type="text" name="title" value="<%= guide.title %>" required /></label>
+              <label><span>排序</span><input type="number" name="sortOrder" value="<%= guide.sort_order || 1 %>" min="1" /></label>
+              <label><span>状态</span><select name="enabled"><option value="1" <%= guide.enabled ? 'selected' : '' %>>启用</option><option value="0" <%= !guide.enabled ? 'selected' : '' %>>停用</option></select></label>
+              <div class="venue-hotspot-field" style="grid-column:1/-1;"><div class="venue-hotspot-field-head"><strong>基础级</strong><span class="muted">小班只显示这一层。</span></div></div>
+              <div style="grid-column:1/-1;"><label><span>基础级技能名称</span><textarea name="basicSkillNames" rows="2"><%= guide.basic_skill_names || '' %></textarea></label></div>
+              <div style="grid-column:1/-1;"><label><span>基础级对应器械</span><textarea name="basicEquipment" rows="2"><%= guide.basic_equipment || '' %></textarea></label></div>
+              <div style="grid-column:1/-1;"><label><span>基础级动作要领</span><textarea name="basicActionPoints" rows="4"><%= guide.basic_action_points || '' %></textarea></label></div>
+              <div style="grid-column:1/-1;"><label><span>基础级安全指导要点</span><textarea name="basicSafetyPoints" rows="4"><%= guide.basic_safety_points || '' %></textarea></label></div>
+              <label><span>基础级配图</span><input type="file" name="basicImage" accept="image/*" multiple /></label>
+              <label><span>基础级视频</span><input type="file" name="basicVideo" accept="video/*" multiple /></label>
+              <label><span>基础级视频自动播放</span><select name="basicVideoAutoplay"><option value="0" <%= !guide.basic_video_autoplay ? 'selected' : '' %>>否</option><option value="1" <%= guide.basic_video_autoplay ? 'selected' : '' %>>是</option></select></label>
+              <% const guideBasicImages = mediaList(guide.basic_image_paths, guide.basic_image_path); %>
+              <% const guideBasicVideos = mediaList(guide.basic_video_paths, guide.basic_video_path); %>
+              <% if (guideBasicImages.length) { %>
+                <div class="venue-hotspot-scene-preview">
+                  <div class="muted" style="margin-bottom:8px;">当前基础级配图（可多选删除）</div>
+                  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <% guideBasicImages.forEach(function(item) { %>
+                      <label style="display:flex;flex-direction:column;gap:8px;max-width:220px;">
+                        <img src="<%= item %>" alt="<%= guide.title %> 基础级配图" />
+                        <span class="muted" style="display:inline-flex;gap:6px;align-items:center;"><input type="checkbox" name="removeBasicImages" value="<%= item %>" /> 删除这张</span>
+                      </label>
+                    <% }) %>
+                  </div>
+                </div>
+              <% } %>
+              <% if (guideBasicVideos.length) { %>
+                <div class="venue-hotspot-scene-preview">
+                  <div class="muted" style="margin-bottom:8px;">当前基础级视频（可多选删除）</div>
+                  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <% guideBasicVideos.forEach(function(item) { %>
+                      <label style="display:flex;flex-direction:column;gap:8px;max-width:260px;">
+                        <video src="<%= item %>" controls style="width:100%;border-radius:12px;background:#0f172a;"></video>
+                        <span class="muted" style="display:inline-flex;gap:6px;align-items:center;"><input type="checkbox" name="removeBasicVideos" value="<%= item %>" /> 删除这段</span>
+                      </label>
+                    <% }) %>
+                  </div>
+                </div>
+              <% } %>
+
+              <div class="venue-hotspot-field" style="grid-column:1/-1;"><div class="venue-hotspot-field-head"><strong>提升级</strong><span class="muted">仅中大班前台展示。</span></div></div>
+              <div style="grid-column:1/-1;"><label><span>提升级技能名称</span><textarea name="advancedSkillNames" rows="2"><%= guide.advanced_skill_names || '' %></textarea></label></div>
+              <div style="grid-column:1/-1;"><label><span>提升级对应器械</span><textarea name="advancedEquipment" rows="2"><%= guide.advanced_equipment || '' %></textarea></label></div>
+              <div style="grid-column:1/-1;"><label><span>提升级动作要领</span><textarea name="advancedActionPoints" rows="4"><%= guide.advanced_action_points || '' %></textarea></label></div>
+              <div style="grid-column:1/-1;"><label><span>提升级安全指导要点</span><textarea name="advancedSafetyPoints" rows="4"><%= guide.advanced_safety_points || '' %></textarea></label></div>
+              <label><span>提升级配图</span><input type="file" name="advancedImage" accept="image/*" multiple /></label>
+              <label><span>提升级视频</span><input type="file" name="advancedVideo" accept="video/*" multiple /></label>
+              <label><span>提升级视频自动播放</span><select name="advancedVideoAutoplay"><option value="0" <%= !guide.advanced_video_autoplay ? 'selected' : '' %>>否</option><option value="1" <%= guide.advanced_video_autoplay ? 'selected' : '' %>>是</option></select></label>
+              <% const guideAdvancedImages = mediaList(guide.advanced_image_paths, guide.advanced_image_path); %>
+              <% const guideAdvancedVideos = mediaList(guide.advanced_video_paths, guide.advanced_video_path); %>
+              <% if (guideAdvancedImages.length) { %>
+                <div class="venue-hotspot-scene-preview">
+                  <div class="muted" style="margin-bottom:8px;">当前提升级配图（可多选删除）</div>
+                  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <% guideAdvancedImages.forEach(function(item) { %>
+                      <label style="display:flex;flex-direction:column;gap:8px;max-width:220px;">
+                        <img src="<%= item %>" alt="<%= guide.title %> 提升级配图" />
+                        <span class="muted" style="display:inline-flex;gap:6px;align-items:center;"><input type="checkbox" name="removeAdvancedImages" value="<%= item %>" /> 删除这张</span>
+                      </label>
+                    <% }) %>
+                  </div>
+                </div>
+              <% } %>
+              <% if (guideAdvancedVideos.length) { %>
+                <div class="venue-hotspot-scene-preview">
+                  <div class="muted" style="margin-bottom:8px;">当前提升级视频（可多选删除）</div>
+                  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <% guideAdvancedVideos.forEach(function(item) { %>
+                      <label style="display:flex;flex-direction:column;gap:8px;max-width:260px;">
+                        <video src="<%= item %>" controls style="width:100%;border-radius:12px;background:#0f172a;"></video>
+                        <span class="muted" style="display:inline-flex;gap:6px;align-items:center;"><input type="checkbox" name="removeAdvancedVideos" value="<%= item %>" /> 删除这段</span>
+                      </label>
+                    <% }) %>
+                  </div>
+                </div>
+              <% } %>
+              <% const guideExtraLevelType = guide.extra_level_type === 'basic' ? 'basic' : (guide.extra_level_type === 'advanced' ? 'advanced' : ''); %>
+              <% const guideExtraLevelLabel = guideExtraLevelType === 'basic' ? '基础级2' : (guideExtraLevelType === 'advanced' ? '提升级2' : '额外等级'); %>
+              <div class="venue-hotspot-field" style="grid-column:1/-1;"><div class="venue-hotspot-field-head"><strong>额外等级（可选）</strong><span class="muted">这里可以追加一个基础级2或提升级2。</span></div></div>
+              <label>
+                <span>额外等级类型</span>
+                <select name="extraLevelType">
+                  <option value="" <%= !guideExtraLevelType ? 'selected' : '' %>>暂不启用</option>
+                  <option value="advanced" <%= guideExtraLevelType === 'advanced' ? 'selected' : '' %>>提升级2</option>
+                  <option value="basic" <%= guideExtraLevelType === 'basic' ? 'selected' : '' %>>基础级2</option>
+                </select>
+              </label>
+              <div style="grid-column:1/-1;"><label><span><%= guideExtraLevelLabel %>技能名称</span><textarea name="extraSkillNames" rows="2"><%= guide.extra_skill_names || '' %></textarea></label></div>
+              <div style="grid-column:1/-1;"><label><span><%= guideExtraLevelLabel %>对应器械</span><textarea name="extraEquipment" rows="2"><%= guide.extra_equipment || '' %></textarea></label></div>
+              <div style="grid-column:1/-1;"><label><span><%= guideExtraLevelLabel %>动作要领</span><textarea name="extraActionPoints" rows="4"><%= guide.extra_action_points || '' %></textarea></label></div>
+              <div style="grid-column:1/-1;"><label><span><%= guideExtraLevelLabel %>安全指导要点</span><textarea name="extraSafetyPoints" rows="4"><%= guide.extra_safety_points || '' %></textarea></label></div>
+              <label><span><%= guideExtraLevelLabel %>配图</span><input type="file" name="extraImage" accept="image/*" multiple /></label>
+              <label><span><%= guideExtraLevelLabel %>视频</span><input type="file" name="extraVideo" accept="video/*" multiple /></label>
+              <label><span><%= guideExtraLevelLabel %>视频自动播放</span><select name="extraVideoAutoplay"><option value="0" <%= !guide.extra_video_autoplay ? 'selected' : '' %>>否</option><option value="1" <%= guide.extra_video_autoplay ? 'selected' : '' %>>是</option></select></label>
+              <% const guideExtraImages = mediaList(guide.extra_image_paths, guide.extra_image_path); %>
+              <% const guideExtraVideos = mediaList(guide.extra_video_paths, guide.extra_video_path); %>
+              <% if (guideExtraImages.length) { %>
+                <div class="venue-hotspot-scene-preview">
+                  <div class="muted" style="margin-bottom:8px;">当前<%= guideExtraLevelLabel %>配图（可多选删除）</div>
+                  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <% guideExtraImages.forEach(function(item) { %>
+                      <label style="display:flex;flex-direction:column;gap:8px;max-width:220px;">
+                        <img src="<%= item %>" alt="<%= guide.title %> <%= guideExtraLevelLabel %>配图" />
+                        <span class="muted" style="display:inline-flex;gap:6px;align-items:center;"><input type="checkbox" name="removeExtraImages" value="<%= item %>" /> 删除这张</span>
+                      </label>
+                    <% }) %>
+                  </div>
+                </div>
+              <% } %>
+              <% if (guideExtraVideos.length) { %>
+                <div class="venue-hotspot-scene-preview">
+                  <div class="muted" style="margin-bottom:8px;">当前<%= guideExtraLevelLabel %>视频（可多选删除）</div>
+                  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <% guideExtraVideos.forEach(function(item) { %>
+                      <label style="display:flex;flex-direction:column;gap:8px;max-width:260px;">
+                        <video src="<%= item %>" controls style="width:100%;border-radius:12px;background:#0f172a;"></video>
+                        <span class="muted" style="display:inline-flex;gap:6px;align-items:center;"><input type="checkbox" name="removeExtraVideos" value="<%= item %>" /> 删除这段</span>
+                      </label>
+                    <% }) %>
+                  </div>
+                </div>
+              <% } %>
+              <div style="grid-column:1/-1;"><label><span>幼小衔接指标</span><textarea name="bridgeIndicators" rows="4"><%= guide.bridge_indicators || '' %></textarea></label></div>
+              <div class="tool-row" style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button class="btn small primary" type="submit">保存技能指导</button>
+              </div>
+            </form>
+            <form method="post" action="/admin/venues/skill-guides/<%= guide.id %>/delete" class="inline-form" onsubmit="return confirm('删除该技能指导？')">
+              <button class="btn small" type="submit" style="color:#ff3b30;margin-top:8px;">删除技能指导</button>
+            </form>
+          </details>
+        <% }) %>
+      <% } %>
+
+      <details style="margin-top:10px;background:var(--bg);border-radius:12px;padding:10px 14px;">
+        <summary style="cursor:pointer;font-size:13px;font-weight:600;">+ 新增技能分级指导</summary>
+        <form method="post" action="/admin/venues/<%= venue.id %>/skill-guides/add" enctype="multipart/form-data" class="form-grid compact-venue-form" style="margin-top:10px;">
+          <label><span>技能分类名称</span><input type="text" name="title" required placeholder="如：投掷类技能" /></label>
+          <label><span>排序</span><input type="number" name="sortOrder" value="1" min="1" /></label>
+          <label><span>状态</span><select name="enabled"><option value="1">启用</option><option value="0">停用</option></select></label>
+          <div class="venue-hotspot-field" style="grid-column:1/-1;"><div class="venue-hotspot-field-head"><strong>基础级</strong><span class="muted">小班前台只显示基础级。</span></div></div>
+          <div style="grid-column:1/-1;"><label><span>基础级技能名称</span><textarea name="basicSkillNames" rows="2"></textarea></label></div>
+          <div style="grid-column:1/-1;"><label><span>基础级对应器械</span><textarea name="basicEquipment" rows="2"></textarea></label></div>
+          <div style="grid-column:1/-1;"><label><span>基础级动作要领</span><textarea name="basicActionPoints" rows="4"></textarea></label></div>
+          <div style="grid-column:1/-1;"><label><span>基础级安全指导要点</span><textarea name="basicSafetyPoints" rows="4"></textarea></label></div>
+          <label><span>基础级配图</span><input type="file" name="basicImage" accept="image/*" multiple /></label>
+          <label><span>基础级视频</span><input type="file" name="basicVideo" accept="video/*" multiple /></label>
+          <label><span>基础级视频自动播放</span><select name="basicVideoAutoplay"><option value="0">否</option><option value="1">是</option></select></label>
+
+          <div class="venue-hotspot-field" style="grid-column:1/-1;"><div class="venue-hotspot-field-head"><strong>提升级</strong><span class="muted">中大班可展示。</span></div></div>
+          <div style="grid-column:1/-1;"><label><span>提升级技能名称</span><textarea name="advancedSkillNames" rows="2"></textarea></label></div>
+          <div style="grid-column:1/-1;"><label><span>提升级对应器械</span><textarea name="advancedEquipment" rows="2"></textarea></label></div>
+          <div style="grid-column:1/-1;"><label><span>提升级动作要领</span><textarea name="advancedActionPoints" rows="4"></textarea></label></div>
+          <div style="grid-column:1/-1;"><label><span>提升级安全指导要点</span><textarea name="advancedSafetyPoints" rows="4"></textarea></label></div>
+          <label><span>提升级配图</span><input type="file" name="advancedImage" accept="image/*" multiple /></label>
+          <label><span>提升级视频</span><input type="file" name="advancedVideo" accept="video/*" multiple /></label>
+          <label><span>提升级视频自动播放</span><select name="advancedVideoAutoplay"><option value="0">否</option><option value="1">是</option></select></label>
+
+          <div class="venue-hotspot-field" style="grid-column:1/-1;"><div class="venue-hotspot-field-head"><strong>额外等级（可选）</strong><span class="muted">可新增一个基础级2或提升级2。</span></div></div>
+          <label>
+            <span>额外等级类型</span>
+            <select name="extraLevelType">
+              <option value="advanced">提升级2</option>
+              <option value="basic">基础级2</option>
+              <option value="">暂不启用</option>
+            </select>
+          </label>
+          <div style="grid-column:1/-1;"><label><span>额外等级技能名称</span><textarea name="extraSkillNames" rows="2"></textarea></label></div>
+          <div style="grid-column:1/-1;"><label><span>额外等级对应器械</span><textarea name="extraEquipment" rows="2"></textarea></label></div>
+          <div style="grid-column:1/-1;"><label><span>额外等级动作要领</span><textarea name="extraActionPoints" rows="4"></textarea></label></div>
+          <div style="grid-column:1/-1;"><label><span>额外等级安全指导要点</span><textarea name="extraSafetyPoints" rows="4"></textarea></label></div>
+          <label><span>额外等级配图</span><input type="file" name="extraImage" accept="image/*" multiple /></label>
+          <label><span>额外等级视频</span><input type="file" name="extraVideo" accept="video/*" multiple /></label>
+          <label><span>额外等级视频自动播放</span><select name="extraVideoAutoplay"><option value="0">否</option><option value="1">是</option></select></label>
+          <div style="grid-column:1/-1;"><label><span>幼小衔接指标</span><textarea name="bridgeIndicators" rows="4"></textarea></label></div>
+          <button class="btn small primary" type="submit">添加技能指导</button>
+        </form>
+      </details>
+    </div>
+
+    <div style="border-top:1px solid var(--border);margin-top:16px;padding-top:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <strong style="font-size:13px;">操作</strong>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <form method="post" action="/admin/venues/<%= venue.id %>/toggle" class="inline-form">
+          <button class="btn small" type="submit"><%= venue.enabled ? '停用' : '启用' %></button>
+        </form>
+        <form method="post" action="/admin/venues/<%= venue.id %>/delete" class="inline-form" onsubmit="return confirm('删除场地及相关标记？')">
+          <button class="btn small" type="submit" style="color:#ff3b30;">删除</button>
+        </form>
+      </div>
+    </div>
+
+    <% if (venue.elements && venue.elements.length) { %>
+    <div style="border-top:1px solid var(--border);margin-top:16px;padding-top:16px;">
+      <strong style="font-size:13px;">旧版地图标记（已停用）(<%= venue.elements.length %>)</strong>
+      <div class="muted" style="margin-top:6px;font-size:12px;">前台模块页已改为“运动资源与指导”导航，以下标记仅作为旧数据保留。</div>
+      <% venue.elements.forEach(function(element) { %>
+        <details style="margin-top:8px;background:var(--bg);border-radius:12px;padding:10px 14px;">
+          <summary style="cursor:pointer;font-size:13px;font-weight:500;"><%= element.element_name %> <span class="status-badge <%= element.enabled ? 'ok' : 'off' %>" style="font-size:10px;"><%= element.enabled ? '启用' : '停用' %></span></summary>
+          <form method="post" action="/admin/venues/elements/<%= element.id %>/edit" enctype="multipart/form-data" class="form-grid compact-venue-form venue-element-position-form" data-element-position-form style="margin-top:8px;">
+            <div class="venue-element-position-field" style="grid-column:1/-1;">
+              <div class="venue-hotspot-field-head">
+                <strong>拖拽定位</strong>
+                <span class="muted">直接拖动地图上的标记，坐标会自动回填。</span>
+              </div>
+              <div class="venue-element-stage" data-element-stage data-stage-width="<%= elementStageWidth %>" data-stage-height="<%= elementStageHeight %>" style="--stage-width:<%= elementStageWidth %>;--stage-height:<%= elementStageHeight %>;">
+                <% if (elementStageImage) { %>
+                  <div class="venue-element-stage-bg" style="background-image:url('<%= elementStageImage %>');"></div>
+                <% } else { %>
+                  <div class="venue-element-stage-empty">暂无可用于定位的场景图</div>
+                <% } %>
+                <button type="button" class="venue-element-stage-marker" data-element-marker aria-label="拖动标记">
+                  <span data-element-marker-label><%= element.element_name.slice(0, 2) %></span>
+                </button>
+              </div>
+            </div>
+            <label><span>名称</span><input type="text" name="elementName" value="<%= element.element_name %>" required data-element-name /></label>
+            <label><span>X</span><input type="number" name="posX" value="<%= element.pos_x %>" min="0" data-element-pos-x /></label>
+            <label><span>Y</span><input type="number" name="posY" value="<%= element.pos_y %>" min="0" data-element-pos-y /></label>
+            <label><span>宽</span><input type="number" name="boxWidth" value="<%= element.box_width %>" min="24" data-element-box-width /></label>
+            <label><span>高</span><input type="number" name="boxHeight" value="<%= element.box_height %>" min="24" data-element-box-height /></label>
+            <label><span>排序</span><input type="number" name="sortOrder" value="<%= element.sort_order || 1 %>" min="1" /></label>
+            <label><span>状态</span><select name="enabled"><option value="1" <%= element.enabled ? 'selected' : '' %>>启用</option><option value="0" <%= !element.enabled ? 'selected' : '' %>>停用</option></select></label>
+            <label><span>图标</span><input type="file" name="icon" accept="image/*" /></label>
+            <label><span>小班详情图</span><input type="file" name="detailImageSmall" accept="image/*" /></label>
+            <label><span>中大班详情图</span><input type="file" name="detailImageMl" accept="image/*" /></label>
+            <div style="grid-column:1/-1;"><label><span>小班说明</span><textarea name="detailDescSmall" rows="2"><%= element.detail_desc_small || '' %></textarea></label></div>
+            <div style="grid-column:1/-1;"><label><span>中大班说明</span><textarea name="detailDescMl" rows="2"><%= element.detail_desc_ml || '' %></textarea></label></div>
+            <div class="tool-row" style="display:flex;gap:6px;">
+              <button class="btn small primary" type="submit">保存</button>
+            </div>
+          </form>
+          <form method="post" action="/admin/venues/elements/<%= element.id %>/delete" class="inline-form" onsubmit="return confirm('删除该标记？')"><button class="btn small" type="submit" style="color:#ff3b30;margin-top:4px;">删除标记</button></form>
+        </details>
+      <% }) %>
+    </div>
+    <% } %>
+
+    <div style="border-top:1px solid var(--border);margin-top:16px;padding-top:16px;">
+      <details>
+        <summary style="cursor:pointer;font-size:13px;font-weight:600;">+ 新增旧版地图标记（可忽略）</summary>
+        <form method="post" action="/admin/venues/<%= venue.id %>/elements/add" enctype="multipart/form-data" class="form-grid compact-venue-form venue-element-position-form" data-element-position-form style="margin-top:8px;">
+          <div class="venue-element-position-field" style="grid-column:1/-1;">
+            <div class="venue-hotspot-field-head">
+              <strong>拖拽定位</strong>
+              <span class="muted">先拖出位置，再保存标记。</span>
+            </div>
+            <div class="venue-element-stage" data-element-stage data-stage-width="<%= elementStageWidth %>" data-stage-height="<%= elementStageHeight %>" style="--stage-width:<%= elementStageWidth %>;--stage-height:<%= elementStageHeight %>;">
+              <% if (elementStageImage) { %>
+                <div class="venue-element-stage-bg" style="background-image:url('<%= elementStageImage %>');"></div>
+              <% } else { %>
+                <div class="venue-element-stage-empty">暂无可用于定位的场景图</div>
+              <% } %>
+              <button type="button" class="venue-element-stage-marker" data-element-marker aria-label="拖动标记">
+                <span data-element-marker-label>新标记</span>
+              </button>
+            </div>
+          </div>
+          <label><span>标记名称</span><input type="text" name="elementName" required placeholder="如：攀爬区" data-element-name /></label>
+          <label><span>X</span><input type="number" name="posX" value="20" min="0" data-element-pos-x /></label>
+          <label><span>Y</span><input type="number" name="posY" value="20" min="0" data-element-pos-y /></label>
+          <label><span>宽</span><input type="number" name="boxWidth" value="44" min="24" data-element-box-width /></label>
+          <label><span>高</span><input type="number" name="boxHeight" value="44" min="24" data-element-box-height /></label>
+          <label><span>排序</span><input type="number" name="sortOrder" value="1" min="1" /></label>
+          <label><span>状态</span><select name="enabled"><option value="1">启用</option><option value="0">停用</option></select></label>
+          <label><span>图标</span><input type="file" name="icon" accept="image/*" /></label>
+          <label><span>小班详情图</span><input type="file" name="detailImageSmall" accept="image/*" /></label>
+          <label><span>中大班详情图</span><input type="file" name="detailImageMl" accept="image/*" /></label>
+          <div style="grid-column:1/-1;"><label><span>小班说明</span><textarea name="detailDescSmall" rows="2"></textarea></label></div>
+          <div style="grid-column:1/-1;"><label><span>中大班说明</span><textarea name="detailDescMl" rows="2"></textarea></label></div>
+          <button class="btn small primary" type="submit">添加标记</button>
+        </form>
+      </details>
+    </div>
+  </template>
+<% }) %>
+
+<% (backgrounds || []).forEach(function(bg) { %>
+<template id="backgroundForm_<%= bg.id %>">
+    <form method="post" action="/admin/venues/backgrounds/<%= bg.id %>/edit" enctype="multipart/form-data" class="form-grid compact-venue-form" data-background-form="edit">
+      <label><span>名称</span><input type="text" name="name" value="<%= bg.name || '' %>" /></label>
+      <label><span>X</span><input type="number" name="mapX" value="<%= bg.map_x %>" min="0" /></label>
+      <label><span>Y</span><input type="number" name="mapY" value="<%= bg.map_y %>" min="0" /></label>
+      <label><span>宽</span><input type="number" name="mapWidth" value="<%= bg.map_width %>" min="80" /></label>
+      <label><span>高</span><input type="number" name="mapHeight" value="<%= bg.map_height %>" min="80" /></label>
+      <label><span>层级</span><input type="number" name="sortOrder" value="<%= bg.sort_order || 1 %>" min="1" /></label>
+      <label><span>固定</span><select name="isFixed"><option value="0" <%= !bg.is_fixed ? 'selected' : '' %>>否</option><option value="1" <%= bg.is_fixed ? 'selected' : '' %>>是</option></select></label>
+      <label><span>状态</span><select name="enabled"><option value="1" <%= bg.enabled ? 'selected' : '' %>>启用</option><option value="0" <%= !bg.enabled ? 'selected' : '' %>>停用</option></select></label>
+      <% if (bg.image_path) { %>
+        <div class="venue-hotspot-scene-preview" style="grid-column:1/-1;">
+          <div class="muted" style="margin-bottom:8px;">当前背景图</div>
+          <img src="<%= bg.image_path %>" alt="<%= bg.name || ('背景' + bg.id) %>" data-background-preview />
+        </div>
+      <% } %>
+      <label style="grid-column:1/-1;"><span>更换背景图</span><input type="file" name="image" accept="image/*" data-background-image-input /></label>
+      <div class="muted" style="grid-column:1/-1;font-size:12px;">更换为横版图时，系统会自动按图片比例更新尺寸；如果希望它直接变成新的底图，点“按图片比例铺满画布”。</div>
+      <div class="tool-row" style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn small" type="button" onclick="fillBackgroundFormToBoard(this)">铺满当前画布</button>
+        <button class="btn small" type="button" onclick="fitBackgroundFormToImage(this)">按图片比例铺满画布</button>
+        <button class="btn primary" type="submit">保存背景层</button>
+      </div>
+    </form>
+    <div style="border-top:1px solid var(--border);margin-top:16px;padding-top:16px;display:flex;gap:8px;">
+      <form method="post" action="/admin/venues/backgrounds/<%= bg.id %>/delete" class="inline-form" onsubmit="return confirm('删除该背景层？')">
+        <button class="btn small" type="submit" style="color:#ff3b30;">删除背景层</button>
+      </form>
+    </div>
+  </template>
+<% }) %>
+
+<div id="roundEditorOverlay" class="modal-overlay" style="display:none;" onclick="if(event.target===this) closeRoundEditor()">
+  <div class="modal-box" style="width:min(92vw,640px);max-height:88vh;overflow:auto;">
+    <div class="modal-header" style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+      <div>
+        <h3 style="margin:0;">编辑预约轮次</h3>
+        <div id="roundEditorMeta" class="muted" style="margin-top:8px;"></div>
+      </div>
+      <button class="modal-close" type="button" onclick="closeRoundEditor()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <form id="roundEditorForm" method="post" action="" class="form-grid" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr));">
+        <label><span>活动日期</span><input type="date" name="roundDate" id="roundEditorDate" required /></label>
+        <label><span>开放时间</span><input type="datetime-local" name="openTime" id="roundEditorOpenTime" required /></label>
+        <label><span>截止时间</span><input type="datetime-local" name="closeTime" id="roundEditorCloseTime" /></label>
+        <div style="grid-column:1 / -1;padding:14px 16px;border-radius:16px;background:linear-gradient(180deg,#f7fbff,#f2f7fd);border:1px solid rgba(15,23,42,0.06);">
+          <div id="roundEditorStats" class="muted"></div>
+        </div>
+        <div style="grid-column:1 / -1;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;">
+          <button class="btn" type="button" onclick="closeRoundEditor()">取消</button>
+          <button class="btn primary" type="submit">保存轮次时间</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script id="venue-admin-config" type="application/json"><%- JSON.stringify(adminHotspotConfig) %></script>
+<script>
+  function openRoundEditor(data) {
+    var overlay = document.getElementById('roundEditorOverlay');
+    var form = document.getElementById('roundEditorForm');
+    if (!overlay || !form || !data || !data.id) return;
+    form.action = '/admin/venues/round/' + data.id + '/update';
+    if (form.elements.roundDate) form.elements.roundDate.value = data.roundDate || '';
+    if (form.elements.openTime) form.elements.openTime.value = data.openTime || '';
+    if (form.elements.closeTime) form.elements.closeTime.value = data.closeTime || '';
+    var meta = document.getElementById('roundEditorMeta');
+    if (meta) {
+      var statusText = data.status === 'open' ? '开放中' : (data.status === 'closed' ? '已关闭' : '待开放');
+      meta.textContent = '轮次状态：' + statusText + ' · 当前活动日期：' + (data.roundDate || '-');
+    }
+    var stats = document.getElementById('roundEditorStats');
+    if (stats) {
+      stats.textContent = '当前已有 ' + (data.totalCount || 0) + ' 条预约记录，其中确认 ' + (data.confirmedCount || 0) + ' 条、取消 ' + (data.cancelledCount || 0) + ' 条。修改时间后，轮次内的预约记录会保留。';
+    }
+    overlay.style.display = 'flex';
+  }
+
+  function closeRoundEditor() {
+    var overlay = document.getElementById('roundEditorOverlay');
+    if (overlay) overlay.style.display = 'none';
+  }
+
+  /* ── 场地编辑抽屉 ── */
+  function openVenueEditor(venueId) {
+    var tmpl = document.getElementById('venueForm_' + venueId);
+    if (!tmpl) return;
+    document.getElementById('venueEditorContent').innerHTML = tmpl.innerHTML;
+    document.getElementById('venueEditorOverlay').classList.add('open');
+    document.getElementById('venueEditorDrawer').classList.add('open');
+    refreshHotspotFormSummaries(document.getElementById('venueEditorContent'));
+    initElementPositionEditors(document.getElementById('venueEditorContent'));
+  }
+  function openBackgroundEditor(backgroundId) {
+    var tmpl = document.getElementById('backgroundForm_' + backgroundId);
+    if (!tmpl) return;
+    document.getElementById('venueEditorContent').innerHTML = tmpl.innerHTML;
+    initBackgroundImageForms(document.getElementById('venueEditorContent'));
+    document.getElementById('venueEditorOverlay').classList.add('open');
+    document.getElementById('venueEditorDrawer').classList.add('open');
+  }
+  function rememberBackgroundImageSize(form, width, height) {
+    if (!form || !(width > 0) || !(height > 0)) return;
+    form.dataset.imageNaturalWidth = String(Math.round(width));
+    form.dataset.imageNaturalHeight = String(Math.round(height));
+  }
+  function getBackgroundImageSize(form) {
+    if (!form) return null;
+    var width = Number(form.dataset.imageNaturalWidth || 0);
+    var height = Number(form.dataset.imageNaturalHeight || 0);
+    if (width > 0 && height > 0) {
+      return { width: width, height: height };
+    }
+    var preview = form.querySelector('[data-background-preview]');
+    if (preview && preview.naturalWidth > 0 && preview.naturalHeight > 0) {
+      rememberBackgroundImageSize(form, preview.naturalWidth, preview.naturalHeight);
+      return { width: preview.naturalWidth, height: preview.naturalHeight };
+    }
+    return null;
+  }
+  function readBackgroundImageFile(file, callback) {
+    if (!file || !callback) return;
+    var objectUrl = URL.createObjectURL(file);
+    var image = new Image();
+    image.onload = function() {
+      callback({ width: image.naturalWidth, height: image.naturalHeight });
+      URL.revokeObjectURL(objectUrl);
+    };
+    image.onerror = function() {
+      URL.revokeObjectURL(objectUrl);
+    };
+    image.src = objectUrl;
+  }
+  function fitBackgroundFormToImage(trigger) {
+    var form = trigger && trigger.closest ? trigger.closest('form') : null;
+    var canvas = document.getElementById('layoutCanvas');
+    if (!form || !canvas) return;
+    var size = getBackgroundImageSize(form);
+    if (!size) {
+      window.alert('请先选择背景图，或等待当前背景预览加载完成。');
+      return;
+    }
+    var boardWidth = parseInt(canvas.style.width, 10) || canvas.clientWidth || size.width;
+    var widthInput = form.querySelector('input[name="mapWidth"]');
+    var heightInput = form.querySelector('input[name="mapHeight"]');
+    var suggestedWidth = size.width > size.height ? Math.min(size.width, 1600) : 0;
+    var targetWidth = Math.max(80, Math.round(Math.max(boardWidth, Number(widthInput && widthInput.value) || 0, suggestedWidth)));
+    var targetHeight = Math.max(80, Math.round(targetWidth * size.height / Math.max(1, size.width)));
+    var xInput = form.querySelector('input[name="mapX"]');
+    var yInput = form.querySelector('input[name="mapY"]');
+    if (xInput) xInput.value = '0';
+    if (yInput) yInput.value = '0';
+    if (widthInput) widthInput.value = String(targetWidth);
+    if (heightInput) heightInput.value = String(targetHeight);
+  }
+  function initBackgroundImageForms(scope) {
+    (scope || document).querySelectorAll('[data-background-form]').forEach(function(form) {
+      if (form.dataset.backgroundFormReady === '1') return;
+      form.dataset.backgroundFormReady = '1';
+
+      var preview = form.querySelector('[data-background-preview]');
+      if (preview) {
+        if (preview.complete && preview.naturalWidth > 0 && preview.naturalHeight > 0) {
+          rememberBackgroundImageSize(form, preview.naturalWidth, preview.naturalHeight);
+        } else {
+          preview.addEventListener('load', function() {
+            rememberBackgroundImageSize(form, preview.naturalWidth, preview.naturalHeight);
+          });
+        }
+      }
+
+      var input = form.querySelector('[data-background-image-input]');
+      if (!input) return;
+      input.addEventListener('change', function() {
+        var file = input.files && input.files[0];
+        if (!file) return;
+        readBackgroundImageFile(file, function(size) {
+          rememberBackgroundImageSize(form, size.width, size.height);
+          fitBackgroundFormToImage(form);
+        });
+      });
+    });
+  }
+  function fillBackgroundFormToBoard(trigger) {
+    var form = trigger && trigger.closest ? trigger.closest('form') : null;
+    var canvas = document.getElementById('layoutCanvas');
+    if (!form || !canvas) return;
+    var width = parseInt(canvas.style.width, 10) || canvas.clientWidth || 0;
+    var height = parseInt(canvas.style.height, 10) || canvas.clientHeight || 0;
+    var xInput = form.querySelector('input[name="mapX"]');
+    var yInput = form.querySelector('input[name="mapY"]');
+    var widthInput = form.querySelector('input[name="mapWidth"]');
+    var heightInput = form.querySelector('input[name="mapHeight"]');
+    if (xInput) xInput.value = '0';
+    if (yInput) yInput.value = '0';
+    if (widthInput) widthInput.value = String(width);
+    if (heightInput) heightInput.value = String(height);
+  }
+  function closeVenueEditor() {
+    document.getElementById('venueEditorOverlay').classList.remove('open');
+    document.getElementById('venueEditorDrawer').classList.remove('open');
+  }
+  initBackgroundImageForms(document);
+
+  function initElementPositionEditors(scope) {
+    (scope || document).querySelectorAll('[data-element-position-form]').forEach(function(form) {
+      if (form.dataset.elementPositionReady === '1') return;
+      form.dataset.elementPositionReady = '1';
+
+      var stage = form.querySelector('[data-element-stage]');
+      var marker = form.querySelector('[data-element-marker]');
+      var nameInput = form.querySelector('[data-element-name]');
+      var xInput = form.querySelector('[data-element-pos-x]');
+      var yInput = form.querySelector('[data-element-pos-y]');
+      var widthInput = form.querySelector('[data-element-box-width]');
+      var heightInput = form.querySelector('[data-element-box-height]');
+      var label = form.querySelector('[data-element-marker-label]');
+      if (!stage || !marker || !xInput || !yInput || !widthInput || !heightInput) return;
+
+      var state = {
+        dragging: false,
+        offsetX: 0,
+        offsetY: 0
+      };
+
+      function clamp(value, min, max) {
+        return Math.max(min, Math.min(max, value));
+      }
+
+      function stageMetrics() {
+        return {
+          width: Math.max(1, Number(stage.dataset.stageWidth || 1)),
+          height: Math.max(1, Number(stage.dataset.stageHeight || 1))
+        };
+      }
+
+      function syncMarker() {
+        var metrics = stageMetrics();
+        var w = clamp(Math.round(Number(widthInput.value) || 44), 24, metrics.width);
+        var h = clamp(Math.round(Number(heightInput.value) || 44), 24, metrics.height);
+        var x = clamp(Math.round(Number(xInput.value) || 0), 0, Math.max(0, metrics.width - w));
+        var y = clamp(Math.round(Number(yInput.value) || 0), 0, Math.max(0, metrics.height - h));
+
+        xInput.value = String(x);
+        yInput.value = String(y);
+        widthInput.value = String(w);
+        heightInput.value = String(h);
+
+        marker.style.left = (x / metrics.width * 100) + '%';
+        marker.style.top = (y / metrics.height * 100) + '%';
+        marker.style.width = Math.max(4, w / metrics.width * 100) + '%';
+        marker.style.height = Math.max(4, h / metrics.height * 100) + '%';
+        if (label) {
+          var text = (nameInput && nameInput.value ? nameInput.value : '新标记').trim();
+          label.textContent = text.slice(0, 2) || '标记';
+        }
+      }
+
+      function coordsFromEvent(event) {
+        var rect = stage.getBoundingClientRect();
+        var metrics = stageMetrics();
+        var w = clamp(Math.round(Number(widthInput.value) || 44), 24, metrics.width);
+        var h = clamp(Math.round(Number(heightInput.value) || 44), 24, metrics.height);
+        return {
+          x: clamp(Math.round((event.clientX - rect.left) / rect.width * metrics.width - state.offsetX), 0, Math.max(0, metrics.width - w)),
+          y: clamp(Math.round((event.clientY - rect.top) / rect.height * metrics.height - state.offsetY), 0, Math.max(0, metrics.height - h))
+        };
+      }
+
+      marker.addEventListener('pointerdown', function(event) {
+        var rect = marker.getBoundingClientRect();
+        var metrics = stageMetrics();
+        state.dragging = true;
+        state.offsetX = (event.clientX - rect.left) / rect.width * Math.max(1, Number(widthInput.value) || 44);
+        state.offsetY = (event.clientY - rect.top) / rect.height * Math.max(1, Number(heightInput.value) || 44);
+        marker.setPointerCapture(event.pointerId);
+        event.preventDefault();
+      });
+
+      stage.addEventListener('pointerdown', function(event) {
+        if (event.target === marker || marker.contains(event.target)) return;
+        state.offsetX = Math.max(1, Number(widthInput.value) || 44) / 2;
+        state.offsetY = Math.max(1, Number(heightInput.value) || 44) / 2;
+        var coords = coordsFromEvent(event);
+        xInput.value = String(coords.x);
+        yInput.value = String(coords.y);
+        syncMarker();
+      });
+
+      marker.addEventListener('pointermove', function(event) {
+        if (!state.dragging) return;
+        var coords = coordsFromEvent(event);
+        xInput.value = String(coords.x);
+        yInput.value = String(coords.y);
+        syncMarker();
+      });
+
+      marker.addEventListener('pointerup', function(event) {
+        if (marker.hasPointerCapture && marker.hasPointerCapture(event.pointerId)) {
+          marker.releasePointerCapture(event.pointerId);
+        }
+        state.dragging = false;
+      });
+      marker.addEventListener('pointercancel', function(event) {
+        if (marker.hasPointerCapture && marker.hasPointerCapture(event.pointerId)) {
+          marker.releasePointerCapture(event.pointerId);
+        }
+        state.dragging = false;
+      });
+
+      [nameInput, xInput, yInput, widthInput, heightInput].forEach(function(input) {
+        if (!input) return;
+        input.addEventListener('input', syncMarker);
+      });
+
+      syncMarker();
+    });
+  }
+
+  function parseHotspotPointsValue(value) {
+    try {
+      var parsed = JSON.parse(value || '[]');
+      if (!Array.isArray(parsed)) return [];
+      return parsed
+        .map(function(point) {
+          if (Array.isArray(point)) return { x: Math.round(Number(point[0])), y: Math.round(Number(point[1])) };
+          return { x: Math.round(Number(point && point.x)), y: Math.round(Number(point && point.y)) };
+        })
+        .filter(function(point) { return Number.isFinite(point.x) && Number.isFinite(point.y); });
+    } catch (error) {
+      return [];
+    }
+  }
+
+  function refreshHotspotFormSummaries(scope) {
+    (scope || document).querySelectorAll('.venue-hotspot-form').forEach(function(form) {
+      var pointsInput = form.querySelector('[data-hotspot-points]');
+      var summary = form.querySelector('[data-hotspot-summary]');
+      if (!pointsInput || !summary) return;
+      var points = parseHotspotPointsValue(pointsInput.value);
+      var hintX = form.querySelector('[data-hotspot-hint-x]');
+      var hintY = form.querySelector('[data-hotspot-hint-y]');
+      if (points.length >= 3) {
+        summary.textContent = '已绘制 ' + points.length + ' 个顶点，提示按钮坐标：(' + (hintX && hintX.value ? hintX.value : '-') + ', ' + (hintY && hintY.value ? hintY.value : '-') + ')';
+      } else {
+        summary.textContent = '未绘制热区，将继续使用普通矩形布局。';
+      }
+    });
+  }
+
+  (function() {
+    var configEl = document.getElementById('venue-admin-config');
+    var config = configEl ? JSON.parse(configEl.textContent || '{}') : {};
+    var overlay = document.getElementById('hotspotEditorOverlay');
+    var stage = document.getElementById('hotspotEditorStage');
+    var stageWrap = stage ? stage.parentElement : null;
+    var backgroundLayers = stage ? Array.prototype.slice.call(stage.querySelectorAll('.venue-background-layer')) : [];
+    var existingGroup = document.getElementById('hotspotExistingGroup');
+    var polygon = document.getElementById('hotspotDraftPolygon');
+    var polyline = document.getElementById('hotspotDraftPolyline');
+    var pointsGroup = document.getElementById('hotspotDraftPoints');
+    var hintButton = document.getElementById('hotspotDraftHint');
+    var pointCount = document.getElementById('hotspotPointCount');
+    var meta = document.getElementById('hotspotEditorMeta');
+    var title = document.getElementById('hotspotEditorTitle');
+    var desc = document.getElementById('hotspotEditorDesc');
+    var drawBtn = document.getElementById('hotspotModeDrawBtn');
+    var hintBtn = document.getElementById('hotspotModeHintBtn');
+    var undoBtn = document.getElementById('hotspotUndoBtn');
+    var clearBtn = document.getElementById('hotspotClearBtn');
+    var autoHintBtn = document.getElementById('hotspotAutoHintBtn');
+    var saveBtn = document.getElementById('hotspotSaveBtn');
+    var styleColorInput = document.getElementById('hotspotStyleColor');
+    var styleSizeInput = document.getElementById('hotspotStyleSize');
+    var styleLengthInput = document.getElementById('hotspotStyleLength');
+    var styleBounceInput = document.getElementById('hotspotStyleBounce');
+    var styleLabelInput = document.getElementById('hotspotStyleLabel');
+    var styleLabelSizeInput = document.getElementById('hotspotStyleLabelSize');
+    var hintLabel = document.getElementById('hotspotDraftHintLabel');
+    var zoomButtons = Array.prototype.slice.call(document.querySelectorAll('[data-hotspot-zoom]'));
+    if (!overlay || !stage || !polygon || !polyline || !pointsGroup || !hintButton || !saveBtn) return;
+
+    var state = {
+      form: null,
+      points: [],
+      hintX: null,
+      hintY: null,
+      hintLabel: '',
+      hintLabelSize: 14,
+      hintColor: '#2563eb',
+      hintSize: 28,
+      hintLength: 54,
+      hintBounceMs: 1500,
+      zoom: 1,
+      zoomMode: 'fit',
+      currentScale: 1,
+      viewport: {
+        x: 0,
+        y: 0,
+        width: Number(stage.dataset.baseWidth || stage.dataset.boardWidth || 1),
+        height: Number(stage.dataset.baseHeight || stage.dataset.boardHeight || 1)
+      },
+      mode: 'draw',
+      draggingIndex: -1,
+      draggingHint: false
+    };
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function computeCentroid(points) {
+      if (!points.length) return { x: 0, y: 0 };
+      var totals = points.reduce(function(acc, point) {
+        return { x: acc.x + point.x, y: acc.y + point.y };
+      }, { x: 0, y: 0 });
+      return {
+        x: Math.round(totals.x / points.length),
+        y: Math.round(totals.y / points.length)
+      };
+    }
+
+    function toPointString(points) {
+      return points.map(function(point) { return point.x + ',' + point.y; }).join(' ');
+    }
+
+    function getViewportBounds() {
+      var layers = (config.backgrounds || []).filter(function(background) {
+        return !!background.enabled && !!background.image_path && Number(background.map_width || 0) > 0 && Number(background.map_height || 0) > 0;
+      });
+      if (!layers.length) {
+        return {
+          x: 0,
+          y: 0,
+          width: Math.max(1, Number(config.boardWidth || stage.dataset.baseWidth || 1)),
+          height: Math.max(1, Number(config.boardHeight || stage.dataset.baseHeight || 1))
+        };
+      }
+      var mainLayer = layers.slice().sort(function(a, b) {
+        return (Number(b.map_width || 0) * Number(b.map_height || 0)) - (Number(a.map_width || 0) * Number(a.map_height || 0));
+      })[0];
+      return {
+        x: Math.max(0, Math.round(Number(mainLayer.map_x || 0))),
+        y: Math.max(0, Math.round(Number(mainLayer.map_y || 0))),
+        width: Math.max(1, Math.round(Number(mainLayer.map_width || 1))),
+        height: Math.max(1, Math.round(Number(mainLayer.map_height || 1))),
+        backgroundId: Number(mainLayer.id || 0)
+      };
+    }
+
+    function toViewportPoint(point) {
+      return {
+        x: Math.round(point.x - state.viewport.x),
+        y: Math.round(point.y - state.viewport.y)
+      };
+    }
+
+    function toViewportPointString(points) {
+      return toPointString(points.map(toViewportPoint));
+    }
+
+    function readHintStyleFromForm(form) {
+      var labelInput = form ? form.querySelector('[data-hotspot-hint-label]') : null;
+      var labelSizeInput = form ? form.querySelector('[data-hotspot-hint-label-size]') : null;
+      var colorInput = form ? form.querySelector('[data-hotspot-hint-color]') : null;
+      var sizeInput = form ? form.querySelector('[data-hotspot-hint-size]') : null;
+      var lengthInput = form ? form.querySelector('[data-hotspot-hint-length]') : null;
+      var bounceInput = form ? form.querySelector('[data-hotspot-hint-bounce]') : null;
+      var color = colorInput && colorInput.value ? colorInput.value : '#2563eb';
+      if (!/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(color)) color = '#2563eb';
+      return {
+        label: labelInput && labelInput.value ? labelInput.value.trim() : '',
+        labelSize: clamp(Math.round(Number(labelSizeInput && labelSizeInput.value)), 10, 36) || 14,
+        color: color,
+        size: clamp(Math.round(Number(sizeInput && sizeInput.value)), 12, 96) || 28,
+        length: clamp(Math.round(Number(lengthInput && lengthInput.value)), 16, 200) || 54,
+        bounceMs: clamp(Math.round(Number(bounceInput && bounceInput.value)), 400, 4000) || 1500
+      };
+    }
+
+    function applyHintStyle() {
+      var visibleLabel = state.hintLabel || ((state.form && state.form.querySelector('input[name="name"]')) ? state.form.querySelector('input[name="name"]').value : '场地');
+      hintButton.style.setProperty('--hint-color', state.hintColor);
+      hintButton.style.setProperty('--hint-label-size', state.hintLabelSize + 'px');
+      hintButton.style.setProperty('--hint-size', state.hintSize + 'px');
+      hintButton.style.setProperty('--hint-length', state.hintLength + 'px');
+      hintButton.style.setProperty('--hint-bounce-ms', state.hintBounceMs + 'ms');
+      if (hintLabel) hintLabel.textContent = visibleLabel;
+      if (styleLabelInput) styleLabelInput.value = state.hintLabel;
+      if (styleLabelSizeInput) styleLabelSizeInput.value = String(state.hintLabelSize);
+      if (styleColorInput) styleColorInput.value = state.hintColor;
+      if (styleSizeInput) styleSizeInput.value = String(state.hintSize);
+      if (styleLengthInput) styleLengthInput.value = String(state.hintLength);
+      if (styleBounceInput) styleBounceInput.value = String(state.hintBounceMs);
+    }
+
+    function applyHotspotViewport() {
+      state.viewport = getViewportBounds();
+      stage.dataset.boardWidth = String(state.viewport.width);
+      stage.dataset.boardHeight = String(state.viewport.height);
+      stage.dataset.baseWidth = String(state.viewport.width);
+      stage.dataset.baseHeight = String(state.viewport.height);
+      state.currentScale = 1;
+      stage.style.width = state.viewport.width + 'px';
+      stage.style.height = state.viewport.height + 'px';
+      document.getElementById('hotspotEditorSvg').setAttribute('viewBox', '0 0 ' + state.viewport.width + ' ' + state.viewport.height);
+      backgroundLayers.forEach(function(layer) {
+        var originalX = Number(layer.dataset.originalX || 0);
+        var originalY = Number(layer.dataset.originalY || 0);
+        var originalWidth = Number(layer.dataset.originalWidth || 0);
+        var originalHeight = Number(layer.dataset.originalHeight || 0);
+        var isVisible = Number(layer.dataset.enabled || 0) === 1
+          && Number(layer.dataset.hasImage || 0) === 1
+          && Number(layer.dataset.bgId || 0) === Number(state.viewport.backgroundId || 0);
+        layer.style.display = isVisible ? 'block' : 'none';
+        layer.style.left = Math.round((originalX - state.viewport.x) * state.currentScale) + 'px';
+        layer.style.top = Math.round((originalY - state.viewport.y) * state.currentScale) + 'px';
+        layer.style.width = Math.round(originalWidth * state.currentScale) + 'px';
+        layer.style.height = Math.round(originalHeight * state.currentScale) + 'px';
+      });
+    }
+
+    function fitHotspotStageToViewport() {
+      if (!stage || !stageWrap) return;
+      var boardWidth = Math.max(1, Number(stage.dataset.baseWidth || stage.dataset.boardWidth || 1));
+      var boardHeight = Math.max(1, Number(stage.dataset.baseHeight || stage.dataset.boardHeight || 1));
+      var wrapRect = stageWrap.getBoundingClientRect();
+      var wrapStyle = window.getComputedStyle(stageWrap);
+      var availableWidth = Math.max(240, wrapRect.width - (parseFloat(wrapStyle.paddingLeft) || 0) - (parseFloat(wrapStyle.paddingRight) || 0));
+      var availableHeight = Math.max(240, wrapRect.height - (parseFloat(wrapStyle.paddingTop) || 0) - (parseFloat(wrapStyle.paddingBottom) || 0));
+      var scale = Math.min(availableWidth / boardWidth, availableHeight / boardHeight);
+      if (!Number.isFinite(scale) || scale <= 0) scale = 1;
+      scale = Math.min(scale, 1) * 0.92;
+      scale = scale * (Number(state.zoom) || 1);
+      state.currentScale = scale;
+      stage.style.width = Math.round(boardWidth * scale) + 'px';
+      stage.style.height = Math.round(boardHeight * scale) + 'px';
+      backgroundLayers.forEach(function(layer) {
+        if (layer.style.display === 'none') return;
+        var originalX = Number(layer.dataset.originalX || 0);
+        var originalY = Number(layer.dataset.originalY || 0);
+        var originalWidth = Number(layer.dataset.originalWidth || 0);
+        var originalHeight = Number(layer.dataset.originalHeight || 0);
+        layer.style.left = Math.round((originalX - state.viewport.x) * scale) + 'px';
+        layer.style.top = Math.round((originalY - state.viewport.y) * scale) + 'px';
+        layer.style.width = Math.round(originalWidth * scale) + 'px';
+        layer.style.height = Math.round(originalHeight * scale) + 'px';
+      });
+    }
+
+    function updateZoomButtons() {
+      zoomButtons.forEach(function(button) {
+        var value = button.dataset.hotspotZoom;
+        var isActive = value === 'fit'
+          ? state.zoomMode === 'fit'
+          : state.zoomMode !== 'fit' && Math.abs((Number(value) || 1) - (Number(state.zoom) || 1)) < 0.001;
+        button.classList.toggle('primary', isActive);
+      });
+    }
+
+    function renderExistingHotspots(activeForm) {
+      existingGroup.innerHTML = '';
+      var nameInput = activeForm ? activeForm.querySelector('input[name="name"]') : null;
+      var currentName = nameInput && nameInput.value ? nameInput.value : (activeForm && activeForm.dataset ? activeForm.dataset.formLabel : '');
+      (config.venues || []).forEach(function(venue) {
+        if (currentName && venue.name === currentName) return;
+        var points = Array.isArray(venue.hotspot_points) ? venue.hotspot_points : [];
+        if (points.length < 3) return;
+        var item = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+        item.setAttribute('points', toViewportPointString(points));
+        item.setAttribute('class', 'hotspot-editor-existing');
+        existingGroup.appendChild(item);
+      });
+    }
+
+    function renderDraft() {
+      var pointString = toViewportPointString(state.points);
+      polygon.setAttribute('points', pointString);
+      polyline.setAttribute('points', pointString);
+      pointsGroup.innerHTML = '';
+      state.points.forEach(function(point, index) {
+        var viewportPoint = toViewportPoint(point);
+        var handle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        handle.setAttribute('cx', viewportPoint.x);
+        handle.setAttribute('cy', viewportPoint.y);
+        handle.setAttribute('r', 10);
+        handle.setAttribute('class', 'hotspot-editor-handle');
+        handle.dataset.index = String(index);
+        pointsGroup.appendChild(handle);
+      });
+      pointCount.textContent = state.points.length + ' 个顶点';
+      meta.textContent = state.mode === 'hint'
+        ? '点击背景或拖动按钮，确定提示按钮位置。'
+        : '点击背景添加顶点，拖动圆点可微调，至少 3 个点形成热区。';
+
+      if (state.hintX == null || state.hintY == null) {
+        hintButton.style.display = 'none';
+      } else {
+        var hintPoint = toViewportPoint({ x: state.hintX, y: state.hintY });
+        hintButton.style.display = 'block';
+        hintButton.style.left = Math.round(hintPoint.x * state.currentScale) + 'px';
+        hintButton.style.top = Math.round(hintPoint.y * state.currentScale) + 'px';
+      }
+      applyHintStyle();
+
+      drawBtn.classList.toggle('primary', state.mode === 'draw');
+      hintBtn.classList.toggle('primary', state.mode === 'hint');
+    }
+
+    function stagePointFromEvent(event) {
+      var rect = stage.getBoundingClientRect();
+      var scaleX = Number(stage.dataset.boardWidth || rect.width || 1) / rect.width;
+      var scaleY = Number(stage.dataset.boardHeight || rect.height || 1) / rect.height;
+      return {
+        x: clamp(Math.round((event.clientX - rect.left) * scaleX), 0, Number(stage.dataset.boardWidth || 0)) + state.viewport.x,
+        y: clamp(Math.round((event.clientY - rect.top) * scaleY), 0, Number(stage.dataset.boardHeight || 0)) + state.viewport.y
+      };
+    }
+
+    function persistToForm() {
+      if (!state.form) return;
+      var pointsInput = state.form.querySelector('[data-hotspot-points]');
+      var hintXInput = state.form.querySelector('[data-hotspot-hint-x]');
+      var hintYInput = state.form.querySelector('[data-hotspot-hint-y]');
+      var hintLabelInput = state.form.querySelector('[data-hotspot-hint-label]');
+      var hintLabelSizeInput = state.form.querySelector('[data-hotspot-hint-label-size]');
+      var hintColorInput = state.form.querySelector('[data-hotspot-hint-color]');
+      var hintSizeInput = state.form.querySelector('[data-hotspot-hint-size]');
+      var hintLengthInput = state.form.querySelector('[data-hotspot-hint-length]');
+      var hintBounceInput = state.form.querySelector('[data-hotspot-hint-bounce]');
+      if (pointsInput) pointsInput.value = JSON.stringify(state.points);
+      if (hintXInput) hintXInput.value = state.hintX == null ? '' : String(state.hintX);
+      if (hintYInput) hintYInput.value = state.hintY == null ? '' : String(state.hintY);
+      if (hintLabelInput) hintLabelInput.value = state.hintLabel;
+      if (hintLabelSizeInput) hintLabelSizeInput.value = String(state.hintLabelSize);
+      if (hintColorInput) hintColorInput.value = state.hintColor;
+      if (hintSizeInput) hintSizeInput.value = String(state.hintSize);
+      if (hintLengthInput) hintLengthInput.value = String(state.hintLength);
+      if (hintBounceInput) hintBounceInput.value = String(state.hintBounceMs);
+      refreshHotspotFormSummaries(state.form);
+    }
+
+    function syncConfigFromForm() {
+      if (!state.form || !config || !Array.isArray(config.venues)) return;
+      var venueId = Number(state.form.dataset.venueId || 0);
+      if (!venueId) return;
+      var nameInput = state.form.querySelector('input[name="name"]');
+      var current = config.venues.find(function(item) {
+        return Number(item.id) === venueId;
+      });
+      if (!current) {
+        current = { id: venueId };
+        config.venues.push(current);
+      }
+      current.name = nameInput && nameInput.value ? nameInput.value : current.name;
+      current.hotspot_points = state.points.slice();
+      current.hotspot_hint_x = state.hintX;
+      current.hotspot_hint_y = state.hintY;
+    }
+
+    async function saveHotspotToServer() {
+      if (!state.form || !state.form.dataset.venueId) {
+        return { ok: false, skipped: true };
+      }
+      var payload = new URLSearchParams();
+      var nameInput = state.form.querySelector('input[name="name"]');
+      payload.set('name', nameInput && nameInput.value ? nameInput.value : '');
+      payload.set('hotspotPoints', JSON.stringify(state.points));
+      payload.set('hotspotHintX', state.hintX == null ? '' : String(state.hintX));
+      payload.set('hotspotHintY', state.hintY == null ? '' : String(state.hintY));
+      payload.set('hotspotHintLabel', state.hintLabel || '');
+      payload.set('hotspotHintLabelSize', String(state.hintLabelSize));
+      payload.set('hotspotHintColor', state.hintColor || '#2563eb');
+      payload.set('hotspotHintSize', String(state.hintSize));
+      payload.set('hotspotHintLength', String(state.hintLength));
+      payload.set('hotspotHintBounceMs', String(state.hintBounceMs));
+
+      var response = await fetch('/admin/venues/' + state.form.dataset.venueId + '/hotspot', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+          'Accept': 'application/json'
+        },
+        body: payload.toString()
+      });
+      var result;
+      try {
+        result = await response.json();
+      } catch (error) {
+        result = { ok: false, message: '热区保存失败，请重试。' };
+      }
+      if (!response.ok || !result.ok) {
+        throw new Error(result && result.message ? result.message : '热区保存失败，请重试。');
+      }
+      return result;
+    }
+
+    window.openHotspotEditor = function(trigger) {
+      var form = trigger && trigger.closest ? trigger.closest('.venue-hotspot-form') : null;
+      if (!form) return;
+      state.form = form;
+      state.points = parseHotspotPointsValue((form.querySelector('[data-hotspot-points]') || {}).value);
+      var hintXInput = form.querySelector('[data-hotspot-hint-x]');
+      var hintYInput = form.querySelector('[data-hotspot-hint-y]');
+      state.hintX = hintXInput && hintXInput.value !== '' ? Math.round(Number(hintXInput.value)) : null;
+      state.hintY = hintYInput && hintYInput.value !== '' ? Math.round(Number(hintYInput.value)) : null;
+      var hintStyle = readHintStyleFromForm(form);
+      state.hintLabel = hintStyle.label;
+      state.hintLabelSize = hintStyle.labelSize;
+      state.hintColor = hintStyle.color;
+      state.hintSize = hintStyle.size;
+      state.hintLength = hintStyle.length;
+      state.hintBounceMs = hintStyle.bounceMs;
+      state.zoom = 1;
+      state.zoomMode = 'fit';
+      var nameInput = form.querySelector('input[name="name"]');
+      state.mode = 'draw';
+      state.draggingIndex = -1;
+      state.draggingHint = false;
+      title.textContent = '编辑热区：' + ((nameInput && nameInput.value) || form.dataset.formLabel || '场地');
+      if (desc) {
+        desc.textContent = form.dataset.venueId
+          ? '在背景图上点击添加顶点，拖动圆点可微调。点击“保存热区”会直接保存到服务器。'
+          : '在背景图上点击添加顶点，拖动圆点可微调。点击“保存热区”后，还需要继续点击“添加场地”。';
+      }
+      applyHotspotViewport();
+      renderExistingHotspots(form);
+      renderDraft();
+      overlay.style.display = 'flex';
+      window.requestAnimationFrame(function() {
+        fitHotspotStageToViewport();
+        updateZoomButtons();
+      });
+    };
+
+    window.closeHotspotEditor = function() {
+      overlay.style.display = 'none';
+      state.form = null;
+      state.draggingIndex = -1;
+      state.draggingHint = false;
+    };
+
+    drawBtn.addEventListener('click', function() {
+      state.mode = 'draw';
+      renderDraft();
+    });
+    hintBtn.addEventListener('click', function() {
+      state.mode = 'hint';
+      renderDraft();
+    });
+    undoBtn.addEventListener('click', function() {
+      state.points.pop();
+      if (state.points.length < 3) {
+        state.hintX = null;
+        state.hintY = null;
+      }
+      renderDraft();
+    });
+    clearBtn.addEventListener('click', function() {
+      state.points = [];
+      state.hintX = null;
+      state.hintY = null;
+      renderDraft();
+    });
+    autoHintBtn.addEventListener('click', function() {
+      if (!state.points.length) return;
+      var centroid = computeCentroid(state.points);
+      state.hintX = centroid.x;
+      state.hintY = centroid.y;
+      renderDraft();
+    });
+    if (styleColorInput) {
+      styleColorInput.addEventListener('input', function() {
+        state.hintColor = styleColorInput.value || '#2563eb';
+        renderDraft();
+      });
+    }
+    if (styleLabelInput) {
+      styleLabelInput.addEventListener('input', function() {
+        state.hintLabel = styleLabelInput.value.trim();
+        renderDraft();
+      });
+    }
+    if (styleLabelSizeInput) {
+      styleLabelSizeInput.addEventListener('input', function() {
+        state.hintLabelSize = clamp(Math.round(Number(styleLabelSizeInput.value)), 10, 36) || 14;
+        renderDraft();
+      });
+    }
+    if (styleSizeInput) {
+      styleSizeInput.addEventListener('input', function() {
+        state.hintSize = clamp(Math.round(Number(styleSizeInput.value)), 12, 96) || 28;
+        renderDraft();
+      });
+    }
+    if (styleLengthInput) {
+      styleLengthInput.addEventListener('input', function() {
+        state.hintLength = clamp(Math.round(Number(styleLengthInput.value)), 16, 200) || 54;
+        renderDraft();
+      });
+    }
+    if (styleBounceInput) {
+      styleBounceInput.addEventListener('input', function() {
+        state.hintBounceMs = clamp(Math.round(Number(styleBounceInput.value)), 400, 4000) || 1500;
+        renderDraft();
+      });
+    }
+    zoomButtons.forEach(function(button) {
+      button.addEventListener('click', function() {
+        var value = button.dataset.hotspotZoom;
+        state.zoomMode = value === 'fit' ? 'fit' : 'manual';
+        state.zoom = value === 'fit' ? 1 : clamp(Number(value) || 1, 0.4, 1);
+        fitHotspotStageToViewport();
+        updateZoomButtons();
+      });
+    });
+    saveBtn.addEventListener('click', async function() {
+      if (state.points.length && state.points.length < 3) {
+        meta.textContent = '至少需要 3 个点才能保存热区。';
+        return;
+      }
+      if (state.points.length && (state.hintX == null || state.hintY == null)) {
+        var centroid = computeCentroid(state.points);
+        state.hintX = centroid.x;
+        state.hintY = centroid.y;
+      }
+      var originalText = saveBtn.textContent;
+      saveBtn.disabled = true;
+      saveBtn.textContent = state.form && state.form.dataset.venueId ? '保存中...' : '写入中...';
+      persistToForm();
+      syncConfigFromForm();
+      try {
+        if (state.form && state.form.dataset.venueId) {
+          meta.textContent = '正在保存热区到服务器...';
+          await saveHotspotToServer();
+          meta.textContent = '热区已保存到服务器。';
+        } else {
+          meta.textContent = '热区已写入当前新场地表单，继续点击“添加场地”即可。';
+        }
+        closeHotspotEditor();
+      } catch (error) {
+        meta.textContent = error && error.message ? error.message : '热区保存失败，请重试。';
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = originalText;
+      }
+    });
+    stage.addEventListener('click', function(event) {
+      if (event.target.closest && event.target.closest('.hotspot-editor-handle')) return;
+      if (event.target === hintButton || hintButton.contains(event.target)) return;
+      var point = stagePointFromEvent(event);
+      if (state.mode === 'hint') {
+        state.hintX = point.x;
+        state.hintY = point.y;
+      } else {
+        state.points.push(point);
+      }
+      renderDraft();
+    });
+    pointsGroup.addEventListener('pointerdown', function(event) {
+      if (!event.target.dataset || event.target.dataset.index == null) return;
+      state.draggingIndex = Number(event.target.dataset.index);
+      event.preventDefault();
+    });
+    hintButton.addEventListener('pointerdown', function(event) {
+      state.draggingHint = true;
+      event.preventDefault();
+    });
+    window.addEventListener('pointermove', function(event) {
+      if (state.draggingIndex < 0 && !state.draggingHint) return;
+      var point = stagePointFromEvent(event);
+      if (state.draggingHint) {
+        state.hintX = point.x;
+        state.hintY = point.y;
+      } else if (state.points[state.draggingIndex]) {
+        state.points[state.draggingIndex] = point;
+      }
+      renderDraft();
+    });
+    window.addEventListener('pointerup', function() {
+      state.draggingIndex = -1;
+      state.draggingHint = false;
+    });
+    overlay.addEventListener('click', function(event) {
+      if (event.target === overlay) closeHotspotEditor();
+    });
+    window.addEventListener('resize', function() {
+      if (overlay.style.display === 'flex') fitHotspotStageToViewport();
+    });
+    refreshHotspotFormSummaries(document);
+    initElementPositionEditors(document);
+  })();
+
+  /* ── 布局拖动（保留原逻辑） ── */
+  (function() {
+    var canvas = document.getElementById('layoutCanvas');
+    var saveButton = document.getElementById('saveLayoutBtn');
+    var layoutInput = document.getElementById('layoutJsonInput');
+    if (!canvas || !saveButton || !layoutInput) return;
+
+    var blocks = Array.prototype.slice.call(canvas.querySelectorAll('.layout-block'));
+    var active = null;
+
+    function clamp(value, min, max) { return Math.max(min, Math.min(max, value)); }
+    function updateMeta(block) {
+      var meta = block.querySelector('.layout-block-meta');
+      var left = parseInt(block.style.left, 10) || 0;
+      var top = parseInt(block.style.top, 10) || 0;
+      var width = parseInt(block.style.width, 10) || 0;
+      var height = parseInt(block.style.height, 10) || 0;
+      meta.textContent = width + '×' + height + ' @ (' + left + ', ' + top + ')';
+    }
+    function startInteraction(mode, block, event) {
+      active = { mode: mode, block: block, startX: event.clientX, startY: event.clientY,
+        left: parseInt(block.style.left, 10) || 0, top: parseInt(block.style.top, 10) || 0,
+        width: parseInt(block.style.width, 10) || 0, height: parseInt(block.style.height, 10) || 0 };
+      block.classList.add('is-active');
+      event.preventDefault();
+    }
+    blocks.forEach(function(block) {
+      block.querySelector('.layout-drag-zone').addEventListener('pointerdown', function(e) { startInteraction('move', block, e); });
+      block.querySelector('.layout-handle').addEventListener('pointerdown', function(e) { startInteraction('resize', block, e); });
+      updateMeta(block);
+    });
+    window.addEventListener('pointermove', function(event) {
+      if (!active) return;
+      var dx = event.clientX - active.startX, dy = event.clientY - active.startY;
+      if (active.mode === 'move') {
+        active.block.style.left = clamp(active.left + dx, 0, Math.max(0, canvas.clientWidth - active.block.offsetWidth)) + 'px';
+        active.block.style.top = clamp(active.top + dy, 0, Math.max(0, canvas.clientHeight - active.block.offsetHeight)) + 'px';
+      } else {
+        active.block.style.width = clamp(active.width + dx, 60, canvas.clientWidth - (parseInt(active.block.style.left, 10) || 0)) + 'px';
+        active.block.style.height = clamp(active.height + dy, 40, canvas.clientHeight - (parseInt(active.block.style.top, 10) || 0)) + 'px';
+      }
+      updateMeta(active.block);
+    });
+    window.addEventListener('pointerup', function() { if (!active) { return; } active.block.classList.remove('is-active'); active = null; });
+    saveButton.addEventListener('click', function() {
+      layoutInput.value = JSON.stringify(blocks.map(function(block) {
+        return {
+          type: block.dataset.type || 'venue',
+          id: Number(block.dataset.id),
+          x: parseInt(block.style.left, 10) || 0,
+          y: parseInt(block.style.top, 10) || 0,
+          width: parseInt(block.style.width, 10) || 0,
+          height: parseInt(block.style.height, 10) || 0,
+          sortOrder: Number(block.dataset.sortOrder || 1),
+          enabled: Number(block.dataset.enabled || 1),
+          isFixed: Number(block.dataset.isFixed || 0)
+        };
+      }));
+      document.getElementById('venueLayoutForm').submit();
+    });
+
+    /* ── 批量操作 ── */
+    var selectAllCb = document.getElementById('layoutSelectAll');
+    var selectedCountEl = document.getElementById('layoutSelectedCount');
+    var batchResizeBtn = document.getElementById('batchResizeBtn');
+    var batchAutoBtn = document.getElementById('batchAutoArrangeBtn');
+    var batchWidthInput = document.getElementById('batchWidth');
+    var batchHeightInput = document.getElementById('batchHeight');
+    var checkboxes = Array.prototype.slice.call(canvas.querySelectorAll('.layout-block-check'));
+
+    function updateSelectedCount() {
+      var count = checkboxes.filter(function(cb) { return cb.checked; }).length;
+      selectedCountEl.textContent = '已选 ' + count + ' 个';
+    }
+    selectAllCb.addEventListener('change', function() {
+      checkboxes.forEach(function(cb) { cb.checked = selectAllCb.checked; });
+      updateSelectedCount();
+    });
+    checkboxes.forEach(function(cb) { cb.addEventListener('change', updateSelectedCount); });
+
+    batchResizeBtn.addEventListener('click', function() {
+      var w = Math.max(40, Number(batchWidthInput.value) || 100);
+      var h = Math.max(30, Number(batchHeightInput.value) || 65);
+      blocks.forEach(function(block, i) {
+        var cb = block.querySelector('.layout-block-check');
+        if (!cb || !cb.checked) return;
+        block.style.width = w + 'px';
+        block.style.height = h + 'px';
+        updateMeta(block);
+      });
+    });
+
+    batchAutoBtn.addEventListener('click', function() {
+      var selected = blocks.filter(function(block) { return block.querySelector('.layout-block-check').checked; });
+      if (selected.length === 0) selected = blocks;
+      var w = Math.max(40, Number(batchWidthInput.value) || 100);
+      var h = Math.max(30, Number(batchHeightInput.value) || 65);
+      var cols = Math.max(1, Math.floor((canvas.clientWidth - 20) / (w + 10)));
+      var gx = 10, gy = 10, sx = 16, sy = 16;
+      selected.forEach(function(block, i) {
+        block.style.width = w + 'px';
+        block.style.height = h + 'px';
+        block.style.left = (sx + (i % cols) * (w + gx)) + 'px';
+        block.style.top = (sy + Math.floor(i / cols) * (h + gy)) + 'px';
+        updateMeta(block);
+      });
+    });
+  })();
+</script>
+
+<%- include('partials/footer') %>

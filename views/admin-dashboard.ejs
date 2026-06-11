@@ -1,0 +1,1335 @@
+<%- include('partials/header', { pageClass: 'admin-page' + (isReadonly ? ' readonly-mode' : '') }) %>
+
+<section class="admin-hero card shell-hero">
+  <div>
+    <div class="eyebrow"><%= currentUser.roleDisplayName || "管理后台" %></div>
+    <h1>你好，<%= currentUser.name %></h1>
+    <p>统一管理幼儿、体测与场地预约。左侧模块切换，顶部导航直达核心功能。</p>
+  </div>
+  <div class="admin-hero-actions">
+    <div class="status-chip"><%= isReadonly ? "只读模式" : "系统运行正常" %></div>
+    <a class="btn secondary" href="/logout">退出登录</a>
+  </div>
+</section>
+
+<% if (message) { %>
+  <div class="alert success"><%= message %></div>
+<% } %>
+<% if (isReadonly) { %>
+  <div class="alert" style="background:#fff3cd;color:#856404;border:1px solid #ffc107;">只读模式：当前角色为只读参观账号，无法进行任何修改操作。</div>
+<% } %>
+
+<% const pageQuery = (typeof query !== 'undefined' && query) ? query : {}; %>
+<% function buildQuery(pairs) { return pairs.filter(function(pair) { return pair[1] !== undefined && pair[1] !== null && String(pair[1]) !== ''; }).map(function(pair) { return encodeURIComponent(pair[0]) + '=' + encodeURIComponent(String(pair[1])); }).join('&'); } %>
+<% var childKeywordRaw = String(pageQuery.childKeyword || '').trim(); %>
+<% var childKeyword = childKeywordRaw.toLowerCase(); %>
+<% var childClassFilter = String(pageQuery.childClassId || ''); %>
+<% var childPaginationData = (typeof childPagination !== 'undefined' && childPagination) ? childPagination : { currentPage: 1, totalPages: 1, total: 0, startIndex: 0, endIndex: 0, hasPrev: false, hasNext: false, prevPage: 1, nextPage: 1, pageSize: 10 }; %>
+<% var childPageSize = childPaginationData.pageSize || 10; %>
+<% var childPageQueryBase = 'panel=children' + (childKeywordRaw ? '&childKeyword=' + encodeURIComponent(childKeywordRaw) : '') + (childClassFilter ? '&childClassId=' + encodeURIComponent(childClassFilter) : '') + '&pageSize=' + encodeURIComponent(String(childPageSize)); %>
+<% var selectedAttentionTags = []; %>
+
+<div class="admin-layout shell-layout">
+  <aside class="admin-sidebar card shell-sidebar">
+    <div class="sidebar-brand">
+      <div class="sidebar-title">后台导航</div>
+    </div>
+
+    <div class="sidebar-menu shell-menu nav-group-menu">
+      <% const opsItems = [
+        {perm:'ops.overview', panel:'overview', label:'工作台概览'},
+        {perm:'ops.site', panel:'site', label:'站点管理'},
+        {perm:'ops.site', panel:'ai', label:'AI 接入'},
+        {perm:'ops.logs', panel:'logs', label:'日志记录'}
+      ].filter(i => hasPerm(i.perm)); %>
+      <% if (opsItems.length) { %>
+      <div class="nav-group nav-group-card <%= activeGroup === 'ops' ? 'active' : '' %>">
+        <a class="main-nav-link <%= activeGroup === 'ops' ? 'active' : '' %>" href="/admin?panel=<%= opsItems[0].panel %>">
+          <span class="main-nav-title">运维管理</span>
+        </a>
+        <div class="nav-submenu always-open">
+          <% opsItems.forEach(i => { %><a class="sidebar-link sub-nav-link <%= activePanel === i.panel ? 'active' : '' %>" href="/admin?panel=<%= i.panel %>"><span class="sub-nav-dot"></span><span><%= i.label %></span></a><% }); %>
+        </div>
+      </div>
+      <% } %>
+
+      <% const dataItems = [
+        {perm:'data.users', panel:'users', label:'用户管理'},
+        {perm:'data.classes', panel:'classes', label:'班级管理'},
+        {perm:'data.children', panel:'children', label:'幼儿档案管理'},
+        {perm:'data.fitness', href:'/admin/fitness', label:'体测数据管理'}
+      ].filter(i => hasPerm(i.perm));
+      const roleItem = hasPerm('admin.roles') ? [{perm:'admin.roles', panel:'roles', label:'角色权限管理'}] : [];
+      const dataAll = dataItems.concat(roleItem); %>
+      <% if (dataAll.length) { %>
+      <div class="nav-group nav-group-card <%= activeGroup === 'data' ? 'active' : '' %>">
+        <a class="main-nav-link <%= activeGroup === 'data' ? 'active' : '' %>" href="/admin?panel=<%= (dataAll.find(i=>i.panel)||{}).panel || 'users' %>">
+          <span class="main-nav-title">数据管理</span>
+        </a>
+        <div class="nav-submenu always-open">
+          <% dataAll.forEach(i => { %>
+            <% if (i.href) { %><a class="sidebar-link sub-nav-link nav-link-card" href="<%= i.href %>"><span class="sub-nav-dot"></span><span><%= i.label %></span></a>
+            <% } else { %><a class="sidebar-link sub-nav-link <%= activePanel === i.panel ? 'active' : '' %>" href="/admin?panel=<%= i.panel %>"><span class="sub-nav-dot"></span><span><%= i.label %></span></a><% } %>
+          <% }); %>
+        </div>
+      </div>
+      <% } %>
+
+      <% const bookItems = [
+        {perm:'booking.attention', panel:'attention', label:'重点关注管理'},
+        {perm:'booking.venues', href:'/admin/venues', label:'场地预约管理'}
+      ].filter(i => hasPerm(i.perm)); %>
+      <% if (bookItems.length) { %>
+      <div class="nav-group nav-group-card <%= activeGroup === 'booking' ? 'active' : '' %>">
+        <a class="main-nav-link <%= activeGroup === 'booking' ? 'active' : '' %>" href="/admin?panel=attention">
+          <span class="main-nav-title">预约管理</span>
+        </a>
+        <div class="nav-submenu always-open">
+          <% bookItems.forEach(i => { %>
+            <% if (i.href) { %><a class="sidebar-link sub-nav-link nav-link-card" href="<%= i.href %>"><span class="sub-nav-dot"></span><span><%= i.label %></span></a>
+            <% } else { %><a class="sidebar-link sub-nav-link <%= activePanel === i.panel ? 'active' : '' %>" href="/admin?panel=<%= i.panel %>"><span class="sub-nav-dot"></span><span><%= i.label %></span></a><% } %>
+          <% }); %>
+        </div>
+      </div>
+      <% } %>
+    </div>
+  </aside>
+
+  <div class="admin-main shell-main">
+<% if (activePanel === 'overview') { %>
+    <section id="overview-panel" class="admin-panel is-active">
+      <div class="panel-heading">
+        <div>
+          <div class="eyebrow">概览</div>
+          <h2>工作台概览</h2>
+          <p>系统当前运行状态与核心数据。</p>
+        </div>
+      </div>
+
+      <section class="stats-grid overview-stats">
+        <div class="card stat-card"><div class="stat-label">用户总数</div><div class="stat-number"><%= counts.total_users %></div><div class="muted">启用中 <%= counts.enabled_users %></div></div>
+        <div class="card stat-card"><div class="stat-label">班级总数</div><div class="stat-number"><%= counts.total_classes %></div><div class="muted">启用中 <%= counts.enabled_classes %></div></div>
+        <div class="card stat-card"><div class="stat-label">幼儿档案</div><div class="stat-number"><%= counts.total_children %></div><div class="muted">启用中 <%= counts.enabled_children %></div></div>
+        <div class="card stat-card"><div class="stat-label">重点关注幼儿</div><div class="stat-number"><%= counts.attention_children || 0 %></div><div class="muted">管理员发布提醒对象</div></div>
+      </section>
+
+      <div class="panel-grid overview-grid">
+        <div class="card">
+          <h3>当前可做的管理操作</h3>
+          <div class="feature-list compact-list">
+            <div class="feature-item"><h3>站点管理</h3><p>维护站点名称、副标题、首页主标题和移动端提示。</p></div>
+            <div class="feature-item"><h3>用户 / 班级</h3><p>支持教师账号、班级信息、多教师绑定与批量处理。</p></div>
+            <div class="feature-item"><h3>幼儿档案</h3><p>支持性别、出生日期、重点关注对象与原因。</p></div>
+            <div class="feature-item"><h3>体测 + 场地预约</h3><p>体测数据全流程 + 小班独立 / 中大班共享的预约场地体系。</p></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>使用提醒</h3>
+          <div class="tips compact">
+            <div>1. 左侧先按三类管理切换，展开后再进入对应子功能。</div>
+            <div>2. 重点关注幼儿由管理员统一维护，教师端只读提醒。</div>
+            <div>3. 场地预约开放时间统一配置，教师端自动倒计时。</div>
+            <div>4. 小班独立显示玩法；中班和大班共用同一显示与玩法入口。</div>
+          </div>
+        </div>
+      </div>
+    </section>
+<% } else if (activePanel === 'site') { %>
+    <section id="site-panel" class="admin-panel is-active">
+      <div class="panel-heading"><div><div class="eyebrow">站点管理</div><h2>站点名称与首页内容</h2><p>维护站点基础信息与首页展示内容。</p></div></div>
+      <div class="panel-grid">
+        <div class="card">
+          <h3>站点设置</h3>
+          <form method="post" action="/admin/settings" class="form-grid">
+            <label><span>站点名称</span><input type="text" name="siteName" value="<%= settings.siteName || '' %>" /></label>
+            <label><span>副标题</span><input type="text" name="subtitle" value="<%= settings.subtitle || '' %>" /></label>
+            <label><span>首页主标题</span><input type="text" name="heroTitle" value="<%= settings.heroTitle || '' %>" /></label>
+            <label><span>首页说明</span><textarea name="heroDesc" rows="3"><%= settings.heroDesc || '' %></textarea></label>
+            <label><span>移动端提示</span><textarea name="mobileHint" rows="2"><%= settings.mobileHint || '' %></textarea></label>
+            <label><span>后台公告</span><textarea name="adminNotice" rows="2"><%= settings.adminNotice || '' %></textarea></label>
+            <label class="setting-check-row">
+              <input type="checkbox" name="venueRecommendationEnabled" value="1" <%= String(settings.venueRecommendationEnabled || '1') === '1' ? 'checked' : '' %> />
+              <span>开启教师端场地智能推荐</span>
+              <small>关闭后，教师预约页不再显示最优/次优区域推荐。</small>
+            </label>
+            <button class="btn primary full" type="submit">保存站点设置</button>
+          </form>
+        </div>
+
+        <div class="card">
+          <h3>首页内容维护</h3>
+          <form method="post" action="/admin/content" class="form-grid">
+            <% for (let i = 0; i < 8; i++) { %>
+              <label><span>亮点标题 <%= i + 1 %></span><input type="text" name="featureTitle<%= i + 1 %>" value="<%= content.features[i] ? content.features[i].title : '' %>" /></label>
+              <label><span>亮点描述 <%= i + 1 %></span><textarea name="featureDesc<%= i + 1 %>" rows="2"><%= content.features[i] ? content.features[i].desc : '' %></textarea></label>
+            <% } %>
+            <% for (let i = 0; i < 6; i++) { %>
+              <label><span>快捷入口名称 <%= i + 1 %></span><input type="text" name="quickLinkName<%= i + 1 %>" value="<%= content.quickLinks[i] ? content.quickLinks[i].name : '' %>" /></label>
+              <label><span>快捷入口路径 <%= i + 1 %></span><input type="text" name="quickLinkPath<%= i + 1 %>" value="<%= content.quickLinks[i] ? content.quickLinks[i].path : '' %>" /></label>
+            <% } %>
+            <button class="btn primary full" type="submit">保存首页内容</button>
+          </form>
+        </div>
+      </div>
+    </section>
+<% } else if (activePanel === 'ai') { %>
+    <section id="ai-panel" class="admin-panel is-active">
+      <div class="panel-heading">
+        <div>
+          <div class="eyebrow">AI 接入</div>
+          <h2>大模型服务配置</h2>
+          <p>支持 OpenAI 兼容协议的国产大模型（DeepSeek、通义、智谱、Kimi、豆包等），随时可替换 URL、密钥与模型。密钥仅服务端保存，页面仅显示掩码。</p>
+        </div>
+      </div>
+      <% const ai = aiSettings || {}; %>
+      <div class="panel-grid">
+        <div class="card">
+          <h3>接入设置</h3>
+          <form method="post" action="/admin/ai/settings" class="form-grid" id="ai-settings-form">
+            <label class="setting-check-row">
+              <input type="checkbox" name="aiEnabled" value="1" <%= String(ai.aiEnabled || '0') === '1' ? 'checked' : '' %> />
+              <span>启用 AI 智能分析</span>
+              <small>关闭后，“AI 生成报告”按钮会提示未启用。</small>
+            </label>
+            <label><span>供应商名称</span><input type="text" name="aiProviderName" value="<%= ai.aiProviderName || '' %>" placeholder="如 DeepSeek / 通义 / 智谱 / Kimi" /></label>
+            <label><span>接口 Base URL</span><input type="text" name="aiBaseUrl" value="<%= ai.aiBaseUrl || '' %>" placeholder="https://api.deepseek.com/v1" /><small class="muted">填到 /v1 即可，系统会自动拼接 /chat/completions。</small></label>
+            <label>
+              <span>API Key</span>
+              <input type="password" name="aiApiKey" value="<%= ai.aiApiKeyMasked || '' %>" autocomplete="new-password" placeholder="<%= ai.aiApiKeyPresent ? '如不修改请保留掩码' : '请填入以 sk- 开头的密钥' %>" />
+              <small class="muted">密钥不会在页面上明文返回。如需清空请勾选下方“清空密钥”。</small>
+            </label>
+            <label class="setting-check-row">
+              <input type="checkbox" name="clearApiKey" value="1" />
+              <span>清空当前密钥</span>
+            </label>
+            <label><span>模型名称</span><input type="text" name="aiModel" value="<%= ai.aiModel || '' %>" placeholder="如 deepseek-reasoner / deepseek-chat / qwen-plus" /><small class="muted">带思维链推荐：deepseek-reasoner；快速输出选 deepseek-chat。</small></label>
+            <label><span>最大输出 Token</span><input type="number" name="aiMaxTokens" value="<%= ai.aiMaxTokens || '0' %>" min="0" max="32000" /><small class="muted">填 0 表示不限制（交给模型默认上限），适合思维链型模型。</small></label>
+            <label><span>温度 Temperature</span><input type="number" name="aiTemperature" value="<%= ai.aiTemperature || '0.6' %>" step="0.1" min="0" max="2" /><small class="muted">deepseek-reasoner 不支持温度参数，但填了不会报错。</small></label>
+            <label><span>超时（毫秒）</span><input type="number" name="aiTimeoutMs" value="<%= ai.aiTimeoutMs || '600000' %>" min="5000" max="1800000" /><small class="muted">现为“空闲超时”，收到任何数据即重置。思维链型建议 600000（10分钟）以上。</small></label>
+            <label><span>系统提示词</span><textarea name="aiSystemPrompt" rows="3"><%= ai.aiSystemPrompt || '' %></textarea><small class="muted">作为 system role 传给模型。</small></label>
+            <div class="action-row" style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button class="btn primary" type="submit">保存 AI 接入设置</button>
+              <button class="btn" type="button" id="ai-test-btn">测试连通性</button>
+            </div>
+            <div id="ai-test-result" class="muted" style="min-height:1.4em;"></div>
+          </form>
+        </div>
+        <div class="card">
+          <h3>使用说明</h3>
+          <ul style="line-height:1.8;">
+            <li>平台使用 <strong>OpenAI 兼容 Chat Completions</strong> 协议。只要另一个供应商提供该协议的对话接口，换上 Base URL、Key、模型名即可。</li>
+            <li>常见参考：<br/>
+              · DeepSeek：<code>https://api.deepseek.com/v1</code> · 模型 <code>deepseek-chat</code><br/>
+              · 通义千问：<code>https://dashscope.aliyuncs.com/compatible-mode/v1</code> · 模型 <code>qwen-plus</code><br/>
+              · 智谱 GLM：<code>https://open.bigmodel.cn/api/paas/v4</code> · 模型 <code>glm-4-air</code><br/>
+              · Moonshot Kimi：<code>https://api.moonshot.cn/v1</code> · 模型 <code>moonshot-v1-8k</code></li>
+            <li>修改后点击“测试连通性”，可验证接口是否可调用。</li>
+            <li>在「体测数据管理」页面，顶部「AI 智能分析」按钮会调用该模型生成报告。</li>
+          </ul>
+          <% if (ai.aiApiKeyPresent) { %>
+            <p class="muted">当前密钥：<code><%= ai.aiApiKeyMasked %></code></p>
+          <% } else { %>
+            <p class="alert warn" style="padding:8px 12px;border-radius:8px;">尚未配置密钥，所以 AI 智能分析不会生效。</p>
+          <% } %>
+        </div>
+      </div>
+      <script>
+        (function() {
+          var btn = document.getElementById('ai-test-btn');
+          var resultBox = document.getElementById('ai-test-result');
+          if (!btn || !resultBox) return;
+          btn.addEventListener('click', function() {
+            resultBox.textContent = '正在请求 AI 接口……';
+            fetch('/admin/ai/test', { credentials: 'same-origin', headers: { 'X-Requested-With': 'fetch' } })
+              .then(function(r) { return r.json(); })
+              .then(function(d) {
+                if (d && d.ok) {
+                  resultBox.textContent = '✅ 连通成功，模型：' + (d.model || '') + '，响应示例：' + (d.sample || '');
+                } else {
+                  resultBox.textContent = '❌ ' + ((d && d.message) || '调用失败');
+                }
+              })
+              .catch(function(err) { resultBox.textContent = '❌ ' + (err && err.message || err); });
+          });
+        })();
+      </script>
+    </section>
+<% } else if (activePanel === 'users') { %>
+    <section id="user-panel" class="admin-panel is-active" data-ajax-panel="users">
+      <% const userKeywordRaw = String(pageQuery.userKeyword || '').trim(); %>
+      <% const userKeyword = userKeywordRaw.toLowerCase(); %>
+      <% const userClassFilter = String(pageQuery.userClassId || ''); %>
+      <% const filteredUsers = users.filter(function(user) {
+           const haystack = [user.name, user.username, user.class_name, user.role === 'admin' ? '管理员' : '教师'].join(' ').toLowerCase();
+           const matchKeyword = !userKeyword || haystack.includes(userKeyword);
+           const matchClass = !userClassFilter || String(user.class_id || '') === userClassFilter;
+           return matchKeyword && matchClass;
+         }); %>
+      <% const userPaginationData = userPagination || { currentPage: 1, totalPages: 1, total: filteredUsers.length, startIndex: filteredUsers.length ? 1 : 0, endIndex: filteredUsers.length, hasPrev: false, hasNext: false, prevPage: 1, nextPage: 1 }; %>
+      <% const userPageSize = userPaginationData.pageSize || 10; %>
+      <% const pagedUsers = filteredUsers.slice((userPaginationData.currentPage - 1) * userPageSize, userPaginationData.currentPage * userPageSize); %>
+      <% const userPageQueryBase = 'panel=users' + (userKeywordRaw ? '&userKeyword=' + encodeURIComponent(userKeywordRaw) : '') + (userClassFilter ? '&userClassId=' + encodeURIComponent(userClassFilter) : '') + '&pageSize=' + encodeURIComponent(String(userPageSize)); %>
+      <div class="panel-heading"><div><div class="eyebrow">用户管理</div><h2>教师与管理员账号管理</h2><p>支持单个新增、模板下载、Excel 导入导出和批量操作。</p></div></div>
+      <div class="management-layout">
+        <div class="management-side">
+          <% if (typeof hasPerm === 'function' && hasPerm('data.users.create') && !isReadonly) { %>
+          <div class="card">
+            <div class="section-head"><h3>新增用户</h3></div>
+            <form method="post" action="/admin/users/add" class="form-grid">
+              <input type="hidden" name="userKeyword" value="<%= userKeywordRaw %>" />
+              <input type="hidden" name="userClassId" value="<%= userClassFilter %>" />
+              <label><span>姓名</span><input type="text" name="name" placeholder="例如：王老师" required /></label>
+              <label><span>用户名</span><input type="text" name="username" placeholder="例如：wanglaoshi" required /></label>
+              <label><span>密码</span><input type="text" name="password" placeholder="请设置初始密码" required /></label>
+              <label><span>角色</span><select name="role"><% (roles || []).forEach(r => { %><option value="<%= r.name %>" <%= r.name === 'user' ? 'selected' : '' %>><%= r.display_name %></option><% }); %></select></label>
+              <label><span>生日</span><input type="date" name="birthDate" /></label>
+              <label><span>绑定班级（教师可选）</span><select name="classId"><option value="">暂不绑定</option><% classes.forEach(function(item) { %><option value="<%= item.id %>"><%= item.name %>（<%= gradeLabel(item.grade_level) %>）</option><% }) %></select></label>
+              <button class="btn primary full" type="submit">新增用户</button>
+            </form>
+          </div>
+          <% } %>
+          <div class="card">
+            <div class="section-head"><h3>导入 / 导出</h3></div>
+            <div class="toolbar-links stacked-links"><% if (typeof hasPerm === 'function' && hasPerm('data.users.import') && !isReadonly) { %><a class="btn small" href="/admin/users/template">下载导入模板</a><% } %><% if (typeof hasPerm === 'function' && hasPerm('data.users.export') && !isReadonly) { %><a class="btn small" href="/admin/users/export?<%= buildQuery([['userKeyword', userKeywordRaw], ['userClassId', userClassFilter]]) %>">导出用户</a><% } %></div>
+            <% if (typeof hasPerm === 'function' && hasPerm('data.users.import') && !isReadonly) { %>
+            <div class="import-box no-top-margin">
+              <h3>批量导入用户</h3>
+              <form method="post" action="/admin/users/import" enctype="multipart/form-data" class="form-grid"><input type="file" name="file" accept=".xlsx,.xls,.csv" required /><button class="btn primary full" type="submit">上传并导入</button></form>
+              <div class="muted">模板字段：姓名、用户名、密码、角色、班级、生日。生日兼容 2021-10-17 / 2021/10/17。导入时若班级不存在，会自动新增。</div>
+            </div>
+            <% } %>
+          </div>
+        </div>
+        <div class="management-main">
+          <div class="card full-height-card">
+            <div class="section-head"><h3>用户列表</h3><div class="muted no-margin">支持按姓名/用户名搜索、编辑资料与重置密码</div></div>
+            <form method="get" action="/admin" class="filter-toolbar">
+              <input type="hidden" name="panel" value="users" />
+              <div class="filter-row filter-row-wide">
+                <input type="search" name="userKeyword" value="<%= userKeywordRaw %>" placeholder="搜索姓名 / 用户名 / 班级" />
+                <select name="pageSize">
+                  <option value="10" <%= userPageSize === 10 ? 'selected' : '' %>>每页 10 条</option>
+                  <option value="20" <%= userPageSize === 20 ? 'selected' : '' %>>每页 20 条</option>
+                  <option value="50" <%= userPageSize === 50 ? 'selected' : '' %>>每页 50 条</option>
+                </select>
+                <select name="userClassId">
+                  <option value="">全部班级</option>
+                  <% classes.forEach(function(item) { %>
+                    <option value="<%= item.id %>" <%= userClassFilter === String(item.id) ? 'selected' : '' %>><%= item.name %>（<%= gradeLabel(item.grade_level) %>）</option>
+                  <% }) %>
+                </select>
+                <button class="btn" type="submit">筛选</button>
+                <a class="btn" href="/admin?panel=users">重置</a>
+              </div>
+            </form>
+            <div class="muted" style="margin:10px 0 14px;">当前筛选结果：<strong><%= userPaginationData.total %></strong> 人，当前显示第 <strong><%= userPaginationData.startIndex || 0 %></strong> - <strong><%= userPaginationData.endIndex || 0 %></strong> 条</div>
+            <form method="post" action="/admin/users/batch" class="batch-toolbar" id="users-batch-form">
+              <input type="hidden" name="userKeyword" value="<%= userKeywordRaw %>" />
+              <input type="hidden" name="userClassId" value="<%= userClassFilter %>" />
+              <input type="hidden" name="userPage" value="<%= userPaginationData.currentPage %>" />
+              <input type="hidden" name="pageSize" value="<%= userPageSize %>" />
+              <% if (typeof hasPerm === 'function' && (hasPerm('data.users.edit') || hasPerm('data.users.delete')) && !isReadonly) { %>
+              <div class="batch-row">
+                <select name="batchAction" required><option value="enable">批量启用</option><option value="disable">批量禁用</option><option value="delete">批量删除</option><option value="setClass">批量设置班级</option><option value="clearClass">批量清空班级</option></select>
+                <select name="batchClassId"><option value="">选择目标班级（仅设置班级时使用）</option><% classes.forEach(function(item) { %><option value="<%= item.id %>"><%= item.name %></option><% }) %></select>
+                <button class="btn primary" type="submit">执行批量操作</button>
+              </div>
+              <% } %>
+            </form>
+            <div class="table-wrap">
+                <table class="data-table admin-table">
+                  <thead><tr><th class="checkbox-cell">选择</th><th>姓名</th><th>用户名</th><th>角色</th><th>生日</th><th>班级</th><th>状态</th><th>操作</th></tr></thead>
+                  <tbody>
+                    <% pagedUsers.forEach(function(user) { %>
+                      <tr>
+                        <td class="checkbox-cell"><input type="checkbox" name="selectedIds" value="<%= user.id %>" form="users-batch-form" /></td>
+                        <td><strong><%= user.name %></strong></td>
+                        <td><%= user.username %></td>
+                        <td><%= user.role_display_name || (user.role === 'admin' ? '管理员' : '教师') %></td>
+                        <td><%= user.birth_date ? new Date(user.birth_date).toISOString().slice(0,10) : '-' %></td>
+                        <td><%= user.class_name || '-' %></td>
+                        <td><span class="status-badge <%= user.enabled ? 'ok' : 'off' %>"><%= user.enabled ? '启用中' : '已禁用' %></span></td>
+                        <td>
+                          <div class="action-col compact-actions">
+                            <% if (typeof hasPerm === 'function' && hasPerm('data.users.edit') && !isReadonly) { %>
+                            <details class="inline-editor-card">
+                              <summary class="btn small primary">编辑</summary>
+                              <form method="post" action="/admin/users/<%= user.id %>/edit" class="form-grid compact-inline-form inline-edit-panel">
+                                <input type="hidden" name="userKeyword" value="<%= userKeywordRaw %>" />
+                                <input type="hidden" name="userClassId" value="<%= userClassFilter %>" />
+                                <input type="hidden" name="userPage" value="<%= userPaginationData.currentPage %>" />
+                                <input type="hidden" name="pageSize" value="<%= userPageSize %>" />
+                                <label><span>姓名</span><input type="text" name="name" value="<%= user.name || '' %>" required /></label>
+                                <label><span>账号</span><input type="text" name="username" value="<%= user.username || '' %>" required /></label>
+                                <label><span>角色</span><select name="role"><% (roles || []).forEach(r => { %><option value="<%= r.name %>" <%= user.role === r.name ? 'selected' : '' %>><%= r.display_name %></option><% }); %></select></label>
+                                <label><span>生日</span><input type="date" name="birthDate" value="<%= user.birth_date ? new Date(user.birth_date).toISOString().slice(0,10) : '' %>" /></label>
+                                <label><span>绑定班级</span><select name="classId"><option value="">暂不绑定</option><% classes.forEach(function(item) { %><option value="<%= item.id %>" <%= String(user.class_id || '') === String(item.id) ? 'selected' : '' %>><%= item.name %>（<%= gradeLabel(item.grade_level) %>）</option><% }) %></select></label>
+                                <label><span>重置密码（可选）</span><input type="text" name="password" placeholder="留空则不修改" /></label>
+                                <div class="tool-row"><button class="btn small primary" type="submit">保存编辑</button></div>
+                              </form>
+                            </details>
+                            <% } %>
+                            <% if (typeof hasPerm === 'function' && hasPerm('data.users.edit') && !isReadonly) { %>
+                            <form method="post" action="/admin/users/<%= user.id %>/toggle" class="inline-form">
+                              <input type="hidden" name="userKeyword" value="<%= userKeywordRaw %>" />
+                              <input type="hidden" name="userClassId" value="<%= userClassFilter %>" />
+                              <input type="hidden" name="userPage" value="<%= userPaginationData.currentPage %>" />
+                              <input type="hidden" name="pageSize" value="<%= userPageSize %>" />
+                              <button class="btn small" type="submit" <%= user.username === 'admin' ? 'disabled' : '' %>><%= user.enabled ? '禁用' : '启用' %></button>
+                            </form>
+                            <% } %>
+                          </div>
+                        </td>
+                      </tr>
+                    <% }) %>
+                    <% if (!userPaginationData.total) { %>
+                      <tr><td colspan="8"><div class="empty-state">没有匹配的用户，请调整搜索条件。</div></td></tr>
+                    <% } %>
+                  </tbody>
+                </table>
+              </div>
+              <% if (userPaginationData.totalPages > 1) { %>
+                <% const userWindowStart = Math.max(1, userPaginationData.currentPage - 2); %>
+                <% const userWindowEnd = Math.min(userPaginationData.totalPages, userPaginationData.currentPage + 2); %>
+                <div class="pagination-bar">
+                  <% if (userPaginationData.hasPrev) { %><a class="pagination-link pagination-nav" href="/admin?<%= userPageQueryBase %>&userPage=<%= userPaginationData.prevPage %>">上一页</a><% } %>
+                  <% if (userWindowStart > 1) { %>
+                    <a class="pagination-link <%= userPaginationData.currentPage === 1 ? 'active' : '' %>" href="/admin?<%= userPageQueryBase %>&userPage=1">1</a>
+                    <% if (userWindowStart > 2) { %><span class="pagination-ellipsis">…</span><% } %>
+                  <% } %>
+                  <% for (let pageNo = userWindowStart; pageNo <= userWindowEnd; pageNo++) { %>
+                    <a class="pagination-link <%= userPaginationData.currentPage === pageNo ? 'active' : '' %>" href="/admin?<%= userPageQueryBase %>&userPage=<%= pageNo %>"><%= pageNo %></a>
+                  <% } %>
+                  <% if (userWindowEnd < userPaginationData.totalPages) { %>
+                    <% if (userWindowEnd < userPaginationData.totalPages - 1) { %><span class="pagination-ellipsis">…</span><% } %>
+                    <a class="pagination-link <%= userPaginationData.currentPage === userPaginationData.totalPages ? 'active' : '' %>" href="/admin?<%= userPageQueryBase %>&userPage=<%= userPaginationData.totalPages %>"><%= userPaginationData.totalPages %></a>
+                  <% } %>
+                  <% if (userPaginationData.hasNext) { %><a class="pagination-link pagination-nav" href="/admin?<%= userPageQueryBase %>&userPage=<%= userPaginationData.nextPage %>">下一页</a><% } %>
+                </div>
+              <% } %>
+          </div>
+        </div>
+      </div>
+    </section>
+<% } else if (activePanel === 'classes') { %>
+    <section id="class-panel" class="admin-panel is-active">
+      <div class="panel-heading"><div><div class="eyebrow">班级管理</div><h2>班级与多教师绑定</h2><p>支持编辑班级信息，并通过下拉选择带班教师。</p></div></div>
+      <div class="management-layout">
+        <div class="management-side">
+          <% if (typeof hasPerm === 'function' && hasPerm('data.classes.create') && !isReadonly) { %>
+          <div class="card">
+            <div class="section-head"><h3>新增班级</h3></div>
+            <form method="post" action="/admin/classes/add" class="form-grid">
+              <label><span>班级名称</span><input type="text" name="name" placeholder="例如：大一班" required /></label>
+              <label><span>班级年级</span><select name="gradeLevel" required><option value="small">小班</option><option value="middle">中班</option><option value="large">大班</option></select></label>
+              <label><span>班级容量</span><input type="number" name="capacity" min="0" value="0" /></label>
+              <label><span>班级描述</span><textarea name="description" rows="3" placeholder="例如：幼小衔接重点班级"></textarea></label>
+              <label><span>带班教师</span><select name="teacherIds"><option value="">请选择带班教师</option><% teacherOptions.forEach(function(teacher) { %><option value="<%= teacher.id %>"><%= teacher.name %>（<%= teacher.username %>）</option><% }) %></select></label>
+              <button class="btn primary full" type="submit">新增班级</button>
+            </form>
+          </div>
+          <% } %>
+        </div>
+        <div class="management-main">
+          <div class="card full-height-card">
+            <div class="section-head"><h3>班级列表</h3><div class="muted no-margin">支持教师多选分配和班级启用/停用</div></div>
+            <% if (!classes.length) { %><div class="empty-state">暂无班级，请先新增班级</div><% } else { %>
+              <div class="class-card-grid admin-class-grid">
+                <% classes.forEach(function(item) { %>
+                  <div class="class-card wide-class-card">
+                    <div class="class-card-head"><div><h3><%= item.name %></h3><div class="muted"><%= gradeLabel(item.grade_level) %> · 教师：<%= item.teacher_names || '未分配' %></div></div><span class="status-badge <%= item.enabled ? 'ok' : 'off' %>"><%= item.enabled ? '启用中' : '已停用' %></span></div>
+                    <div class="class-meta"><div>容量：<%= item.capacity || 0 %></div><div>幼儿数：<%= item.child_count || 0 %></div></div>
+                    <p><%= item.description || '暂无描述' %></p>
+                    <% if (typeof hasPerm === 'function' && hasPerm('data.classes.edit') && !isReadonly) { %>
+                    <details class="inline-editor-card class-editor-card">
+                      <summary class="btn small primary">编辑班级</summary>
+                      <form method="post" action="/admin/classes/<%= item.id %>/edit" class="form-grid compact-card-form inline-edit-panel" data-teacher-ids="<%= item.teacher_ids || '' %>">
+                        <input type="hidden" name="classKeyword" value="" />
+                        <input type="hidden" name="classGradeLevel" value="" />
+                        <label><span>班级名称</span><input type="text" name="name" value="<%= item.name || '' %>" required /></label>
+                        <label><span>班级年级</span><select name="gradeLevel"><option value="small" <%= item.grade_level === 'small' ? 'selected' : '' %>>小班</option><option value="middle" <%= item.grade_level === 'middle' ? 'selected' : '' %>>中班</option><option value="large" <%= item.grade_level === 'large' ? 'selected' : '' %>>大班</option></select></label>
+                        <label><span>班级容量</span><input type="number" name="capacity" min="0" value="<%= item.capacity || 0 %>" /></label>
+                        <label><span>班级描述</span><textarea name="description" rows="3"><%= item.description || '' %></textarea></label>
+                        <label><span>带班教师</span><select name="teacherIds"><option value="">请选择带班教师</option><% const selectedTeacherIds = String(item.teacher_ids || '').split(',').filter(Boolean); %><% teacherOptions.forEach(function(teacher) { %><option value="<%= teacher.id %>" <%= selectedTeacherIds.includes(String(teacher.id)) ? 'selected' : '' %>><%= teacher.name %>（<%= teacher.username %>）</option><% }) %></select></label>
+                        <div class="tool-row"><button class="btn small primary" type="submit">保存编辑</button><button class="btn small" type="button" onclick="document.getElementById('class-toggle-<%= item.id %>').submit()"><%= item.enabled ? '停用班级' : '启用班级' %></button></div>
+                      </form>
+                    </details>
+                    <% } %>
+                    <% if (typeof hasPerm === 'function' && hasPerm('data.classes.edit') && !isReadonly) { %>
+                    <form id="class-toggle-<%= item.id %>" method="post" action="/admin/classes/<%= item.id %>/toggle" class="inline-form class-toggle-form"></form>
+                    <% } %>
+                  </div>
+                <% }) %>
+              </div>
+            <% } %>
+          </div>
+        </div>
+      </div>
+    </section>
+<% } else if (activePanel === 'children') { %>
+    <section id="child-panel" class="admin-panel is-active" data-ajax-panel="children">
+      <% const childKeywordRaw = String(pageQuery.childKeyword || '').trim(); %>
+      <% const childKeyword = childKeywordRaw.toLowerCase(); %>
+      <% const childClassFilter = String(pageQuery.childClassId || ''); %>
+      <% const safeChildren = Array.isArray(children) ? children : []; %>
+      <% const filteredChildren = safeChildren.filter(function(child) {
+           const haystack = [child.name, child.gender, child.class_name].join(' ').toLowerCase();
+           const matchKeyword = !childKeyword || haystack.includes(childKeyword);
+           const matchClass = !childClassFilter || String(child.class_id || '') === childClassFilter;
+           return matchKeyword && matchClass;
+         }); %>
+      <% const childPaginationData = (typeof childPagination !== 'undefined' && childPagination) ? childPagination : { currentPage: 1, totalPages: 1, total: filteredChildren.length, startIndex: filteredChildren.length ? 1 : 0, endIndex: filteredChildren.length, hasPrev: false, hasNext: false, prevPage: 1, nextPage: 1 }; %>
+      <% const childPageSize = childPaginationData.pageSize || 10; %>
+      <% const pagedChildren = filteredChildren.slice((childPaginationData.currentPage - 1) * childPageSize, childPaginationData.currentPage * childPageSize); %>
+      <% const childPageQueryBase = 'panel=children' + (childKeywordRaw ? '&childKeyword=' + encodeURIComponent(childKeywordRaw) : '') + (childClassFilter ? '&childClassId=' + encodeURIComponent(childClassFilter) : '') + '&pageSize=' + encodeURIComponent(String(childPageSize)); %>
+      <div class="panel-heading"><div><div class="eyebrow">幼儿档案管理</div><h2>幼儿基础档案</h2><p>这里维护班级归属、姓名、性别、出生日期等基础信息。动态的临时关注状态请到“重点关注管理”里维护。</p></div></div>
+      <div class="management-layout">
+        <div class="management-side">
+          <% if (typeof hasPerm === 'function' && hasPerm('data.children.create') && !isReadonly) { %>
+          <div class="card">
+            <div class="section-head"><h3>新增幼儿档案</h3></div>
+            <form method="post" action="/admin/children/add" class="form-grid">
+              <input type="hidden" name="childKeyword" value="<%= childKeywordRaw %>" />
+              <input type="hidden" name="childClassId" value="<%= childClassFilter %>" />
+              <input type="hidden" name="childPage" value="<%= childPaginationData.currentPage %>" />
+              <input type="hidden" name="pageSize" value="<%= childPageSize %>" />
+              <label><span>所属班级</span><select name="classId" required><option value="">请选择班级</option><% classes.forEach(function(item) { %><option value="<%= item.id %>"><%= item.name %>（<%= gradeLabel(item.grade_level) %>）</option><% }) %></select></label>
+              <label><span>幼儿姓名</span><input type="text" name="name" placeholder="例如：小明" required /></label>
+              <label><span>性别</span><select name="gender"><option value="男">男</option><option value="女">女</option></select></label>
+              <label><span>出生日期</span><input type="date" name="birthDate" /></label>
+              <button class="btn primary full" type="submit">新增幼儿档案</button>
+            </form>
+          </div>
+          <% } %>
+          <div class="card">
+            <div class="section-head"><h3>导入 / 导出</h3></div>
+            <div class="toolbar-links stacked-links"><% if (typeof hasPerm === 'function' && hasPerm('data.children.import') && !isReadonly) { %><a class="btn small" href="/admin/children/template">下载导入模板</a><% } %><% if (typeof hasPerm === 'function' && hasPerm('data.children.export') && !isReadonly) { %><a class="btn small" href="/admin/children/export?<%= buildQuery([['childKeyword', childKeywordRaw], ['childClassId', childClassFilter]]) %>">导出幼儿</a><% } %></div>
+            <% if (typeof hasPerm === 'function' && hasPerm('data.children.import') && !isReadonly) { %>
+            <div class="import-box no-top-margin">
+              <h3>批量导入幼儿</h3>
+              <form method="post" action="/admin/children/import" enctype="multipart/form-data" class="form-grid"><input type="file" name="file" accept=".xlsx,.xls,.csv" required /><button class="btn primary full" type="submit">上传并导入</button></form>
+              <div class="muted">模板基础字段：班级、幼儿姓名、性别、出生日期。出生日期兼容 2021-10-17 / 2021/10/17。扩展字段仍兼容：需要关注、关注原因。</div>
+            </div>
+            <% } %>
+          </div>
+        </div>
+        <div class="management-main">
+          <div class="card full-height-card">
+            <div class="section-head"><h3>幼儿档案列表</h3><div class="muted no-margin">支持按姓名搜索，并按班级筛选</div></div>
+            <form method="get" action="/admin" class="filter-toolbar">
+              <input type="hidden" name="panel" value="children" />
+              <div class="filter-row filter-row-wide">
+                <input type="search" name="childKeyword" value="<%= childKeywordRaw %>" placeholder="搜索幼儿姓名 / 性别 / 班级" />
+                <select name="pageSize">
+                  <option value="10" <%= childPageSize === 10 ? 'selected' : '' %>>每页 10 条</option>
+                  <option value="20" <%= childPageSize === 20 ? 'selected' : '' %>>每页 20 条</option>
+                  <option value="50" <%= childPageSize === 50 ? 'selected' : '' %>>每页 50 条</option>
+                </select>
+                <select name="childClassId">
+                  <option value="">全部班级</option>
+                  <% classes.forEach(function(item) { %>
+                    <option value="<%= item.id %>" <%= childClassFilter === String(item.id) ? 'selected' : '' %>><%= item.name %>（<%= gradeLabel(item.grade_level) %>）</option>
+                  <% }) %>
+                </select>
+                <button class="btn" type="submit">筛选</button>
+                <a class="btn" href="/admin?panel=children">重置</a>
+              </div>
+            </form>
+            <div class="muted" style="margin:10px 0 14px;">当前筛选结果：<strong><%= childPaginationData.total %></strong> 人，当前显示第 <strong><%= childPaginationData.startIndex || 0 %></strong> - <strong><%= childPaginationData.endIndex || 0 %></strong> 条</div>
+            <form method="post" action="/admin/children/batch" class="batch-toolbar" id="children-batch-form">
+              <input type="hidden" name="childKeyword" value="<%= childKeywordRaw %>" />
+              <input type="hidden" name="childClassId" value="<%= childClassFilter %>" />
+              <input type="hidden" name="childPage" value="<%= childPaginationData.currentPage %>" />
+              <input type="hidden" name="pageSize" value="<%= childPageSize %>" />
+              <% if (typeof hasPerm === 'function' && (hasPerm('data.children.edit') || hasPerm('data.children.delete')) && !isReadonly) { %><div class="batch-row"><select name="batchAction" required><option value="enable">批量启用</option><option value="disable">批量禁用</option><option value="delete">批量删除</option><option value="moveClass">批量调整班级</option></select><select name="batchClassId"><option value="">选择目标班级（仅调整班级时使用）</option><% classes.forEach(function(item) { %><option value="<%= item.id %>"><%= item.name %></option><% }) %></select><button class="btn primary" type="submit">执行批量操作</button></div><% } %>
+            </form>
+            <div class="table-wrap">
+                <table class="data-table admin-table">
+                  <thead><tr><th class="checkbox-cell">选择</th><th>班级</th><th>幼儿姓名</th><th>性别</th><th>出生日期</th><th>状态</th><th>创建时间</th><th>操作</th></tr></thead>
+                  <tbody>
+                    <% pagedChildren.forEach(function(child) { %>
+                      <tr>
+                        <td class="checkbox-cell"><input type="checkbox" name="selectedIds" value="<%= child.id %>" form="children-batch-form" /></td>
+                        <td><%= child.class_name || '-' %></td>
+                        <td><strong><%= child.name %></strong></td>
+                        <td><%= child.gender || '-' %></td>
+                        <td><%= child.birth_date ? new Date(child.birth_date).toISOString().slice(0,10) : '-' %></td>
+                        <td><span class="status-badge <%= child.enabled ? 'ok' : 'off' %>"><%= child.enabled ? '启用中' : '已禁用' %></span></td>
+                        <td><%= child.created_at ? new Date(child.created_at).toLocaleString('zh-CN', { hour12: false }) : '-' %></td>
+                        <td>
+                          <div class="action-col compact-actions">
+                            <form method="post" action="/admin/children/<%= child.id %>/toggle" class="inline-form">
+                              <input type="hidden" name="childKeyword" value="<%= childKeywordRaw %>" />
+                              <input type="hidden" name="childClassId" value="<%= childClassFilter %>" />
+                              <input type="hidden" name="childPage" value="<%= childPaginationData.currentPage %>" />
+                              <input type="hidden" name="pageSize" value="<%= childPageSize %>" />
+                              <button class="btn small" type="submit"><%= child.enabled ? '禁用' : '启用' %></button>
+                            </form>
+                          </div>
+                        </td>
+                      </tr>
+                    <% }) %>
+                    <% if (!childPaginationData.total) { %>
+                      <tr><td colspan="8"><div class="empty-state">没有匹配的幼儿档案，请调整搜索条件。</div></td></tr>
+                    <% } %>
+                  </tbody>
+                </table>
+              </div>
+              <% if (childPaginationData.totalPages > 1) { %>
+                <% const childWindowStart = Math.max(1, childPaginationData.currentPage - 2); %>
+                <% const childWindowEnd = Math.min(childPaginationData.totalPages, childPaginationData.currentPage + 2); %>
+                <div class="pagination-bar">
+                  <% if (childPaginationData.hasPrev) { %><a class="pagination-link pagination-nav" href="/admin?<%= childPageQueryBase %>&childPage=<%= childPaginationData.prevPage %>">上一页</a><% } %>
+                  <% if (childWindowStart > 1) { %>
+                    <a class="pagination-link <%= childPaginationData.currentPage === 1 ? 'active' : '' %>" href="/admin?<%= childPageQueryBase %>&childPage=1">1</a>
+                    <% if (childWindowStart > 2) { %><span class="pagination-ellipsis">…</span><% } %>
+                  <% } %>
+                  <% for (let pageNo = childWindowStart; pageNo <= childWindowEnd; pageNo++) { %>
+                    <a class="pagination-link <%= childPaginationData.currentPage === pageNo ? 'active' : '' %>" href="/admin?<%= childPageQueryBase %>&childPage=<%= pageNo %>"><%= pageNo %></a>
+                  <% } %>
+                  <% if (childWindowEnd < childPaginationData.totalPages) { %>
+                    <% if (childWindowEnd < childPaginationData.totalPages - 1) { %><span class="pagination-ellipsis">…</span><% } %>
+                    <a class="pagination-link <%= childPaginationData.currentPage === childPaginationData.totalPages ? 'active' : '' %>" href="/admin?<%= childPageQueryBase %>&childPage=<%= childPaginationData.totalPages %>"><%= childPaginationData.totalPages %></a>
+                  <% } %>
+                  <% if (childPaginationData.hasNext) { %><a class="pagination-link pagination-nav" href="/admin?<%= childPageQueryBase %>&childPage=<%= childPaginationData.nextPage %>">下一页</a><% } %>
+                </div>
+              <% } %>
+          </div>
+        </div>
+      </div>
+    </section>
+<% } else if (activePanel === 'logs') { %>
+    <section id="log-panel" class="admin-panel is-active" data-ajax-panel="logs">
+      <div class="panel-heading"><div><div class="eyebrow">日志记录</div><h2>关键操作审计日志</h2><p>所有时间统一按北京时间展示。支持按操作人、动作类型、日期筛选，并按每页 10 条分页。</p></div></div>
+      <div class="logs-grid">
+        <div class="card log-card-main">
+          <div class="section-head"><h3>关键操作审计</h3><div class="muted no-margin">当前共 <%= logs && logs.pagination ? logs.pagination.total : 0 %> 条</div></div>
+          <form method="get" action="/admin" class="filter-toolbar audit-filter-toolbar">
+            <input type="hidden" name="panel" value="logs" />
+            <div class="filter-row filter-row-wide audit-filter-row">
+              <select name="logActor">
+                <option value="">全部操作人</option>
+                <% (logs.actorOptions || []).forEach(function(actor) { %>
+                  <option value="<%= actor %>" <%= logs.filters && logs.filters.actor === actor ? 'selected' : '' %>><%= actor %></option>
+                <% }) %>
+              </select>
+              <select name="logAction">
+                <option value="">全部动作类型</option>
+                <% (logs.actionOptions || []).forEach(function(action) { %>
+                  <option value="<%= action %>" <%= logs.filters && logs.filters.action === action ? 'selected' : '' %>><%= action %></option>
+                <% }) %>
+              </select>
+              <input type="date" name="logDate" value="<%= logs.filters && logs.filters.date ? logs.filters.date : '' %>" />
+              <button class="btn" type="submit">筛选</button>
+              <a class="btn" href="/admin?panel=logs">重置</a>
+            </div>
+          </form>
+          <div class="table-wrap">
+            <table class="data-table admin-table">
+              <thead><tr><th>时间</th><th>操作人</th><th>动作</th><th>对象</th><th>状态</th><th>详情</th></tr></thead>
+              <tbody>
+                <% (logs && logs.audit || []).forEach(function(item) { %>
+                  <tr>
+                    <td class="audit-time-cell"><div class="audit-time-text"><%= item.timeLabel || '-' %></div></td>
+                    <td><%= item.actorLabel || '-' %></td>
+                    <td><span class="status-badge" style="background:<%= item.event === 'fitness_record_deleted' ? '#fdecea' : '#eef3ff' %>;color:<%= item.event === 'fitness_record_deleted' ? '#c62828' : '#1f4fd6' %>;"><%= item.actionLabel || '-' %></span></td>
+                    <td class="audit-target-cell"><div class="audit-target-text" style="<%= item.event === 'fitness_record_deleted' ? 'font-weight:700;color:#b42318;' : '' %>"><%= item.targetLabel || '-' %></div></td>
+                    <td><%= item.status || '-' %></td>
+                    <td class="audit-detail-cell"><pre class="audit-detail-text" style="<%= item.event === 'fitness_record_deleted' ? 'background:#fff1f0;border:1px solid #f5c2c0;color:#8a1c1c;font-weight:700;' : '' %>"><%= item.detailLabel || '-' %></pre></td>
+                  </tr>
+                <% }) %>
+                <% if (!(logs && logs.audit && logs.audit.length)) { %><tr><td colspan="6"><div class="empty-state">当前筛选条件下暂无审计日志</div></td></tr><% } %>
+              </tbody>
+            </table>
+          </div>
+          <% if (logs && logs.pagination && logs.pagination.totalPages > 1) { %>
+            <% const pageQuerySuffix = (logs.filters && logs.filters.actor ? '&logActor=' + encodeURIComponent(logs.filters.actor) : '') + (logs.filters && logs.filters.action ? '&logAction=' + encodeURIComponent(logs.filters.action) : '') + (logs.filters && logs.filters.date ? '&logDate=' + encodeURIComponent(logs.filters.date) : ''); %>
+            <div class="pagination-bar">
+              <% if (logs.pagination.currentPage > 1) { %>
+                <a class="pagination-link pagination-nav" href="/admin?panel=logs&logPage=<%= logs.pagination.currentPage - 1 %><%= pageQuerySuffix %>">上一页</a>
+              <% } %>
+              <% for (let pageNo = 1; pageNo <= logs.pagination.totalPages; pageNo++) { %>
+                <a class="pagination-link <%= logs.pagination.currentPage === pageNo ? 'active' : '' %>" href="/admin?panel=logs&logPage=<%= pageNo %><%= pageQuerySuffix %>"><%= pageNo %></a>
+              <% } %>
+              <% if (logs.pagination.currentPage < logs.pagination.totalPages) { %>
+                <a class="pagination-link pagination-nav" href="/admin?panel=logs&logPage=<%= logs.pagination.currentPage + 1 %><%= pageQuerySuffix %>">下一页</a>
+              <% } %>
+            </div>
+          <% } %>
+        </div>
+
+      </div>
+    </section>
+<% } else if (activePanel === 'attention') { %>
+    <section id="attention-panel" class="admin-panel is-active" data-ajax-panel="attention">
+      <% const attentionKeywordRaw = String(pageQuery.attentionKeyword || '').trim(); %>
+      <% const attentionKeyword = attentionKeywordRaw.toLowerCase(); %>
+      <% const attentionClassFilter = String(pageQuery.attentionClassId || ''); %>
+      <% const attentionStatusFilter = String(pageQuery.attentionStatus || 'all'); %>
+      <% const safeAttentionChildren = Array.isArray(children) ? children : []; %>
+      <% const filteredAttentionChildren = safeAttentionChildren.filter(function(child) {
+           const haystack = [child.name, child.class_name, child.gender, child.attention_reason, child.attention_tags].join(' ').toLowerCase();
+           const matchKeyword = !attentionKeyword || haystack.includes(attentionKeyword);
+           const matchClass = !attentionClassFilter || String(child.class_id || '') === attentionClassFilter;
+           const status = String(child.attention_status || (child.needs_attention ? 'active' : 'normal'));
+           const matchStatus = attentionStatusFilter === 'all'
+             ? true
+             : attentionStatusFilter === 'active'
+               ? status === 'active'
+               : attentionStatusFilter === 'scheduled'
+                 ? status === 'scheduled'
+                 : attentionStatusFilter === 'expired'
+                   ? status === 'expired'
+                   : status === 'normal';
+           return matchKeyword && matchClass && matchStatus;
+         }); %>
+      <% const attentionPaginationData = (typeof attentionPagination !== 'undefined' && attentionPagination) ? attentionPagination : { currentPage: 1, totalPages: 1, total: filteredAttentionChildren.length, startIndex: filteredAttentionChildren.length ? 1 : 0, endIndex: filteredAttentionChildren.length, hasPrev: false, hasNext: false, prevPage: 1, nextPage: 1 }; %>
+      <% const attentionPageSize = attentionPaginationData.pageSize || 10; %>
+      <% const pagedAttentionChildren = filteredAttentionChildren.slice((attentionPaginationData.currentPage - 1) * attentionPageSize, attentionPaginationData.currentPage * attentionPageSize); %>
+      <% const requestedAttentionChildId = String(pageQuery.attentionChildId || ''); %>
+      <% const attentionPageQueryBase = 'panel=attention' + (attentionKeywordRaw ? '&attentionKeyword=' + encodeURIComponent(attentionKeywordRaw) : '') + (attentionClassFilter ? '&attentionClassId=' + encodeURIComponent(attentionClassFilter) : '') + (attentionStatusFilter ? '&attentionStatus=' + encodeURIComponent(attentionStatusFilter) : '') + (requestedAttentionChildId ? '&attentionChildId=' + encodeURIComponent(requestedAttentionChildId) : '') + '&pageSize=' + encodeURIComponent(String(attentionPageSize)); %>
+      <% const selectedAttentionChild = filteredAttentionChildren.find(function(child) { return String(child.id) === requestedAttentionChildId; }) || filteredAttentionChildren[0] || null; %>
+      <% const selectedAttentionStart = selectedAttentionChild && selectedAttentionChild.attention_start_date ? new Date(selectedAttentionChild.attention_start_date).toISOString().slice(0,10) : (today || ''); %>
+      <% const selectedAttentionEnd = selectedAttentionChild && selectedAttentionChild.attention_end_date ? new Date(selectedAttentionChild.attention_end_date).toISOString().slice(0,10) : ''; %>
+      <% const selectedAttentionVest = selectedAttentionChild && selectedAttentionChild.attention_vest_type === 'red' ? 'red' : (selectedAttentionChild && selectedAttentionChild.attention_vest_type === 'green' ? 'green' : 'yellow'); %>
+      <% const quickAttentionTags = ['咳嗽', '感冒恢复期', '扭伤擦伤', '情绪波动', '减少跑跳', '避免对抗', '观察体力', '补水提醒']; %>
+      <% const selectedAttentionTags = selectedAttentionChild ? String(selectedAttentionChild.attention_tags || '').split(',').map(function(item) { return item.trim(); }).filter(Boolean) : []; %>
+      <% const selectedAttentionExtraTags = selectedAttentionTags.filter(function(tag) { return !quickAttentionTags.includes(tag); }).join(','); %>
+      <div class="panel-heading"><div><div class="eyebrow">重点关注管理</div><h2>动态重点关注提醒</h2><p>这里单独维护当天或近期需要重点照看的幼儿，例如咳嗽、扭伤、情绪不稳、刚恢复运动等。情况恢复后可随时取消。</p></div></div>
+      <div class="panel-grid">
+        <div class="card stat-card">
+          <div class="stat-label">当前生效中的重点关注人数</div>
+          <div class="stat-number"><%= counts.attention_children || 0 %></div>
+          <div class="muted">教师端首页与场地预约页都会读取这里的动态提醒。</div>
+        </div>
+        <div class="card">
+          <h3>使用建议</h3>
+          <div class="tips compact">
+            <div>1. 先用搜索框快速定位幼儿，再在上方统一维护，不在每行后面堆操作按钮。</div>
+            <div>2. 可以设置开始/结束日期，方便提前录入和自动失效。</div>
+            <div>3. 快捷标签建议配合关注原因一起写，教师端会同步看到。</div>
+          </div>
+        </div>
+      </div>
+      <div class="card full-height-card">
+        <div class="section-head"><h3>重点关注名单维护</h3><div class="muted no-margin">支持搜索、班级筛选、状态筛选，点选下方幼儿后统一编辑</div></div>
+        <form method="get" action="/admin" class="filter-toolbar">
+          <input type="hidden" name="panel" value="attention" />
+          <div class="filter-row filter-row-attention">
+            <input type="search" name="attentionKeyword" value="<%= attentionKeywordRaw %>" placeholder="搜索幼儿姓名 / 班级 / 原因 / 标签" />
+            <select name="pageSize">
+              <option value="10" <%= attentionPageSize === 10 ? 'selected' : '' %>>每页 10 条</option>
+              <option value="20" <%= attentionPageSize === 20 ? 'selected' : '' %>>每页 20 条</option>
+              <option value="50" <%= attentionPageSize === 50 ? 'selected' : '' %>>每页 50 条</option>
+            </select>
+            <select name="attentionClassId">
+              <option value="">全部班级</option>
+              <% classes.forEach(function(item) { %>
+                <option value="<%= item.id %>" <%= attentionClassFilter === String(item.id) ? 'selected' : '' %>><%= item.name %>（<%= gradeLabel(item.grade_level) %>）</option>
+              <% }) %>
+            </select>
+            <select name="attentionStatus">
+              <option value="all" <%= attentionStatusFilter === 'all' ? 'selected' : '' %>>全部状态</option>
+              <option value="active" <%= attentionStatusFilter === 'active' ? 'selected' : '' %>>当前生效</option>
+              <option value="scheduled" <%= attentionStatusFilter === 'scheduled' ? 'selected' : '' %>>未开始</option>
+              <option value="expired" <%= attentionStatusFilter === 'expired' ? 'selected' : '' %>>已过期</option>
+              <option value="normal" <%= attentionStatusFilter === 'normal' ? 'selected' : '' %>>未设置重点关注</option>
+            </select>
+            <button class="btn" type="submit">筛选</button>
+            <a class="btn" href="/admin?panel=attention">重置</a>
+          </div>
+        </form>
+        <div class="muted" style="margin:10px 0 14px;">当前筛选结果：<strong><%= filteredAttentionChildren.length %></strong> 人</div>
+
+        <div class="attn-panel-grid">
+        <div class="attention-editor-card">
+          <% if (!selectedAttentionChild) { %>
+            <div class="empty-state" style="padding:24px 0;">点击右侧列表选择幼儿</div>
+          <% } else { %>
+            <div class="attn-ed-header">
+              <span class="attn-ed-name" id="attentionEditorName"><%= selectedAttentionChild.name %></span>
+              <span class="attn-ed-meta" id="attentionEditorMeta"><%= selectedAttentionChild.class_name || '未分班' %><%= selectedAttentionChild.gender ? ' · ' + selectedAttentionChild.gender : '' %></span>
+              <% const initialStatusLabel = selectedAttentionChild.attention_status === 'active' ? '生效中' : selectedAttentionChild.attention_status === 'scheduled' ? '未开始' : selectedAttentionChild.attention_status === 'expired' ? '已过期' : '正常'; %>
+              <% const initialStatusClass = selectedAttentionChild.attention_status === 'active' ? 'warn' : selectedAttentionChild.attention_status === 'normal' ? 'ok' : 'info'; %>
+              <span class="status-badge <%= initialStatusClass %>" id="attentionEditorStatusBadge" style="margin-left:auto;"><%= initialStatusLabel %></span>
+            </div>
+            <form method="post" action="/admin/children/attention/save" class="attn-ed-form" id="attentionEditorForm">
+                <input type="hidden" name="childId" id="attentionEditorChildId" value="<%= selectedAttentionChild.id %>" />
+                <input type="hidden" name="attentionKeyword" value="<%= attentionKeywordRaw %>" />
+                <input type="hidden" name="attentionClassId" value="<%= attentionClassFilter %>" />
+                <input type="hidden" name="attentionStatus" value="<%= attentionStatusFilter %>" />
+                <input type="hidden" name="attentionPage" value="<%= attentionPaginationData.currentPage %>" />
+                <input type="hidden" name="pageSize" value="<%= attentionPageSize %>" />
+                <label class="attn-ed-field"><span>关注</span><select name="needsAttention" id="attentionEditorNeedsAttention"><option value="0" <%= selectedAttentionChild.attention_marked ? '' : 'selected' %>>否</option><option value="1" <%= selectedAttentionChild.attention_marked ? 'selected' : '' %>>是</option></select></label>
+                <label class="attn-ed-field"><span>马甲</span><select name="attentionVestType" id="attentionEditorVestType"><option value="yellow" <%= selectedAttentionVest === 'yellow' ? 'selected' : '' %>>黄马甲</option><option value="green" <%= selectedAttentionVest === 'green' ? 'selected' : '' %>>绿马甲</option><option value="red" <%= selectedAttentionVest === 'red' ? 'selected' : '' %>>红马甲</option></select></label>
+                <label class="attn-ed-field"><span>开始</span><input type="date" name="attentionStartDate" id="attentionEditorStartDate" value="<%= selectedAttentionStart %>" /></label>
+                <label class="attn-ed-field"><span>结束</span><input type="date" name="attentionEndDate" id="attentionEditorEndDate" value="<%= selectedAttentionEnd %>" /></label>
+                <label class="attn-ed-field attn-ed-wide"><span>原因</span><input type="text" name="attentionReason" id="attentionEditorReason" placeholder="例如：咳嗽，减少跑跳" value="<%= selectedAttentionChild.attention_reason || '' %>" /></label>
+                <label class="attn-ed-field attn-ed-wide"><span>标签</span>
+                  <select id="attentionTagPicker">
+                    <option value="">选择标签…</option>
+                    <% quickAttentionTags.forEach(function(tag) { %>
+                      <option value="<%= tag %>"><%= tag %></option>
+                    <% }) %>
+                  </select>
+                  <div class="attn-tag-pills" id="attentionTagPills"></div>
+                  <div id="attentionTagHiddenInputs"></div>
+                </label>
+                <label class="attn-ed-field attn-ed-wide"><span>补充标签</span><input type="text" name="attentionTagsExtra" id="attentionEditorTagsExtra" value="<%= selectedAttentionExtraTags %>" placeholder="多个用逗号分隔" /></label>
+                <div class="attn-ed-actions attn-ed-wide">
+                  <button class="btn primary" type="submit">保存</button>
+                </div>
+              </form>
+              <form method="post" action="/admin/children/attention/clear" class="inline-form attention-clear-form" id="attentionClearForm" style="margin-top:0;">
+                <input type="hidden" name="childId" id="attentionClearChildId" value="<%= selectedAttentionChild.id %>" />
+                <input type="hidden" name="attentionKeyword" value="<%= attentionKeywordRaw %>" />
+                <input type="hidden" name="attentionClassId" value="<%= attentionClassFilter %>" />
+                <input type="hidden" name="attentionStatus" value="<%= attentionStatusFilter %>" />
+                <input type="hidden" name="attentionPage" value="<%= attentionPaginationData.currentPage %>" />
+                <input type="hidden" name="pageSize" value="<%= attentionPageSize %>" />
+                <button class="btn" type="submit" id="attentionClearButton" <%= selectedAttentionChild.attention_marked ? '' : 'disabled' %>>取消关注</button>
+              </form>
+          <% } %>
+        </div>
+
+        <div>
+        <div class="muted" style="margin:0 0 10px;">点击任意一行切换上方编辑对象</div>
+        <div class="table-wrap">
+          <table class="data-table admin-table attention-table">
+            <thead><tr><th class="checkbox-cell">当前</th><th>班级</th><th>幼儿姓名</th><th>状态</th><th>有效期</th><th>标签</th><th>关注原因</th></tr></thead>
+            <tbody>
+              <% pagedAttentionChildren.forEach(function(child) { %>
+                <% const childStart = child.attention_start_date ? new Date(child.attention_start_date).toISOString().slice(0,10) : ''; %>
+                <% const childEnd = child.attention_end_date ? new Date(child.attention_end_date).toISOString().slice(0,10) : ''; %>
+                <% const childTags = String(child.attention_tags || '').split(',').map(function(item) { return item.trim(); }).filter(Boolean); %>
+                <% const childStatusLabel = child.attention_status === 'active' ? '生效中' : child.attention_status === 'scheduled' ? '未开始' : child.attention_status === 'expired' ? '已过期' : '正常'; %>
+                <% const childStatusClass = child.attention_status === 'active' ? 'warn' : child.attention_status === 'normal' ? 'ok' : 'info'; %>
+                <tr class="attention-row <%= selectedAttentionChild && selectedAttentionChild.id === child.id ? 'is-selected' : '' %>"
+                    data-child-id="<%= child.id %>"
+                    data-name="<%= child.name %>"
+                    data-class-name="<%= child.class_name || '' %>"
+                    data-gender="<%= child.gender || '' %>"
+                    data-needs-attention="<%= child.attention_marked ? '1' : '0' %>"
+                    data-attention-reason="<%= child.attention_reason || '' %>"
+                    data-attention-start-date="<%= childStart %>"
+                    data-attention-end-date="<%= childEnd %>"
+                    data-attention-tags="<%= child.attention_tags || '' %>"
+                    data-attention-vest-type="<%= child.attention_vest_type === 'red' ? 'red' : (child.attention_vest_type === 'green' ? 'green' : 'yellow') %>"
+                    data-attention-status="<%= child.attention_status || 'normal' %>"
+                    tabindex="0">
+                  <td class="checkbox-cell"><input type="radio" class="attention-row-radio" name="attentionRowSelector" <%= selectedAttentionChild && selectedAttentionChild.id === child.id ? 'checked' : '' %> /></td>
+                  <td><%= child.class_name || '-' %></td>
+                  <td><strong><%= child.name %></strong></td>
+                  <td><span class="status-badge <%= childStatusClass %>"><%= childStatusLabel %></span></td>
+                  <td><%= child.attention_marked ? ((childStart || '即日起') + ' ~ ' + (childEnd || '长期')) : '-' %></td>
+                  <td>
+                    <% if (childTags.length) { %>
+                      <div class="tag-list compact-tag-list">
+                        <% childTags.forEach(function(tag) { %><span class="tag-pill"><%= tag %></span><% }) %>
+                      </div>
+                    <% } else { %>
+                      <span class="muted">-</span>
+                    <% } %>
+                  </td>
+                  <td style="max-width:240px;white-space:normal;"><%= child.attention_reason || '-' %></td>
+                </tr>
+              <% }) %>
+              <% if (!filteredAttentionChildren.length) { %>
+                <tr><td colspan="7"><div class="empty-state">当前筛选条件下没有幼儿记录。</div></td></tr>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+        <% if (attentionPaginationData.totalPages > 1) { %>
+          <% const attentionWindowStart = Math.max(1, attentionPaginationData.currentPage - 2); %>
+          <% const attentionWindowEnd = Math.min(attentionPaginationData.totalPages, attentionPaginationData.currentPage + 2); %>
+          <div class="pagination-bar">
+            <% if (attentionPaginationData.hasPrev) { %><a class="pagination-link pagination-nav" href="/admin?<%= attentionPageQueryBase %>&attentionPage=<%= attentionPaginationData.prevPage %>">上一页</a><% } %>
+            <% if (attentionWindowStart > 1) { %>
+              <a class="pagination-link <%= attentionPaginationData.currentPage === 1 ? 'active' : '' %>" href="/admin?<%= attentionPageQueryBase %>&attentionPage=1">1</a>
+              <% if (attentionWindowStart > 2) { %><span class="pagination-ellipsis">…</span><% } %>
+            <% } %>
+            <% for (let pageNo = attentionWindowStart; pageNo <= attentionWindowEnd; pageNo++) { %>
+              <a class="pagination-link <%= attentionPaginationData.currentPage === pageNo ? 'active' : '' %>" href="/admin?<%= attentionPageQueryBase %>&attentionPage=<%= pageNo %>"><%= pageNo %></a>
+            <% } %>
+            <% if (attentionWindowEnd < attentionPaginationData.totalPages) { %>
+              <% if (attentionWindowEnd < attentionPaginationData.totalPages - 1) { %><span class="pagination-ellipsis">…</span><% } %>
+              <a class="pagination-link <%= attentionPaginationData.currentPage === attentionPaginationData.totalPages ? 'active' : '' %>" href="/admin?<%= attentionPageQueryBase %>&attentionPage=<%= attentionPaginationData.totalPages %>"><%= attentionPaginationData.totalPages %></a>
+            <% } %>
+            <% if (attentionPaginationData.hasNext) { %><a class="pagination-link pagination-nav" href="/admin?<%= attentionPageQueryBase %>&attentionPage=<%= attentionPaginationData.nextPage %>">下一页</a><% } %>
+          </div>
+        <% } %>
+      </div>
+      </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<% } else if (activePanel === 'roles') { %>
+    <section id="roles-panel" class="admin-panel is-active">
+      <div class="panel-heading"><div><div class="eyebrow">角色权限管理</div><h2>角色与权限配置</h2><p>管理系统角色、分配权限、复制已有角色快速创建新角色。系统内置角色不可删除。</p></div></div>
+
+      <div class="management-layout">
+        <div class="management-side">
+          <!-- 新建角色 -->
+          <div class="card">
+            <div class="section-head"><h3>新建角色</h3></div>
+            <form method="post" action="/admin/roles/add" class="form-grid">
+              <label><span>角色标识（英文小写）</span><input type="text" name="name" placeholder="如 health_teacher" required pattern="[a-z0-9_-]+" /></label>
+              <label><span>显示名称</span><input type="text" name="displayName" placeholder="如 保健老师" required /></label>
+              <label><span>基于已有角色</span>
+                <select id="roleTemplate" onchange="applyRoleTemplate(this.value)">
+                  <option value="">— 从零开始 —</option>
+                  <% (roles || []).forEach(function(r) { var rp = typeof r.permissions === 'string' ? r.permissions : JSON.stringify(r.permissions || []); %><option value="<%= r.id %>" data-perms="<%= rp.replace(/\"/g, '&quot;') %>" data-readonly="<%= r.is_readonly ? '1' : '' %>"><%= r.display_name %></option><% }); %>
+                </select>
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;">
+                <input type="checkbox" name="isReadonly" value="1" id="newRoleReadonly" />
+                <span>只读模式（禁止所有写操作）</span>
+              </label>
+              <details class="perm-accordion">
+                <summary class="perm-accordion-toggle">展开权限配置 <span class="perm-accordion-count" id="newRolePermCount">已选 0 项</span></summary>
+                <div class="perm-accordion-body">
+                  <% (allPermissions || []).forEach(function(group) { %>
+                    <div class="perm-group">
+                      <div class="perm-group-header"><%= group.group %></div>
+                      <% group.items.forEach(function(mod) { %>
+                        <div class="perm-module">
+                          <div class="perm-module-name"><%= mod.label %></div>
+                          <div class="perm-module-actions">
+                            <label class="perm-chip"><input type="checkbox" name="permissions" value="<%= mod.key %>" class="perm-all" data-module="<%= mod.key %>" /><span>全部</span></label>
+                            <% if (mod.actions) { mod.actions.forEach(function(act) { %>
+                              <label class="perm-chip"><input type="checkbox" name="permissions" value="<%= act.key %>" class="perm-action" data-parent="<%= mod.key %>" /><span><%= act.label %></span></label>
+                            <% }); } %>
+                          </div>
+                        </div>
+                      <% }); %>
+                    </div>
+                  <% }); %>
+                </div>
+              </details>
+              <button class="btn primary full" type="submit">创建角色</button>
+            </form>
+          </div>
+        </div>
+
+        <div class="management-main">
+          <!-- 现有角色列表 -->
+          <div class="card full-height-card">
+            <div class="section-head"><h3>现有角色</h3><div class="muted no-margin">共 <%= (roles || []).length %> 个角色</div></div>
+            <%
+              var allRolesList = roles || [];
+              function buildPermItems(role) {
+                var perms = typeof role.permissions === 'string' ? JSON.parse(role.permissions) : (role.permissions || []);
+                var items = [];
+                (allPermissions || []).forEach(function(group) {
+                  (group.items || []).forEach(function(mod) {
+                    if (perms.indexOf(mod.key) >= 0) { items.push(mod.label); }
+                    else if (mod.actions) {
+                      var acts = mod.actions.filter(function(a) { return perms.indexOf(a.key) >= 0; }).map(function(a) { return a.label; });
+                      if (acts.length) items.push(mod.label + '·' + acts.join('/'));
+                    }
+                  });
+                });
+                role._permItems = items;
+                role._perms = perms;
+              }
+              allRolesList.forEach(buildPermItems);
+            %>
+            <div class="role-card-grid">
+              <% allRolesList.forEach(function(role) { var permItems = role._permItems; var perms = role._perms; %>
+                <div class="role-card">
+                  <div class="role-card-header">
+                    <div>
+                      <div class="role-card-name"><%= role.display_name %></div>
+                      <div class="role-card-id"><%= role.name %></div>
+                    </div>
+                    <div style="display:flex;gap:6px;align-items:center;">
+                      <span class="status-badge <%= role.is_readonly ? 'off' : 'ok' %>"><%= role.is_readonly ? '只读' : '可写' %></span>
+                      <span class="tag-pill" style="font-size:11px;"><%= role.is_system ? '内置' : '自定义' %></span>
+                    </div>
+                  </div>
+                  <div class="role-card-perms">
+                    <% if (permItems.length) { permItems.forEach(function(l) { %><span class="perm-tag"><%= l %></span><% }); } else { %><span class="muted">无权限</span><% } %>
+                  </div>
+                  <div class="role-card-meta">
+                    <span>使用中：<strong><%= role.user_count || 0 %></strong> 人</span>
+                  </div>
+                  <div class="role-card-actions">
+                    <% if (role.name !== 'admin') { %>
+                      <details class="inline-editor-card">
+                        <summary class="btn small primary">编辑</summary>
+                        <form method="post" action="/admin/roles/<%= role.id %>/edit" class="form-grid compact-inline-form inline-edit-panel" style="margin-top:12px;">
+                          <label><span>显示名称</span><input type="text" name="displayName" value="<%= role.display_name %>" required /></label>
+                          <details class="perm-accordion">
+                            <summary class="perm-accordion-toggle">展开权限配置 <span class="perm-accordion-count">已选 <%= perms.length %> 项</span></summary>
+                            <div class="perm-accordion-body">
+                              <% (allPermissions || []).forEach(function(group) { %>
+                                <div class="perm-group">
+                                  <div class="perm-group-header"><%= group.group %></div>
+                                  <% group.items.forEach(function(mod) { %>
+                                    <div class="perm-module">
+                                      <div class="perm-module-name small"><%= mod.label %></div>
+                                      <div class="perm-module-actions">
+                                        <label class="perm-chip"><input type="checkbox" name="permissions" value="<%= mod.key %>" class="perm-all" data-module="<%= mod.key %>" <%= perms.indexOf(mod.key) >= 0 ? 'checked' : '' %> /><span>全部</span></label>
+                                        <% if (mod.actions) { mod.actions.forEach(function(act) { %>
+                                          <label class="perm-chip"><input type="checkbox" name="permissions" value="<%= act.key %>" class="perm-action" data-parent="<%= mod.key %>" <%= perms.indexOf(act.key) >= 0 ? 'checked' : '' %> /><span><%= act.label %></span></label>
+                                        <% }); } %>
+                                      </div>
+                                    </div>
+                                  <% }); %>
+                                </div>
+                              <% }); %>
+                            </div>
+                          </details>
+                          <label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" name="isReadonly" value="1" <%= role.is_readonly ? 'checked' : '' %> /><span>只读</span></label>
+                          <div class="tool-row"><button class="btn small primary" type="submit">保存</button></div>
+                        </form>
+                      </details>
+                    <% } %>
+                    <details class="inline-editor-card">
+                      <summary class="btn small">复制</summary>
+                      <form method="post" action="/admin/roles/<%= role.id %>/clone" class="form-grid compact-inline-form inline-edit-panel" style="margin-top:12px;">
+                        <label><span>新角色标识</span><input type="text" name="name" placeholder="如 deputy_principal" required pattern="[a-z0-9_-]+" /></label>
+                        <label><span>新显示名称</span><input type="text" name="displayName" placeholder="如 副园长" required /></label>
+                        <div class="tool-row"><button class="btn small primary" type="submit">复制创建</button></div>
+                      </form>
+                    </details>
+                    <% if (role.name !== 'admin') { %>
+                      <form method="post" action="/admin/roles/<%= role.id %>/delete" style="display:inline;" onsubmit="return confirm('<%= (role.user_count || 0) > 0 ? ('该角色下仍有 ' + role.user_count + ' 个账号，请先迁移后再删除') : ('确认删除角色 ' + role.display_name + '？') %>')">
+                        <button class="btn small" type="submit" style="color:#ff3b30;" <%= (role.user_count || 0) > 0 ? 'disabled title="请先迁移该角色下账号"' : '' %>>删除</button>
+                      </form>
+                    <% } %>
+                  </div>
+                </div>
+              <% }); %>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+<% } %>
+
+</div>
+</div>
+
+<script>
+(function () {
+  window.bindAdminAttentionPanel = function () {
+    const rows = Array.from(document.querySelectorAll('.attention-row'));
+    const form = document.getElementById('attentionEditorForm');
+    if (!form || !rows.length) return;
+
+    const quickTags = ['咳嗽', '感冒恢复期', '扭伤擦伤', '情绪波动', '减少跑跳', '避免对抗', '观察体力', '补水提醒'];
+    const childIdInput = document.getElementById('attentionEditorChildId');
+    const clearChildIdInput = document.getElementById('attentionClearChildId');
+    const nameNode = document.getElementById('attentionEditorName');
+    const metaNode = document.getElementById('attentionEditorMeta');
+    const classChip = document.getElementById('attentionEditorClassChip');
+    const genderChip = document.getElementById('attentionEditorGenderChip');
+    const statusBadge = document.getElementById('attentionEditorStatusBadge');
+    const needsAttentionField = document.getElementById('attentionEditorNeedsAttention');
+    const startDateField = document.getElementById('attentionEditorStartDate');
+    const endDateField = document.getElementById('attentionEditorEndDate');
+    const vestField = document.getElementById('attentionEditorVestType');
+    const reasonField = document.getElementById('attentionEditorReason');
+    const tagsExtraField = document.getElementById('attentionEditorTagsExtra');
+    const clearButton = document.getElementById('attentionClearButton');
+    const tagPicker = document.getElementById('attentionTagPicker');
+    const tagPillsBox = document.getElementById('attentionTagPills');
+    const tagHiddenBox = document.getElementById('attentionTagHiddenInputs');
+    var selectedTags = [];
+    function renderTagPills() {
+      tagPillsBox.innerHTML = selectedTags.map(function(t) {
+        return '<span class="attn-pill">' + t + ' <span class="attn-pill-x" data-tag="' + t + '">&times;</span></span>';
+      }).join('');
+      tagHiddenBox.innerHTML = selectedTags.map(function(t) {
+        return '<input type="hidden" name="attentionTags" value="' + t + '">';
+      }).join('');
+      // reset picker
+      if (tagPicker) tagPicker.value = '';
+    }
+    if (tagPicker) tagPicker.addEventListener('change', function() {
+      var v = this.value; if (!v || selectedTags.indexOf(v) !== -1) return;
+      selectedTags.push(v); renderTagPills();
+    });
+    if (tagPillsBox) tagPillsBox.addEventListener('click', function(e) {
+      var x = e.target.closest('.attn-pill-x'); if (!x) return;
+      selectedTags = selectedTags.filter(function(t) { return t !== x.dataset.tag; }); renderTagPills();
+    });
+    // init from the selected table row so the panel can be safely extracted into a partial
+    var initialRow = rows.find(function (row) {
+      var radio = row.querySelector('.attention-row-radio');
+      return row.classList.contains('is-selected') || (radio && radio.checked);
+    }) || rows[0];
+    selectedTags = initialRow ? parseTags(initialRow.dataset.attentionTags || '') : [];
+    renderTagPills();
+
+    function statusText(status) {
+      if (status === 'active') return '生效中';
+      if (status === 'scheduled') return '未开始';
+      if (status === 'expired') return '已过期';
+      return '正常';
+    }
+
+    function statusClass(status) {
+      if (status === 'active') return 'warn';
+      if (status === 'normal') return 'ok';
+      return 'info';
+    }
+
+    function parseTags(value) {
+      return String(value || '')
+        .split(',')
+        .map(function (item) { return item.trim(); })
+        .filter(Boolean);
+    }
+
+    function applyRow(row) {
+      rows.forEach(function (item) {
+        item.classList.toggle('is-selected', item === row);
+        const radio = item.querySelector('.attention-row-radio');
+        if (radio) radio.checked = item === row;
+      });
+
+      const childId = row.dataset.childId || '';
+      const className = row.dataset.className || '未分班';
+      const gender = row.dataset.gender || '';
+      const status = row.dataset.attentionStatus || 'normal';
+      const tags = parseTags(row.dataset.attentionTags);
+
+      if (childIdInput) childIdInput.value = childId;
+      if (clearChildIdInput) clearChildIdInput.value = childId;
+      if (nameNode) nameNode.textContent = row.dataset.name || '';
+      if (metaNode) metaNode.textContent = [className, gender].filter(Boolean).join(' · ') || '未分班';
+      if (classChip) classChip.textContent = className;
+      if (genderChip) {
+        genderChip.textContent = gender;
+        genderChip.style.display = gender ? '' : 'none';
+      }
+      if (statusBadge) {
+        statusBadge.textContent = statusText(status);
+        statusBadge.className = 'status-badge ' + statusClass(status);
+      }
+      if (needsAttentionField) needsAttentionField.value = row.dataset.needsAttention === '1' ? '1' : '0';
+      if (startDateField) startDateField.value = row.dataset.attentionStartDate || '';
+      if (endDateField) endDateField.value = row.dataset.attentionEndDate || '';
+      if (vestField) vestField.value = row.dataset.attentionVestType === 'red' ? 'red' : (row.dataset.attentionVestType === 'green' ? 'green' : 'yellow');
+      if (reasonField) reasonField.value = row.dataset.attentionReason || '';
+      if (tagsExtraField) tagsExtraField.value = tags.filter(function (tag) { return !quickTags.includes(tag); }).join(',');
+      selectedTags = tags.slice(); renderTagPills();
+      if (clearButton) clearButton.disabled = row.dataset.needsAttention !== '1';
+    }
+
+    rows.forEach(function (row) {
+      if (row.dataset.ajaxAttentionBound === '1') return;
+      row.dataset.ajaxAttentionBound = '1';
+      row.addEventListener('click', function (event) {
+        if (event.target.closest('input, button, a, textarea, select')) return;
+        applyRow(row);
+      });
+      row.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          applyRow(row);
+        }
+      });
+      const radio = row.querySelector('.attention-row-radio');
+      if (radio) {
+        radio.addEventListener('change', function () {
+          applyRow(row);
+        });
+      }
+    });
+  };
+
+  if (window.bindAdminAttentionPanel) window.bindAdminAttentionPanel();
+})();
+</script>
+
+
+<script>
+(function () {
+  function replacePanelFromHtml(html, panelName) {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const incoming = doc.querySelector('[data-ajax-panel="' + panelName + '"]');
+    const current = document.querySelector('[data-ajax-panel="' + panelName + '"]');
+    if (incoming && current) current.outerHTML = incoming.outerHTML;
+  }
+  async function loadIntoPanel(url, panelName, push) {
+    const res = await fetch(url, { headers: { 'X-Requested-With': 'fetch' }, credentials: 'same-origin' });
+    if (!res.ok) { window.location.href = url; return; }
+    const html = await res.text();
+    replacePanelFromHtml(html, panelName);
+    if (push) window.history.pushState({ panelName: panelName, url: url }, '', url);
+    bindAjaxPagination();
+    if (window.bindAdminAttentionPanel) window.bindAdminAttentionPanel();
+  }
+  function bindAjaxPagination() {
+    document.querySelectorAll('[data-ajax-panel] .pagination-link').forEach(function (link) {
+      if (link.dataset.ajaxBound === '1') return;
+      link.dataset.ajaxBound = '1';
+      link.addEventListener('click', function (event) {
+        const panel = event.currentTarget.closest('[data-ajax-panel]');
+        if (!panel) return;
+        event.preventDefault();
+        const panelName = panel.getAttribute('data-ajax-panel');
+        loadIntoPanel(event.currentTarget.href, panelName, true).catch(function () { window.location.href = event.currentTarget.href; });
+      });
+    });
+  }
+  window.addEventListener('popstate', function () {
+    const active = document.querySelector('[data-ajax-panel].is-active');
+    if (!active) return;
+    const panelName = active.getAttribute('data-ajax-panel');
+    loadIntoPanel(window.location.href, panelName, false).catch(function () { window.location.reload(); });
+  });
+  bindAjaxPagination();
+})();
+
+  window.applyRoleTemplate = function(roleId) {
+    var form = document.querySelector('form[action="/admin/roles/add"]');
+    if (!form) return;
+    var allBoxes = form.querySelectorAll('input[name="permissions"]');
+    var readonlyBox = document.getElementById('newRoleReadonly');
+    if (!roleId) {
+      allBoxes.forEach(function(cb) { cb.checked = false; });
+      if (readonlyBox) readonlyBox.checked = false;
+      return;
+    }
+    var opt = document.querySelector('#roleTemplate option[value="' + roleId + '"]');
+    if (!opt) return;
+    try { var perms = JSON.parse(opt.dataset.perms || '[]'); } catch(e) { return; }
+    allBoxes.forEach(function(cb) { cb.checked = perms.indexOf(cb.value) >= 0; });
+    if (readonlyBox) readonlyBox.checked = opt.dataset.readonly === '1';
+  };
+  document.addEventListener('change', function(e) {
+    var cb = e.target;
+    if (!cb.classList || (!cb.classList.contains('perm-all') && !cb.classList.contains('perm-action'))) return;
+    var form = cb.closest('form');
+    if (!form) return;
+    if (cb.classList.contains('perm-all')) {
+      var mod = cb.dataset.module;
+      form.querySelectorAll('.perm-action[data-parent="' + mod + '"]').forEach(function(s) { s.checked = cb.checked; });
+    }
+    if (cb.classList.contains('perm-action')) {
+      var parent = cb.dataset.parent;
+      var allCb = form.querySelector('.perm-all[data-module="' + parent + '"]');
+      var subs = form.querySelectorAll('.perm-action[data-parent="' + parent + '"]');
+      if (allCb) allCb.checked = Array.from(subs).every(function(s) { return s.checked; });
+    }
+  });
+
+  // Permission count updater
+  function updatePermCount() {
+    document.querySelectorAll('.perm-accordion').forEach(function(acc) {
+      var count = acc.querySelectorAll('input[name="permissions"]:checked').length;
+      var span = acc.querySelector('.perm-accordion-count');
+      if (span) span.textContent = '已选 ' + count + ' 项';
+    });
+  }
+  document.addEventListener('change', function(e) {
+    if (e.target.name === 'permissions') updatePermCount();
+  });
+  updatePermCount();
+</script>
+
+<script>
+(function () {
+  function enhanceClassTeacherForm(form) {
+    if (!form || form.dataset.teacherSlotsEnhanced === '1') return;
+    var teacherSelects = form.querySelectorAll('select[name="teacherIds"]');
+    if (!teacherSelects.length) return;
+
+    var primarySelect = teacherSelects[0];
+    var primaryLabel = primarySelect.closest('label');
+    if (!primaryLabel) return;
+
+    var teacherIds = String(form.dataset.teacherIds || '')
+      .split(',')
+      .map(function (item) { return item.trim(); })
+      .filter(Boolean)
+      .slice(0, 3);
+
+    form.dataset.teacherSlotsEnhanced = '1';
+    primarySelect.value = teacherIds[0] || primarySelect.value || '';
+
+    var primaryTitle = primaryLabel.querySelector('span');
+    if (primaryTitle) primaryTitle.textContent = '主班老师';
+
+    var secondaryLabel = primaryLabel.cloneNode(true);
+    var secondaryTitle = secondaryLabel.querySelector('span');
+    var secondarySelect = secondaryLabel.querySelector('select[name="teacherIds"]');
+    if (!secondarySelect) return;
+
+    if (secondaryTitle) secondaryTitle.textContent = '副班老师（可选）';
+    if (secondarySelect.options.length) {
+      secondarySelect.options[0].textContent = '暂不设置副班老师';
+    }
+    secondarySelect.value = teacherIds[1] || '';
+    primaryLabel.insertAdjacentElement('afterend', secondaryLabel);
+  }
+
+  enhanceClassTeacherForm(document.querySelector('form[action="/admin/classes/add"]'));
+  document.querySelectorAll('form[action^="/admin/classes/"][action$="/edit"]').forEach(enhanceClassTeacherForm);
+})();
+</script>
+
+<script>
+(function () {
+  function normalizeClassTeacherSlots(form) {
+    if (!form || form.dataset.teacherSlotsNormalized === '1') return;
+    var labels = Array.from(form.querySelectorAll('select[name="teacherIds"]'))
+      .map(function (select) { return select.closest('label'); })
+      .filter(Boolean);
+    if (!labels.length) return;
+
+    form.dataset.teacherSlotsNormalized = '1';
+
+    function applySlotText(label, index) {
+      if (!label) return;
+      var title = label.querySelector('span');
+      var select = label.querySelector('select[name="teacherIds"]');
+      if (title) title.textContent = index === 0 ? '班主任1' : ('班主任' + (index + 1) + '（可选）');
+      if (select && select.options.length) {
+        select.options[0].textContent = index === 0 ? '请选择班主任1' : ('暂不设置班主任' + (index + 1));
+      }
+    }
+
+    labels.forEach(function (label, index) {
+      applySlotText(label, index);
+    });
+
+    var teacherIds = String(form.dataset.teacherIds || '')
+      .split(',')
+      .map(function (item) { return item.trim(); })
+      .filter(Boolean)
+      .slice(0, 3);
+
+    while (labels.length < 3) {
+      var baseLabel = labels[0];
+      if (!baseLabel) break;
+      var extraLabel = baseLabel.cloneNode(true);
+      var extraSelect = extraLabel.querySelector('select[name="teacherIds"]');
+      if (!extraSelect) break;
+      extraSelect.value = '';
+      labels[labels.length - 1].insertAdjacentElement('afterend', extraLabel);
+      labels.push(extraLabel);
+    }
+
+    labels.slice(0, 3).forEach(function (label, index) {
+      applySlotText(label, index);
+      var select = label.querySelector('select[name="teacherIds"]');
+      if (select) select.value = teacherIds[index] || select.value || '';
+    });
+  }
+
+  normalizeClassTeacherSlots(document.querySelector('form[action="/admin/classes/add"]'));
+  document.querySelectorAll('form[action^="/admin/classes/"][action$="/edit"]').forEach(normalizeClassTeacherSlots);
+})();
+</script>
+
+<%- include('partials/footer') %>

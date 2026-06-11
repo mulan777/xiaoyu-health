@@ -1,0 +1,14 @@
+{
+  "features": [
+    { "title": "正式版架构", "desc": "后端使用 MySQL 存储核心业务数据，Redis 负责会话与缓存支撑。" },
+    { "title": "Admin / User 分权", "desc": "管理员负责配置和数据维护，教师端按移动优先方式展示工作台。" },
+    { "title": "班级与幼儿档案", "desc": "已支持后台新增班级、批量导入幼儿档案，并建立班级与幼儿关联关系。" },
+    { "title": "批量导入导出", "desc": "用户与幼儿支持 Excel 模板下载、导入、导出、批量编辑和批量删除。" }
+  ],
+  "quickLinks": [
+    { "name": "登录平台", "path": "/login" },
+    { "name": "管理后台", "path": "/admin" },
+    { "name": "教师端", "path": "/user" },
+    { "name": "健康检查", "path": "/health" }
+  ]
+}

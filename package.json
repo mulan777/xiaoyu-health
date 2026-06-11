@@ -1,0 +1,22 @@
+{
+  "name": "kindergarten-fitness-platform",
+  "version": "1.0.0",
+  "description": "幼儿园体适能数智化平台基础框架（Admin / User）",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "connect-redis": "^9.0.0",
+    "dotenv": "^16.6.1",
+    "ejs": "^3.1.10",
+    "express": "^4.21.2",
+    "express-rate-limit": "^8.3.2",
+    "express-session": "^1.18.1",
+    "multer": "^2.1.1",
+    "mysql2": "^3.20.0",
+    "redis": "^5.11.0",
+    "xlsx": "^0.18.5"
+  }
+}

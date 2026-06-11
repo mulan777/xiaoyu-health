@@ -1,0 +1,1460 @@
+<%- include('partials/header') %>
+
+
+<% const safeAllChildren = typeof allChildren !== 'undefined' ? allChildren : []; %>
+<% const safeChildren = typeof children !== 'undefined' ? children : []; %>
+<% const childCollection = Array.isArray(safeAllChildren) && safeAllChildren.length ? safeAllChildren : safeChildren; %>
+<% const activeAttentionChildren = Array.isArray(childCollection) ? childCollection.filter(function(item) { return item.needs_attention; }) : []; %>
+<% const birthdayChildren = typeof todayBirthdayChildren !== 'undefined' && Array.isArray(todayBirthdayChildren) ? todayBirthdayChildren : []; %>
+<% const showBirthdayModal = (typeof teacherBirthday !== 'undefined' ? !!teacherBirthday : false) || birthdayChildren.length > 0; %>
+<% const teacherDisplayName = currentUser && currentUser.name ? currentUser.name : '老师'; %>
+<% const birthdayChildNames = birthdayChildren.map(function(item) { return item.name; }); %>
+<% const formatAttentionPeriod = function(startDate, endDate) {
+     const start = startDate ? new Date(startDate).toISOString().slice(0,10) : '即日起';
+     const end = endDate ? new Date(endDate).toISOString().slice(0,10) : '长期';
+     return start + ' ~ ' + end;
+   }; %>
+<% const parseAttentionTags = function(value) {
+     return String(value || '').split(',').map(function(item) { return item.trim(); }).filter(Boolean);
+   }; %>
+<% const attentionVestKey = function(item) {
+     if (!item) return 'yellow';
+     if (item.attention_vest_type === 'red') return 'red';
+     if (item.attention_vest_type === 'green') return 'green';
+     return 'yellow';
+   }; %>
+<% const attentionVestLabel = function(item) {
+     const vest = attentionVestKey(item);
+     return vest === 'red' ? '红马甲' : (vest === 'green' ? '绿马甲' : '黄马甲');
+   }; %>
+
+<% if (showBirthdayModal) { %>
+  <style>
+    .birthday-letter-overlay {
+      background:
+        radial-gradient(circle at top, rgba(238, 210, 175, 0.26), transparent 22%),
+        rgba(18, 12, 8, 0.76);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+    .birthday-letter-modal {
+      position: relative;
+      width: min(92vw, 860px);
+      max-width: 860px;
+      border-radius: 34px;
+      overflow: hidden;
+      border: 1px solid rgba(207, 173, 133, 0.32);
+      background: linear-gradient(145deg, #fffaf4 0%, #fffdfa 55%, #fff8f2 100%);
+      box-shadow: 0 40px 120px rgba(44, 27, 16, 0.34);
+    }
+    .birthday-letter-modal::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(135deg, rgba(255,255,255,0.48), transparent 24%),
+        linear-gradient(315deg, rgba(216, 177, 133, 0.12), transparent 18%);
+    }
+    .birthday-letter-close {
+      position: absolute;
+      top: 18px;
+      right: 20px;
+      z-index: 5;
+      width: 42px;
+      height: 42px;
+      border-radius: 999px;
+      border: 1px solid rgba(214, 182, 147, 0.34);
+      background: rgba(255,255,255,0.72);
+      color: #9b6a3a;
+      box-shadow: 0 10px 26px rgba(73, 44, 24, 0.10);
+    }
+    .birthday-letter-body {
+      position: relative;
+      padding: 38px;
+      background:
+        radial-gradient(circle at 16% 18%, rgba(255, 233, 205, 0.58), transparent 20%),
+        radial-gradient(circle at 84% 82%, rgba(255, 241, 222, 0.48), transparent 22%),
+        linear-gradient(180deg, #fff8ef 0%, #fffdfa 100%);
+    }
+    .birthday-letter-topline,
+    .birthday-letter-bottomline {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      color: #c58b46;
+      letter-spacing: 0.34em;
+      text-transform: uppercase;
+      font-size: 12px;
+    }
+    .birthday-letter-topline { margin-bottom: 16px; }
+    .birthday-letter-bottomline { margin-top: 18px; }
+    .birthday-letter-topline::before,
+    .birthday-letter-topline::after,
+    .birthday-letter-bottomline::before,
+    .birthday-letter-bottomline::after {
+      content: '';
+      width: 88px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, #d4a168, transparent);
+    }
+    .birthday-letter-seal {
+      width: 88px;
+      height: 88px;
+      margin: 0 auto 18px;
+      border-radius: 999px;
+      background: radial-gradient(circle at 30% 30%, #f7d9ab, #cc8d54 62%, #a96136 100%);
+      box-shadow: inset 0 2px 8px rgba(255,255,255,0.42), 0 16px 30px rgba(129, 74, 35, 0.24);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(255,255,255,0.94);
+      font-size: 26px;
+      position: relative;
+      z-index: 2;
+    }
+    .birthday-letter-paper {
+      position: relative;
+      overflow: hidden;
+      border-radius: 30px;
+      border: 1px solid rgba(210, 174, 133, 0.28);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.92), rgba(255,252,248,0.97)),
+        repeating-linear-gradient(180deg, transparent 0 38px, rgba(208, 171, 131, 0.045) 38px 39px);
+      padding: 56px 54px 46px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.96), 0 18px 50px rgba(145, 97, 58, 0.12);
+    }
+    .birthday-letter-paper::before {
+      content: '';
+      position: absolute;
+      inset: 14px;
+      border: 1px solid rgba(214, 178, 136, 0.24);
+      border-radius: 22px;
+      pointer-events: none;
+    }
+    .birthday-letter-paper::after {
+      content: '';
+      position: absolute;
+      top: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 220px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(206, 160, 109, 0.95), transparent);
+      pointer-events: none;
+    }
+    .birthday-letter-corner {
+      position: absolute;
+      width: 72px;
+      height: 72px;
+      border-color: rgba(211, 172, 128, 0.52);
+      z-index: 1;
+      pointer-events: none;
+    }
+    .birthday-letter-corner.lt { top: 18px; left: 18px; border-top: 2px solid; border-left: 2px solid; border-top-left-radius: 20px; }
+    .birthday-letter-corner.rt { top: 18px; right: 18px; border-top: 2px solid; border-right: 2px solid; border-top-right-radius: 20px; }
+    .birthday-letter-corner.lb { bottom: 18px; left: 18px; border-bottom: 2px solid; border-left: 2px solid; border-bottom-left-radius: 20px; }
+    .birthday-letter-corner.rb { bottom: 18px; right: 18px; border-bottom: 2px solid; border-right: 2px solid; border-bottom-right-radius: 20px; }
+    .birthday-letter-head {
+      text-align: center;
+      margin-bottom: 20px;
+      font-size: 12px;
+      color: #ca8a44;
+      letter-spacing: 0.42em;
+      text-transform: uppercase;
+      position: relative;
+      z-index: 1;
+    }
+    .birthday-letter-paper h2 {
+      position: relative;
+      z-index: 1;
+      margin: 0 0 26px;
+      text-align: center;
+      color: #7a3b17;
+      font-size: 38px;
+      line-height: 1.42;
+      font-weight: 700;
+    }
+    .birthday-letter-paper p {
+      position: relative;
+      z-index: 1;
+      margin: 0 0 18px;
+      color: #5c3822;
+      font-size: 19px;
+      line-height: 2.08;
+      text-indent: 2em;
+    }
+    .birthday-letter-main {
+      color: #6c2f10;
+      font-size: 21px;
+    }
+    .birthday-letter-paper strong {
+      color: #9c3412;
+      font-weight: 700;
+    }
+    .birthday-letter-actions {
+      display: flex;
+      justify-content: center;
+      margin-top: 26px;
+    }
+    .birthday-letter-actions .btn {
+      min-width: 220px;
+      height: 48px;
+      border-radius: 999px;
+      border: 1px solid rgba(184, 119, 74, 0.20);
+      background: linear-gradient(135deg, #d7a062 0%, #bb7047 100%);
+      color: #fff;
+      font-weight: 700;
+      box-shadow: 0 16px 34px rgba(130, 72, 35, 0.18);
+    }
+    @media (max-width: 640px) {
+      .birthday-letter-body { padding: 18px; }
+      .birthday-letter-paper { padding: 46px 24px 34px; border-radius: 22px; }
+      .birthday-letter-paper h2 { font-size: 28px; }
+      .birthday-letter-paper p { font-size: 16px; line-height: 1.95; }
+      .birthday-letter-topline::before,
+      .birthday-letter-topline::after,
+      .birthday-letter-bottomline::before,
+      .birthday-letter-bottomline::after { width: 44px; }
+      .birthday-letter-seal { width: 72px; height: 72px; font-size: 22px; }
+      .birthday-letter-actions .btn { min-width: 180px; }
+    }
+  </style>
+  <div class="modal-overlay birthday-letter-overlay" id="birthdayLetterOverlay">
+    <div class="modal-box birthday-letter-modal" role="dialog" aria-modal="true" aria-labelledby="birthdayLetterTitle">
+      <button class="modal-close birthday-letter-close" type="button" aria-label="关闭" data-birthday-close>×</button>
+      <div class="modal-body birthday-letter-body">
+        <div class="birthday-letter-seal">✦</div>
+        <div class="birthday-letter-paper">
+          <span class="birthday-letter-corner lt"></span>
+          <span class="birthday-letter-corner rt"></span>
+          <span class="birthday-letter-corner lb"></span>
+          <span class="birthday-letter-corner rb"></span>
+
+          <% if (teacherBirthday) { %>
+            <p class="birthday-letter-main">生日快乐！愿你眉目舒展，心有欢喜，所行皆坦途，所念皆如愿；愿往后的每一天，都被温柔与美好轻轻环绕。</p>
+          <% } %>
+
+          <% if (birthdayChildNames.length) { %>
+            <p>今天，本班的小寿星是：<strong><%= birthdayChildNames.join('、') %></strong>。</p>
+            <p>愿这一份甜甜的生日喜悦，在教室里慢慢铺开，化作孩子们眼中的光亮与笑容，也化作属于今天的温柔仪式感。</p>
+          <% } %>
+
+          <% if (!teacherBirthday && birthdayChildNames.length) { %>
+            <p class="birthday-letter-main">愿你带着这份温柔的祝福，陪孩子们度过一个闪闪发光的生日时刻。</p>
+          <% } %>
+        </div>
+        <div class="birthday-letter-bottomline">愿美好如约而至</div>
+        <div class="birthday-letter-actions">
+          <button class="btn primary" type="button" data-birthday-close>收下这份祝福</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var overlay = document.getElementById('birthdayLetterOverlay');
+      if (!overlay) return;
+      function closeModal() {
+        overlay.style.display = 'none';
+      }
+      overlay.querySelectorAll('[data-birthday-close]').forEach(function (btn) {
+        btn.addEventListener('click', closeModal);
+      });
+      overlay.addEventListener('click', function (event) {
+        if (event.target === overlay) closeModal();
+      });
+      document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') closeModal();
+      });
+    })();
+  </script>
+<% } %>
+
+<section class="user-fitness-layout">
+  <aside class="card user-fitness-sidebar">
+    <div class="sidebar-brand"><div class="sidebar-title">教师体测导航</div></div>
+    <nav class="user-fitness-nav">
+      <a class="user-fitness-nav-link <%= userView === 'records' ? 'active' : '' %>" href="/user?view=records">
+        <span class="user-fitness-nav-title">本班体测记录</span>
+        <span class="user-fitness-nav-desc">查看分页后的体测结果与分析</span>
+      </a>
+      <a class="user-fitness-nav-link <%= userView === 'entry' ? 'active' : '' %>" href="/user?view=entry">
+        <span class="user-fitness-nav-title">体测数据录入</span>
+        <span class="user-fitness-nav-desc">仅用于新增、导入、导出体测数据</span>
+      </a>
+      <a class="user-fitness-nav-link <%= userView === 'attention' ? 'active' : '' %>" href="/user?view=attention">
+        <span class="user-fitness-nav-title">二次晨检维护</span>
+        <span class="user-fitness-nav-desc">维护本班重点关注幼儿，活动前快速复核</span>
+      </a>
+      <a class="user-fitness-nav-link" href="/user/venues">
+        <span class="user-fitness-nav-title">场地预约</span>
+        <span class="user-fitness-nav-desc">进入场地预约与使用管理</span>
+      </a>
+    </nav>
+  </aside>
+  <div class="user-fitness-main">
+    <section class="dashboard-head card">
+      <div>
+        <div class="eyebrow">教师工作台</div>
+        <h1>你好，<%= currentUser.name %></h1>
+        <p>教师端工作台，支持查看本班体测记录、录入体测数据与场地预约。</p>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <a class="btn primary" href="/user/venues">场地预约 →</a>
+        <a class="btn secondary" href="/logout">退出登录</a>
+      </div>
+    </section>
+
+    <% if (message) { %>
+      <div class="alert success"><%= message %></div>
+    <% } %>
+    <% if (editError) { %>
+      <div class="alert error"><%= editError %></div>
+    <% } %>
+    <% if (userView === 'attention') { %>
+
+<section class="card venue-attention-manage-card" id="attention-manage">
+  <div class="section-head">
+    <div>
+      <div class="eyebrow">本班重点关注</div>
+      <h2>本班重点关注</h2>
+      <div class="muted">
+        仅可维护
+        <strong><%= assignedClass && assignedClass.name ? assignedClass.name : '当前班级' %></strong>
+        的幼儿。保存后会同步用于二次晨检和活动前复核。
+      </div>
+    </div>
+    <span class="status-badge <%= activeAttentionChildren.length ? 'warn' : 'ok' %>">
+      <%= activeAttentionChildren.length ? (activeAttentionChildren.length + ' 名需关注') : '当前无重点关注' %>
+    </span>
+  </div>
+
+  <% if (childCollection.length) { %>
+    <div class="venue-attention-manage-grid">
+      <form method="post" action="/user/attention/save" class="venue-attention-form" id="userAttentionForm">
+        <label>
+          <span>选择幼儿</span>
+          <select name="childId" id="userAttentionChild" required>
+            <option value="">请选择本班幼儿</option>
+            <% childCollection.forEach(function(child) {
+              const childStart = child.attention_start_date ? new Date(child.attention_start_date).toISOString().slice(0, 10) : '';
+              const childEnd = child.attention_end_date ? new Date(child.attention_end_date).toISOString().slice(0, 10) : '';
+              const childTagsText = parseAttentionTags(child.attention_tags).join(',');
+            %>
+              <option
+                value="<%= child.id %>"
+                data-attention-reason="<%= child.attention_reason || '' %>"
+                data-attention-start="<%= childStart %>"
+                data-attention-end="<%= childEnd %>"
+                data-attention-tags="<%= childTagsText %>"
+                data-attention-vest-type="<%= attentionVestKey(child) %>"
+              >
+                <%= child.name %><%= child.gender ? ' / ' + child.gender : '' %>
+              </option>
+            <% }) %>
+          </select>
+        </label>
+
+        <label>
+          <span>关注原因</span>
+          <input type="text" name="attentionReason" id="userAttentionReason" placeholder="例如：咳嗽，减少跑跳" />
+        </label>
+
+        <div class="venue-attention-form-row">
+          <label>
+            <span>马甲类型</span>
+            <select name="attentionVestType" id="userAttentionVestType">
+              <option value="yellow">黄马甲</option>
+              <option value="green">绿马甲</option>
+              <option value="red">红马甲</option>
+            </select>
+          </label>
+          <label>
+            <span>开始日期</span>
+            <input type="date" name="attentionStartDate" id="userAttentionStart" value="<%= todayText || '' %>" />
+          </label>
+          <label>
+            <span>结束日期</span>
+            <input type="date" name="attentionEndDate" id="userAttentionEnd" />
+          </label>
+        </div>
+
+        <label>
+          <span>关注标签</span>
+          <input type="text" name="attentionTagsExtra" id="userAttentionTags" placeholder="例如：咳嗽,恢复期,扭伤，多项用逗号分隔" />
+        </label>
+
+        <div class="venue-attention-form-actions">
+          <button class="btn primary" type="submit">保存重点关注</button>
+          <span class="muted">再次保存会直接覆盖该幼儿当前的重点关注信息。</span>
+        </div>
+      </form>
+
+      <div class="venue-attention-current">
+        <div class="venue-attention-current-head">
+          <strong>当前本班已关注</strong>
+          <span class="muted"><%= activeAttentionChildren.length %> 名</span>
+        </div>
+        <% if (activeAttentionChildren.length) { %>
+          <div class="venue-attention-current-list">
+            <% activeAttentionChildren.forEach(function(child) { %>
+              <div class="venue-attention-current-item">
+                <div class="venue-attention-current-meta">
+                  <div>
+                    <strong><%= child.name %></strong>
+                    <div class="muted"><%= formatAttentionPeriod(child.attention_start_date, child.attention_end_date) %></div>
+                  </div>
+                  <span class="vest-badge <%= attentionVestKey(child) %>"><%= attentionVestLabel(child) %></span>
+                  <form method="post" action="/user/attention/clear" class="inline-form">
+                    <input type="hidden" name="childId" value="<%= child.id %>" />
+                    <button class="btn small" type="submit">取消关注</button>
+                  </form>
+                </div>
+                <div class="venue-scene-text"><%= child.attention_reason || '已标记为重点关注，请在活动前再次确认。' %></div>
+                <% const attentionTags = parseAttentionTags(child.attention_tags); %>
+                <% if (attentionTags.length) { %>
+                  <div class="tag-list compact-tag-list">
+                    <% attentionTags.forEach(function(tag) { %><span class="tag-pill"><%= tag %></span><% }) %>
+                  </div>
+                <% } %>
+              </div>
+            <% }) %>
+          </div>
+        <% } else { %>
+          <div class="venue-resource-empty venue-attention-current-empty">当前本班还没有设置重点关注幼儿。</div>
+        <% } %>
+      </div>
+    </div>
+  <% } else { %>
+    <div class="empty-state">当前账号还没有绑定幼儿数据，暂时无法维护本班重点关注。</div>
+  <% } %>
+</section>
+
+    <% } else if (userView === 'records') { %>
+<!-- 本班体测数据 -->
+<section class="card" id="fitness-records" data-ajax-panel="user-records">
+  <h2>本班体测记录</h2>
+  <% const uf = userFitnessFilters || {}; %>
+  <% const dateOptions = Array.isArray(fitnessRecordDates) ? fitnessRecordDates : []; %>
+  <% const selectedAnalysisBatchDate = uf.batchDate || ((dateOptions[1] && dateOptions[1].testDate) || ''); %>
+  <% const selectedDetailBatchDate = uf.detailBatchDate || ((dateOptions[0] && dateOptions[0].testDate) || ''); %>
+  <% const userSortOptions = [
+    ['test_date', '测试日期'],
+    ['child_name', '幼儿姓名'],
+    ['height_score', '身高分'],
+    ['bmi_score', 'BMI分'],
+    ['grip_score', '握力分'],
+    ['jump_score', '跳远分'],
+    ['sit_score', '体前屈分'],
+    ['djump_score', '双脚跳分'],
+    ['obstacle_score', '障碍跑分'],
+    ['balance_score', '平衡木分'],
+    ['total_score', '综合得分']
+  ]; %>
+  <% if (!fitnessRecords || !fitnessRecords.length) { %>
+    <div class="empty-state">暂无体测记录。请通过上方表单录入或下载模板后批量导入。</div>
+  <% } else { %>
+    <% if (avgScore) { %>
+      <div class="toolbar" style="margin-bottom:12px;align-items:center;gap:10px;">
+        <div><strong>本班最新体测分析平均综合得分：<%= avgScore %></strong></div>
+        <form method="get" action="/user" class="toolbar-links user-analysis-batch-form" style="margin:0;display:flex;gap:8px;align-items:center;">
+          <input type="hidden" name="view" value="records" />
+          <input type="hidden" name="detailBatchDate" value="<%= selectedDetailBatchDate || '' %>" />
+          <select name="batchDate" style="max-width:180px;">
+            <option value="">对比批次</option>
+            <% dateOptions.forEach(function(item) { %>
+              <option value="<%= item.testDate %>" <%= selectedAnalysisBatchDate === item.testDate ? 'selected' : '' %>><%= item.testDate %></option>
+            <% }) %>
+          </select>
+          <button class="btn small" type="submit">筛选批次</button>
+        </form>
+      </div>
+    <% } %>
+
+    <div class="stats-grid overview-stats" style="margin-bottom:16px;">
+      <% (ratingSummary || []).forEach(function(item) { %>
+        <div class="card stat-card">
+          <div class="stat-label"><%= item.label %></div>
+          <div class="stat-number" style="color:<%= item.label === '优秀' ? '#34c759' : item.label === '良好' ? '#0071e3' : item.label === '合格' ? '#ff9f0a' : '#ff3b30' %>;"><%= item.count %></div>
+          <div class="muted">占比 <%= item.percent %>%</div>
+        </div>
+      <% }) %>
+    </div>
+
+    <div class="card chart-card" style="margin-bottom:16px;">
+      <h3 style="margin-top:0;">班级体能结构雷达图</h3>
+      <div class="visual-grid">
+        <div class="radar-card" data-radar-root>
+          <%
+            const radarData = radarChartData || {
+              metrics: (metricHealthSummary || []).map(function(item) {
+                return { key: item.key, label: item.label };
+              }),
+              series: [{
+                key: 'current',
+                label: '当前范围',
+                color: '#0f172a',
+                fillColor: 'rgba(15, 23, 42, 0.12)',
+                dasharray: 'none',
+                strokeWidth: 3,
+                visible: true,
+                values: (metricHealthSummary || []).map(function(item) { return Number(item.score || 0); })
+              }]
+            };
+            const radarMetrics = radarData.metrics || [];
+            const radarSeries = radarData.series || [];
+            const radarCx = 160;
+            const radarCy = 160;
+            const radarRadius = 110;
+            function buildRadarPolygon(values) {
+              return radarMetrics.map(function(metric, index) {
+                const angle = (-Math.PI / 2) + (Math.PI * 2 * index / Math.max(1, radarMetrics.length));
+                const score = Math.max(0, Math.min(100, Number((values && values[index]) || 0)));
+                const length = radarRadius * score / 100;
+                const x = radarCx + Math.cos(angle) * length;
+                const y = radarCy + Math.sin(angle) * length;
+                return x.toFixed(1) + ',' + y.toFixed(1);
+              }).join(' ');
+            }
+          %>
+          <div class="radar-card-head">
+            <div class="radar-toggle-list">
+              <% radarSeries.forEach(function(series) { %>
+                <button
+                  type="button"
+                  class="radar-toggle <%= series.visible === false ? '' : 'is-active' %>"
+                  data-radar-toggle="<%= series.key %>"
+                  aria-pressed="<%= series.visible === false ? 'false' : 'true' %>"
+                  style="--radar-toggle-color:<%= series.color %>;"
+                >
+                  <span class="radar-toggle-swatch" style="background:<%= series.color %>;"></span>
+                  <span><%= series.label %></span>
+                </button>
+              <% }) %>
+            </div>
+          </div>
+          <svg class="radar-svg" viewBox="0 0 320 320" role="img" aria-label="班级体能结构雷达图">
+            <% for (let ring = 1; ring <= 4; ring++) { %>
+              <polygon class="radar-ring" points="<%= buildRadarPolygon(radarMetrics.map(function() { return ring * 25; })) %>"></polygon>
+            <% } %>
+            <% radarMetrics.forEach(function(item, i) {
+              const angle = (-Math.PI / 2) + (Math.PI * 2 * i / Math.max(1, radarMetrics.length));
+              const axisX = radarCx + Math.cos(angle) * radarRadius;
+              const axisY = radarCy + Math.sin(angle) * radarRadius;
+              const lx = radarCx + Math.cos(angle) * (radarRadius + 20);
+              const ly = radarCy + Math.sin(angle) * (radarRadius + 20);
+            %>
+              <line class="radar-axis" x1="<%= radarCx %>" y1="<%= radarCy %>" x2="<%= axisX.toFixed(1) %>" y2="<%= axisY.toFixed(1) %>"></line>
+              <text class="radar-label" x="<%= lx.toFixed(1) %>" y="<%= ly.toFixed(1) %>"><%= item.label %></text>
+            <% }) %>
+            <% radarSeries.forEach(function(series) { %>
+              <g class="radar-series <%= series.key === 'current' ? 'radar-series-current' : 'radar-series-reference' %><%= series.visible === false ? ' is-hidden' : '' %>" data-radar-series="<%= series.key %>">
+                <polygon
+                  class="radar-series-shape"
+                  points="<%= buildRadarPolygon(series.values || []) %>"
+                  style="fill:<%= series.fillColor || 'transparent' %>;stroke:<%= series.color %>;stroke-width:<%= series.strokeWidth || 2 %>;stroke-dasharray:<%= series.dasharray && series.dasharray !== 'none' ? series.dasharray : 'none' %>;"
+                ></polygon>
+                <% if (series.key === 'current') { %>
+                  <% radarMetrics.forEach(function(item, i) {
+                    const angle = (-Math.PI / 2) + (Math.PI * 2 * i / Math.max(1, radarMetrics.length));
+                    const score = Math.max(0, Math.min(100, Number(((series.values || [])[i]) || 0)));
+                    const length = radarRadius * score / 100;
+                    const x = radarCx + Math.cos(angle) * length;
+                    const y = radarCy + Math.sin(angle) * length;
+                  %>
+                    <circle class="radar-series-dot" cx="<%= x.toFixed(1) %>" cy="<%= y.toFixed(1) %>" r="4" style="fill:<%= series.color %>;"></circle>
+                  <% }) %>
+                <% } %>
+              </g>
+            <% }) %>
+          </svg>
+        </div>
+        <div class="trend-card">
+          <h4>班级训练建议</h4>
+          <div class="narrative-list">
+            <% (metricNeedTrainingSummary || []).forEach(function(item) { %>
+              <details class="narrative-item fitness-detail-card">
+                <summary>
+                  <strong><%= item.label %></strong>
+                  <span class="muted" style="margin-left:8px;"><%= item.count %> / <%= item.total %> 人需持续跟进</span>
+                </summary>
+                <div><%= item.narrative %></div>
+                <div class="muted" style="margin-top:6px;">对应人员：
+                  <% if (item.nameLinks && item.nameLinks.length) { %>
+                    <% item.nameLinks.forEach(function(link) { const quick = (childQuickLookup && childQuickLookup[link.name]) || null; %>
+                      <button type="button" class="btn small" style="margin:4px 6px 0 0;" onclick='openUserChildFitnessModal(<%- JSON.stringify(quick || { childName: link.name }) %>)'><%= link.name %></button>
+                    <% }) %>
+                  <% } else { %>
+                    暂无
+                  <% } %>
+                </div>
+              </details>
+            <% }) %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card chart-card" style="margin-bottom:16px;">
+      <h3 style="margin-top:0;">班级体测趋势波形图</h3>
+      <div class="wave-chart-wrap">
+        <% const trendItems = trendSummary || []; const chartWidth = 760; const chartHeight = 220; const padX = 36; const padY = 24; const innerWidth = chartWidth - padX * 2; const innerHeight = chartHeight - padY * 2; const validTrend = trendItems.filter(function(item) { return item.avgScore != null; }); const minScore = validTrend.length ? Math.min.apply(null, validTrend.map(function(item) { return Number(item.avgScore); })) : 0; const maxScore = validTrend.length ? Math.max.apply(null, validTrend.map(function(item) { return Number(item.avgScore); })) : 100; const scoreGap = Math.max(1, maxScore - minScore); %>
+        <svg class="wave-chart-svg" viewBox="0 0 760 220" role="img" aria-label="班级体测趋势波形图">
+          <line class="wave-grid" x1="36" y1="24" x2="36" y2="196"></line>
+          <line class="wave-grid" x1="36" y1="196" x2="724" y2="196"></line>
+          <% let points = []; %>
+          <% trendItems.forEach(function(item, index) { const x = trendItems.length <= 1 ? padX : padX + innerWidth * index / Math.max(1, trendItems.length - 1); const y = item.avgScore == null ? (padY + innerHeight) : (padY + innerHeight - ((Number(item.avgScore) - minScore) / scoreGap) * innerHeight); points.push(x.toFixed(1) + ',' + y.toFixed(1)); %>
+            <circle class="wave-point" cx="<%= x.toFixed(1) %>" cy="<%= y.toFixed(1) %>" r="4"></circle>
+            <text class="wave-label" x="<%= x.toFixed(1) %>" y="210"><%= (item.label || '').slice(5) %></text>
+            <% if (item.avgScore != null) { %><text class="wave-value" x="<%= x.toFixed(1) %>" y="<%= (y - 10).toFixed(1) %>"><%= item.avgScore %></text><% } %>
+          <% }) %>
+          <% if (points.length) { %><polyline class="wave-line" points="<%= points.join(' ') %>"></polyline><% } %>
+        </svg>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px;">
+      <h3 style="margin-top:0;">单项提升空间分析</h3>
+      <div class="stats-grid overview-stats">
+        <% (metricNeedTrainingSummary || []).forEach(function(item) { %>
+          <details class="card stat-card fitness-detail-card">
+            <summary style="cursor:pointer;list-style:none;">
+              <div class="stat-label"><%= item.label %></div>
+              <div class="stat-number"><%= item.percent %>%</div>
+              <div class="muted"><%= item.count %> / <%= item.total %> 人需重点提升</div>
+              <div class="muted" style="margin-top:6px;">点击查看对应人员名单</div>
+            </summary>
+            <div class="muted" style="margin-top:10px;">对应人员：
+              <% if (item.nameLinks && item.nameLinks.length) { %>
+                <% item.nameLinks.forEach(function(link) { const quick = (childQuickLookup && childQuickLookup[link.name]) || null; %>
+                  <button type="button" class="btn small" style="margin:4px 6px 0 0;" onclick='openUserChildFitnessModal(<%- JSON.stringify(quick || { childName: link.name }) %>)'><%= link.name %></button>
+                <% }) %>
+              <% } else { %>
+                暂无
+              <% } %>
+            </div>
+          </details>
+        <% }) %>
+      </div>
+    </div>
+
+    <div id="user-record-filter-anchor" class="toolbar" style="margin:16px 0 12px; align-items:flex-start; gap:10px;">
+      <div>
+        <strong>筛选 / 查询 / 排序</strong>
+        <div class="muted"></div>
+      </div>
+      <div class="toolbar-links">
+        <a class="btn small primary" href="/user/fitness/export?<%= userFitnessQueryString || '' %>">导出当前筛选结果</a>
+        <a class="btn small" href="/user?view=records">清空筛选</a>
+      </div>
+    </div>
+    <form method="get" action="/user#fitness-records" class="form-grid user-record-filter-form" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin-bottom:16px;">
+      <input type="hidden" name="view" value="records" />
+      <label><span>关键词</span><input type="search" name="keyword" value="<%= uf.keyword || '' %>" placeholder="幼儿姓名 / 性别" /></label>
+      <label><span>评级</span>
+        <select name="rating">
+          <option value="">全部评级</option>
+          <option value="优秀" <%= uf.rating === '优秀' ? 'selected' : '' %>>优秀</option>
+          <option value="良好" <%= uf.rating === '良好' ? 'selected' : '' %>>良好</option>
+          <option value="合格" <%= uf.rating === '合格' ? 'selected' : '' %>>合格</option>
+          <option value="不合格" <%= uf.rating === '不合格' ? 'selected' : '' %>>不合格</option>
+        </select>
+      </label>
+      <label><span>历史批次</span>
+        <select name="detailBatchDate">
+          <% dateOptions.forEach(function(item) { %>
+            <option value="<%= item.testDate %>" <%= selectedDetailBatchDate === item.testDate ? 'selected' : '' %>><%= item.testDate %>（<%= item.childCount || item.recordCount || 0 %>人，均分<%= item.avgScore == null ? '-' : item.avgScore %>）</option>
+          <% }) %>
+        </select>
+      </label>
+      <label><span>排序字段</span>
+        <select name="sortField">
+          <% userSortOptions.forEach(function(item) { %>
+            <option value="<%= item[0] %>" <%= (uf.sortField || 'test_date') === item[0] ? 'selected' : '' %>><%= item[1] %></option>
+          <% }) %>
+        </select>
+      </label>
+      <label><span>排序方式</span>
+        <select name="sortOrder">
+          <option value="desc" <%= (uf.sortOrder || 'desc') === 'desc' ? 'selected' : '' %>>从大到小 / 最新优先</option>
+          <option value="asc" <%= (uf.sortOrder || 'desc') === 'asc' ? 'selected' : '' %>>从小到大 / 最早优先</option>
+        </select>
+      </label>
+      <div class="tool-row full-row">
+        <button class="btn" type="submit">应用筛选</button>
+        <a class="btn" href="/user?view=records">重置筛选</a>
+        <a class="btn small primary" href="/user/fitness/export?<%= userFitnessQueryString || '' %>">导出当前筛选结果</a>
+      </div>
+    </form>
+
+    <div class="muted" style="margin:8px 0 10px;">明细显示：所选批次 <strong><%= selectedDetailBatchDate || '-' %></strong> 的体测记录。</div>
+    <div class="table-wrap">
+      <table class="data-table user-fitness-record-table">
+        <thead>
+          <tr>
+            <th>姓名</th>
+            <th>性别</th>
+            <th>测试日期</th>
+            <th>身高</th>
+            <th>身高分</th>
+            <th>体重</th>
+            <th>BMI</th>
+            <th>BMI分</th>
+            <th>握力</th>
+            <th>握力分</th>
+            <th>跳远</th>
+            <th>跳远分</th>
+            <th>体前屈</th>
+            <th>体前屈分</th>
+            <th>双脚跳</th>
+            <th>双脚跳分</th>
+            <th>障碍跑</th>
+            <th>障碍跑分</th>
+            <th>平衡木</th>
+            <th>平衡木分</th>
+            <th>综合得分</th>
+            <th>评级</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% fitnessRecords.forEach(function(r) { %>
+            <tr>
+              <td><strong><%= r.child_name %></strong></td>
+              <td><%= r.gender || '-' %></td>
+              <td><%= r.test_date ? new Date(r.test_date).toISOString().slice(0,10) : '-' %></td>
+              <td><%= r.height_cm ?? '-' %></td>
+              <td><%= r.height_score ?? '-' %></td>
+              <td><%= r.weight_kg ?? '-' %></td>
+              <td><%= r.bmi ?? '-' %></td>
+              <td><%= r.bmi_score ?? '-' %></td>
+              <td><%= r.grip_kg ?? '-' %></td>
+              <td><%= r.grip_score ?? '-' %></td>
+              <td><%= r.long_jump_cm ?? '-' %></td>
+              <td><%= r.jump_score ?? '-' %></td>
+              <td><%= r.sit_reach_cm ?? '-' %></td>
+              <td><%= r.sit_score ?? '-' %></td>
+              <td><%= r.double_jump_sec ?? '-' %></td>
+              <td><%= r.djump_score ?? '-' %></td>
+              <td><%= r.obstacle_run_sec ?? '-' %></td>
+              <td><%= r.obstacle_score ?? '-' %></td>
+              <td><%= r.balance_beam_sec ?? '-' %></td>
+              <td><%= r.balance_score ?? '-' %></td>
+              <td><strong><%= r.total_score ?? '-' %></strong></td>
+              <td>
+                <% if (r.rating === '优秀') { %><span class="status-badge ok"><%= r.rating %></span>
+                <% } else if (r.rating === '良好') { %><span class="status-badge" style="background:#e8f1fd;color:#0071e3;"><%= r.rating %></span>
+                <% } else if (r.rating === '合格') { %><span class="status-badge" style="background:#fff8e1;color:#f09300;"><%= r.rating %></span>
+                <% } else if (r.rating === '不合格') { %><span class="status-badge" style="background:#fce8e8;color:#ff3b30;"><%= r.rating %></span>
+                <% } else { %>-<% } %>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+    <% const fitnessPaginationData = fitnessPagination || { currentPage: 1, totalPages: 1, total: fitnessRecords.length, startIndex: fitnessRecords.length ? 1 : 0, endIndex: fitnessRecords.length, hasPrev: false, hasNext: false, prevPage: 1, nextPage: 1 }; %>
+    <div class="muted" style="margin-top:10px;">当前显示第 <strong><%= fitnessPaginationData.startIndex || 0 %></strong> - <strong><%= fitnessPaginationData.endIndex || 0 %></strong> 条体测记录</div>
+    <% if (fitnessPaginationData.totalPages > 1) { %>
+      <div class="pagination-bar">
+        <% if (fitnessPaginationData.hasPrev) { %><a class="pagination-link pagination-nav" href="/user?view=records&childPage=<%= (childPagination && childPagination.currentPage) || 1 %>&recordPage=<%= fitnessPaginationData.prevPage %><%= userFitnessQueryString ? "&" + userFitnessQueryString : "" %>">上一页</a><% } %>
+        <% for (let pageNo = 1; pageNo <= fitnessPaginationData.totalPages; pageNo++) { %>
+          <a class="pagination-link <%= fitnessPaginationData.currentPage === pageNo ? 'active' : '' %>" href="/user?view=records&childPage=<%= (childPagination && childPagination.currentPage) || 1 %>&recordPage=<%= pageNo %><%= userFitnessQueryString ? "&" + userFitnessQueryString : "" %>"><%= pageNo %></a>
+        <% } %>
+        <% if (fitnessPaginationData.hasNext) { %><a class="pagination-link pagination-nav" href="/user?view=records&childPage=<%= (childPagination && childPagination.currentPage) || 1 %>&recordPage=<%= fitnessPaginationData.nextPage %><%= userFitnessQueryString ? "&" + userFitnessQueryString : "" %>">下一页</a><% } %>
+      </div>
+    <% } %>
+  <% } %>
+    <% } else { %>
+
+<!-- 体测录入 -->
+<section class="card" id="fitness-entry">
+  <h2>录入体测数据</h2>
+  <% const selectedEntryBatchDate = typeof entryBatchDate !== 'undefined' ? entryBatchDate : ''; %>
+  <% const selectedEntryTestDate = typeof entryTestDate !== 'undefined' ? entryTestDate : new Date().toISOString().slice(0,10); %>
+  <% const batchDateOptions = Array.isArray(fitnessBatchDates) ? fitnessBatchDates : []; %>
+  <% const batchMissingChildren = Array.isArray(entryBatchMissingChildren) ? entryBatchMissingChildren : []; %>
+  <% const batchRecordedChildren = Array.isArray(entryBatchRecordedChildren) ? entryBatchRecordedChildren : []; %>
+  <p class="muted">可以先选批次快速补录，也可以不选批次直接录入新增幼儿；选中已录入的幼儿后，下面会自动带出当次填写的数值，直接修改并提交即可覆盖原记录。</p>
+
+  <div class="card" style="margin:14px 0 18px;background:#f8fafc;border:1px solid #e5eef9;">
+    <div class="section-head" style="margin-bottom:10px;">
+      <div>
+        <h3 style="margin:0;">批次快捷入口</h3>
+        <div class="muted no-margin">选择已有批次后，会自动带入测试日期，并提示当前名单里还有谁没录入。</div>
+      </div>
+    </div>
+    <form method="get" action="/user" class="form-grid" id="fitnessEntryBatchForm" style="grid-template-columns:minmax(240px,1fr);align-items:end;">
+      <input type="hidden" name="view" value="entry" />
+      <label>
+        <span>选择批次</span>
+        <select name="entryBatchDate" id="fitnessEntryBatchDate">
+          <option value="">不使用批次，直接录入</option>
+          <% batchDateOptions.forEach(function(batch) { %>
+            <option value="<%= batch.testDate %>" <%= selectedEntryBatchDate === batch.testDate ? 'selected' : '' %>><%= batch.testDate %> 批次 · 已录 <%= batch.recordedCount %> 人 · 未录 <%= batch.missingCount %> 人</option>
+          <% }) %>
+        </select>
+        <div class="muted no-margin" style="margin-top:8px;">下拉切换后会自动刷新；选择“不使用批次，直接录入”即可清除当前批次。</div>
+      </label>
+    </form>
+    <% if (selectedEntryBatchDate) { %>
+      <div class="stats-grid overview-stats" style="margin-top:12px;">
+        <div class="card stat-card">
+          <div class="stat-label">当前批次</div>
+          <div class="stat-number"><%= selectedEntryBatchDate.slice(5).replace('-', '.') %></div>
+          <div class="muted">按当前批次记录核对</div>
+        </div>
+        <div class="card stat-card">
+          <div class="stat-label">未录入人数</div>
+          <div class="stat-number" style="color:<%= batchMissingChildren.length ? '#ff3b30' : '#34c759' %>;"><%= batchMissingChildren.length %></div>
+          <div class="muted"><%= batchMissingChildren.length ? '还需要继续补录' : '本批次已经录齐' %></div>
+        </div>
+        <div class="card stat-card">
+          <div class="stat-label">已录入人数</div>
+          <div class="stat-number"><%= batchRecordedChildren.length %></div>
+          <div class="muted">重新提交会覆盖原记录</div>
+        </div>
+      </div>
+      <div class="muted" style="margin-top:12px;">未录入名单：</div>
+      <% if (batchMissingChildren.length) { %>
+        <div class="tag-list compact-tag-list" style="margin-top:8px;">
+          <% batchMissingChildren.forEach(function(child) { %><span class="tag-pill"><%= child.name %></span><% }) %>
+        </div>
+      <% } else { %>
+        <div class="venue-resource-empty" style="margin-top:8px;padding:14px 16px;">这个批次当前已经全部录完，可以切换其他批次，或者直接录入新增幼儿。</div>
+      <% } %>
+    <% } %>
+  </div>
+
+  <div id="fitnessEntryLiveMessage" class="alert" style="display:none;margin-bottom:12px;"></div>
+  <form method="post" action="/user/fitness/add" id="fitnessEntryForm" class="form-grid" style="grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));">
+    <input type="hidden" name="entryBatchDate" value="<%= selectedEntryBatchDate %>" />
+    <label><span>选择幼儿</span>
+      <select name="childId" id="fitnessEntryChild" required>
+        <option value="">请选择</option>
+        <% if (selectedEntryBatchDate) { %>
+          <% if (batchMissingChildren.length) { %>
+            <optgroup label="本批次未录入">
+              <% batchMissingChildren.forEach(function(ch) { %>
+                <option value="<%= ch.id %>" data-entry-status="missing"><%= ch.name %><%= ch.gender ? '(' + ch.gender + ')' : '' %> · 未录入</option>
+              <% }) %>
+            </optgroup>
+          <% } %>
+          <% if (batchRecordedChildren.length) { %>
+            <optgroup label="已录入（重新提交会覆盖）">
+              <% batchRecordedChildren.forEach(function(ch) { %>
+                <option
+                  value="<%= ch.id %>"
+                  data-entry-status="recorded"
+                  data-prefill-ready="<%= ch.existingFitness ? '1' : '0' %>"
+                  data-test-date="<%= ch.existingFitness && ch.existingFitness.testDate ? ch.existingFitness.testDate : selectedEntryTestDate %>"
+                  data-height-cm="<%= ch.existingFitness && ch.existingFitness.heightCm != null ? ch.existingFitness.heightCm : '' %>"
+                  data-weight-kg="<%= ch.existingFitness && ch.existingFitness.weightKg != null ? ch.existingFitness.weightKg : '' %>"
+                  data-grip-kg="<%= ch.existingFitness && ch.existingFitness.gripKg != null ? ch.existingFitness.gripKg : '' %>"
+                  data-long-jump-cm="<%= ch.existingFitness && ch.existingFitness.longJumpCm != null ? ch.existingFitness.longJumpCm : '' %>"
+                  data-sit-reach-cm="<%= ch.existingFitness && ch.existingFitness.sitReachCm != null ? ch.existingFitness.sitReachCm : '' %>"
+                  data-double-jump-sec="<%= ch.existingFitness && ch.existingFitness.doubleJumpSec != null ? ch.existingFitness.doubleJumpSec : '' %>"
+                  data-obstacle-run-sec="<%= ch.existingFitness && ch.existingFitness.obstacleRunSec != null ? ch.existingFitness.obstacleRunSec : '' %>"
+                  data-balance-beam-sec="<%= ch.existingFitness && ch.existingFitness.balanceBeamSec != null ? ch.existingFitness.balanceBeamSec : '' %>"
+                ><%= ch.name %><%= ch.gender ? '(' + ch.gender + ')' : '' %> · 已录入</option>
+              <% }) %>
+            </optgroup>
+          <% } %>
+        <% } else { %>
+          <% childCollection.forEach(function(ch) { %>
+            <option value="<%= ch.id %>"><%= ch.name %><%= ch.gender ? '(' + ch.gender + ')' : '' %></option>
+          <% }) %>
+        <% } %>
+        <option value="__manual__">&#20854;&#20182;&#65288;&#25163;&#22635;&#26032;&#22686;&#65289;</option>
+      </select>
+    </label>
+    <div id="fitnessEntrySelectionHint" class="muted" style="grid-column:1 / -1;margin-top:-6px;">选择已录入幼儿时，会自动回填该批次的体测数值。</div>
+    <label id="fitnessEntryManualChildWrap" style="display:none;">
+      <span>&#20854;&#20182;&#24188;&#20799;&#22995;&#21517;</span>
+      <input type="text" name="manualChildName" id="fitnessEntryManualChildName" maxlength="30" placeholder="&#36755;&#20837;&#22995;&#21517;&#21518;&#20250;&#33258;&#21160;&#21152;&#20837;&#24403;&#21069;&#29677;&#32423;&#21517;&#21333;" />
+    </label>
+    <label id="fitnessEntryManualGenderWrap" style="display:none;">
+      <span>性别</span>
+      <select name="manualChildGender" id="fitnessEntryManualChildGender">
+        <option value="">请选择</option>
+        <option value="男">男</option>
+        <option value="女">女</option>
+      </select>
+    </label>
+    <label id="fitnessEntryManualBirthDateWrap" style="display:none;">
+      <span>出生日期</span>
+      <input type="date" name="manualChildBirthDate" id="fitnessEntryManualChildBirthDate" />
+    </label>
+    <label><span>测试日期</span><input type="date" name="testDate" id="fitnessEntryTestDate" value="<%= selectedEntryTestDate %>" required /></label>
+    <label><span>身高(CM)</span><input type="number" name="heightCm" step="0.1" placeholder="如 110.5" /></label>
+    <label><span>体重(KG)</span><input type="number" name="weightKg" step="0.01" placeholder="如 18.50" /></label>
+    <label><span>握力(KG)</span><input type="number" name="gripKg" step="0.01" placeholder="如 7.0" /></label>
+    <label><span>立定跳远(CM)</span><input type="number" name="longJumpCm" step="0.1" placeholder="如 85" /></label>
+    <label><span>坐位体前屈(CM)</span><input type="number" name="sitReachCm" step="0.1" placeholder="如 9" /></label>
+    <label><span>双脚连续跳(秒)</span><input type="number" name="doubleJumpSec" step="0.01" placeholder="如 7.5" /></label>
+    <label><span>15米绕障碍跑(秒)</span><input type="number" name="obstacleRunSec" step="0.01" placeholder="如 8.0" /></label>
+    <label><span>走平衡木(秒)</span><input type="number" name="balanceBeamSec" step="0.01" placeholder="如 15" /></label>
+    <div style="grid-column: 1 / -1;">
+      <button class="btn primary" type="submit" id="fitnessEntrySubmitButton">提交并自动计算得分</button>
+      <div class="muted" style="margin-top:8px;">如果同一幼儿在同一天已经录过，本次提交会自动覆盖原记录。</div>
+    </div>
+  </form>
+</section>
+
+
+
+<!-- 批量导入/导出 -->
+<section class="card">
+  <h2>体测数据导入 / 导出</h2>
+  <div class="toolbar-links" style="margin-bottom:12px;">
+    <a class="btn small" href="/user/fitness/template">下载体测导入模板</a>
+    <a class="btn small" href="/user/fitness/export">导出本班体测数据</a>
+  </div>
+  <form method="post" action="/user/fitness/import" enctype="multipart/form-data" class="form-grid" style="max-width:400px;">
+    <input type="file" name="file" accept=".xlsx,.xls,.csv" required />
+    <button class="btn primary full" type="submit">上传并导入</button>
+  </form>
+  <div class="muted" style="margin-top:8px;">模板字段：幼儿姓名、测试日期、身高(CM)、体重(KG)、握力(KG)、立定跳远(CM)、坐位体前屈(CM)、双脚连续跳(秒)、15米绕障碍跑(秒)、走平衡木(秒)</div>
+</section>
+    <% } %>
+
+</section>
+  </div>
+</section>
+
+<script>
+(function () {
+  const SCROLL_KEY = 'kgp-user-scroll-target';
+  function bindRadarToggles(root) {
+    (root || document).querySelectorAll('[data-radar-root]').forEach(function (card) {
+      card.querySelectorAll('[data-radar-toggle]').forEach(function (button) {
+        if (button.dataset.radarBound === '1') return;
+        button.dataset.radarBound = '1';
+        button.addEventListener('click', function () {
+          var key = button.getAttribute('data-radar-toggle');
+          if (!key) return;
+          var isActive = button.classList.toggle('is-active');
+          button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+          card.querySelectorAll('[data-radar-series="' + key + '"]').forEach(function (seriesNode) {
+            seriesNode.classList.toggle('is-hidden', !isActive);
+          });
+        });
+      });
+    });
+  }
+  function replaceRecordsFromHtml(html) {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const incoming = doc.querySelector('[data-ajax-panel="user-records"]');
+    const current = document.querySelector('[data-ajax-panel="user-records"]');
+    if (incoming && current) current.outerHTML = incoming.outerHTML;
+  }
+  function scrollToUserRecords(behavior) {
+    const target = document.getElementById('user-record-filter-anchor')
+      || document.querySelector('#fitness-records .toolbar')
+      || document.querySelector('[data-ajax-panel="user-records"] .table-wrap')
+      || document.getElementById('fitness-records')
+      || document.querySelector('[data-ajax-panel="user-records"]');
+    if (!target) return;
+    target.scrollIntoView({ behavior: behavior || 'auto', block: 'start' });
+  }
+  function restoreUserRecordScroll() {
+    const params = new URLSearchParams(window.location.search);
+    const hasFilterParams = ['keyword', 'rating', 'dateFrom', 'dateTo', 'sortField', 'sortOrder', 'recordPage'].some(function (key) {
+      return params.has(key) && String(params.get(key) || '') !== '';
+    });
+    const shouldScroll = window.location.hash === '#fitness-records'
+      || sessionStorage.getItem(SCROLL_KEY) === 'fitness-records'
+      || (params.get('view') === 'records' && hasFilterParams);
+    if (!shouldScroll) return;
+    sessionStorage.removeItem(SCROLL_KEY);
+    [0, 120, 320, 700].forEach(function (delay) {
+      setTimeout(function () { scrollToUserRecords('auto'); }, delay);
+    });
+  }
+  async function loadUserRecords(url, push, scroll) {
+    const res = await fetch(url, { headers: { 'X-Requested-With': 'fetch' }, credentials: 'same-origin' });
+    if (!res.ok) { if (scroll !== false) sessionStorage.setItem(SCROLL_KEY, 'fitness-records'); window.location.href = url; return; }
+    const html = await res.text();
+    replaceRecordsFromHtml(html);
+    if (push) window.history.pushState({ kind: 'user-records', url: url }, '', url);
+    bindUserPagination();
+    if (scroll !== false) scrollToUserRecords('smooth');
+  }
+  function bindUserPagination() {
+    document.querySelectorAll('[data-ajax-panel="user-records"] .pagination-link').forEach(function (link) {
+      if (link.dataset.ajaxBound === '1') return;
+      link.dataset.ajaxBound = '1';
+      link.addEventListener('click', function (event) {
+        event.preventDefault();
+        sessionStorage.setItem(SCROLL_KEY, 'fitness-records');
+        loadUserRecords(event.currentTarget.href, true).catch(function () { window.location.href = event.currentTarget.href; });
+      });
+    });
+    document.querySelectorAll('[data-ajax-panel="user-records"] form.user-analysis-batch-form').forEach(function (form) {
+      if (form.dataset.ajaxBound === '1') return;
+      form.dataset.ajaxBound = '1';
+      form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        const action = form.getAttribute('action') || window.location.pathname;
+        const url = new URL(action, window.location.origin);
+        const formData = new FormData(form);
+        formData.forEach(function (value, key) {
+          if (value !== null && String(value) !== '') url.searchParams.set(key, String(value));
+        });
+        loadUserRecords(url.toString(), true, false).catch(function () { window.location.href = url.toString(); });
+      });
+    });
+    document.querySelectorAll('[data-ajax-panel="user-records"] form.user-record-filter-form').forEach(function (form) {
+      if (form.dataset.ajaxBound === '1') return;
+      form.dataset.ajaxBound = '1';
+      form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        const action = form.getAttribute('action') || window.location.pathname;
+        const url = new URL(action, window.location.origin);
+        url.hash = 'fitness-records';
+        const formData = new FormData(form);
+        formData.forEach(function (value, key) {
+          if (value !== null && String(value) !== '') url.searchParams.set(key, String(value));
+        });
+        sessionStorage.setItem(SCROLL_KEY, 'fitness-records');
+        loadUserRecords(url.toString(), true).catch(function () { window.location.href = url.toString(); });
+      });
+    });
+    bindRadarToggles(document.querySelector('[data-ajax-panel="user-records"]'));
+  }
+  window.addEventListener('popstate', function () {
+    if (window.location.search.indexOf('view=records') === -1) return;
+    if (!document.querySelector('[data-ajax-panel="user-records"]')) return;
+    sessionStorage.setItem(SCROLL_KEY, 'fitness-records');
+    loadUserRecords(window.location.href, false).catch(function () { window.location.reload(); });
+  });
+  window.addEventListener('pageshow', restoreUserRecordScroll);
+  window.addEventListener('load', restoreUserRecordScroll);
+  restoreUserRecordScroll();
+  bindRadarToggles(document);
+  bindUserPagination();
+})();
+
+(function () {
+  var attentionNavLink = document.querySelector('.user-fitness-nav-link[href="/user?view=attention"]');
+  if (attentionNavLink) {
+    var titleNode = attentionNavLink.querySelector('.user-fitness-nav-title');
+    var descNode = attentionNavLink.querySelector('.user-fitness-nav-desc');
+    if (titleNode) titleNode.textContent = '本班重点关注';
+    if (descNode) descNode.textContent = '维护本班重点关注幼儿，供二次晨检和活动前快速复核';
+  }
+
+  var attentionChildSelect = document.getElementById('userAttentionChild');
+  var attentionReasonInput = document.getElementById('userAttentionReason');
+  var attentionVestInput = document.getElementById('userAttentionVestType');
+  var attentionStartInput = document.getElementById('userAttentionStart');
+  var attentionEndInput = document.getElementById('userAttentionEnd');
+  var attentionTagsInput = document.getElementById('userAttentionTags');
+  var attentionDefaultStart = attentionStartInput ? (attentionStartInput.defaultValue || attentionStartInput.value || '') : '';
+  var fitnessBatchSelect = document.getElementById('fitnessEntryBatchDate');
+  var fitnessBatchForm = document.getElementById('fitnessEntryBatchForm');
+  var fitnessEntryForm = document.getElementById('fitnessEntryForm');
+  var fitnessEntryDateInput = document.getElementById('fitnessEntryTestDate');
+  var fitnessEntryChildSelect = document.getElementById('fitnessEntryChild');
+  var fitnessEntryManualChildWrap = document.getElementById('fitnessEntryManualChildWrap');
+  var fitnessEntryManualChildInput = document.getElementById('fitnessEntryManualChildName');
+  var fitnessEntryManualGenderWrap = document.getElementById('fitnessEntryManualGenderWrap');
+  var fitnessEntryManualGenderInput = document.getElementById('fitnessEntryManualChildGender');
+  var fitnessEntryManualBirthDateWrap = document.getElementById('fitnessEntryManualBirthDateWrap');
+  var fitnessEntryManualBirthDateInput = document.getElementById('fitnessEntryManualChildBirthDate');
+  var fitnessEntrySelectionHint = document.getElementById('fitnessEntrySelectionHint');
+  var fitnessEntryLiveMessage = document.getElementById('fitnessEntryLiveMessage');
+  var fitnessEntrySubmitButton = document.getElementById('fitnessEntrySubmitButton') || (fitnessEntryForm ? fitnessEntryForm.querySelector('button[type="submit"]') : null);
+  var fitnessEntryMetricFields = [
+    { name: 'heightCm', label: '\u8eab\u9ad8(CM)' },
+    { name: 'weightKg', label: '\u4f53\u91cd(KG)' },
+    { name: 'gripKg', label: '\u63e1\u529b(KG)' },
+    { name: 'longJumpCm', label: '\u7acb\u5b9a\u8df3\u8fdc(CM)' },
+    { name: 'sitReachCm', label: '\u5750\u4f4d\u4f53\u524d\u5c48(CM)' },
+    { name: 'doubleJumpSec', label: '\u53cc\u811a\u8fde\u7eed\u8df3(\u79d2)' },
+    { name: 'obstacleRunSec', label: '15\u7c73\u7ed5\u969c\u788d\u8dd1(\u79d2)' },
+    { name: 'balanceBeamSec', label: '\u8d70\u5e73\u8861\u6728(\u79d2)' }
+  ];
+  var defaultFitnessEntrySubmitText = fitnessEntrySubmitButton ? fitnessEntrySubmitButton.textContent : '提交并自动计算得分';
+
+  function isManualEntryMode() {
+    return !!(fitnessEntryChildSelect && fitnessEntryChildSelect.value === '__manual__');
+  }
+
+  function toggleManualChildField() {
+    var shouldShow = isManualEntryMode();
+    if (fitnessEntryManualChildWrap) {
+      fitnessEntryManualChildWrap.style.display = shouldShow ? 'block' : 'none';
+    }
+    if (fitnessEntryManualGenderWrap) {
+      fitnessEntryManualGenderWrap.style.display = shouldShow ? 'block' : 'none';
+    }
+    if (fitnessEntryManualBirthDateWrap) {
+      fitnessEntryManualBirthDateWrap.style.display = shouldShow ? 'block' : 'none';
+    }
+    if (fitnessEntryManualChildInput) {
+      fitnessEntryManualChildInput.required = shouldShow;
+      if (!shouldShow) fitnessEntryManualChildInput.value = '';
+    }
+    if (fitnessEntryManualGenderInput) {
+      fitnessEntryManualGenderInput.required = shouldShow;
+      if (!shouldShow) fitnessEntryManualGenderInput.value = '';
+    }
+    if (fitnessEntryManualBirthDateInput) {
+      fitnessEntryManualBirthDateInput.required = shouldShow;
+      if (!shouldShow) fitnessEntryManualBirthDateInput.value = '';
+    }
+    fitnessEntryMetricFields.forEach(function (field) {
+      if (!fitnessEntryForm || !fitnessEntryForm.elements[field.name]) return;
+      fitnessEntryForm.elements[field.name].required = true;
+    });
+  }
+
+  function renderFitnessEntryFeedback(message, type) {
+    if (!fitnessEntryLiveMessage) return;
+    if (!message) {
+      fitnessEntryLiveMessage.style.display = 'none';
+      fitnessEntryLiveMessage.textContent = '';
+      fitnessEntryLiveMessage.className = 'alert';
+      return;
+    }
+    fitnessEntryLiveMessage.textContent = message;
+    fitnessEntryLiveMessage.className = type === 'error' ? 'alert error' : 'alert success';
+    fitnessEntryLiveMessage.style.display = 'block';
+  }
+
+  function renderFitnessEntrySelectionHint(message) {
+    if (!fitnessEntrySelectionHint) return;
+    fitnessEntrySelectionHint.textContent = message || '选择已录入幼儿时，会自动回填该批次的体测数值。';
+  }
+
+  function setFitnessMetricFieldValue(name, value) {
+    if (!fitnessEntryForm || !fitnessEntryForm.elements || !fitnessEntryForm.elements[name]) return;
+    fitnessEntryForm.elements[name].value = value == null ? '' : String(value);
+  }
+
+  function clearFitnessMetricFields() {
+    fitnessEntryMetricFields.forEach(function (field) {
+      setFitnessMetricFieldValue(field.name, '');
+    });
+  }
+
+  function syncFitnessEntrySelection() {
+    var selectedOption = fitnessEntryChildSelect && fitnessEntryChildSelect.options
+      ? fitnessEntryChildSelect.options[fitnessEntryChildSelect.selectedIndex]
+      : null;
+    var hasBatch = !!(fitnessBatchSelect && fitnessBatchSelect.value);
+    var defaultHint = hasBatch
+      ? '当前批次下，选择已录入幼儿会自动回填数值；选择未录入幼儿则直接填写本次数据。'
+      : '不使用批次时可直接录入，也可以选择“其他（手填新增）”补录新幼儿。';
+
+    if (!selectedOption || !selectedOption.value) {
+      if (fitnessEntrySubmitButton) fitnessEntrySubmitButton.textContent = defaultFitnessEntrySubmitText;
+      renderFitnessEntrySelectionHint(defaultHint);
+      return;
+    }
+
+    if (selectedOption.value === '__manual__') {
+      clearFitnessMetricFields();
+      if (fitnessEntrySubmitButton) fitnessEntrySubmitButton.textContent = defaultFitnessEntrySubmitText;
+      renderFitnessEntrySelectionHint('手填新增幼儿时，请补齐姓名、性别、出生日期和体测数值后再提交。');
+      return;
+    }
+
+    if (hasBatch && fitnessEntryDateInput) {
+      fitnessEntryDateInput.value = selectedOption.dataset.testDate || fitnessBatchSelect.value;
+    }
+
+    if (selectedOption.dataset.prefillReady === '1') {
+      setFitnessMetricFieldValue('heightCm', selectedOption.dataset.heightCm);
+      setFitnessMetricFieldValue('weightKg', selectedOption.dataset.weightKg);
+      setFitnessMetricFieldValue('gripKg', selectedOption.dataset.gripKg);
+      setFitnessMetricFieldValue('longJumpCm', selectedOption.dataset.longJumpCm);
+      setFitnessMetricFieldValue('sitReachCm', selectedOption.dataset.sitReachCm);
+      setFitnessMetricFieldValue('doubleJumpSec', selectedOption.dataset.doubleJumpSec);
+      setFitnessMetricFieldValue('obstacleRunSec', selectedOption.dataset.obstacleRunSec);
+      setFitnessMetricFieldValue('balanceBeamSec', selectedOption.dataset.balanceBeamSec);
+      if (fitnessEntrySubmitButton) fitnessEntrySubmitButton.textContent = '提交并覆盖原记录';
+      renderFitnessEntrySelectionHint('已自动回填该幼儿在当前批次的历史数值，直接修改后提交即可覆盖原记录。');
+      return;
+    }
+
+    clearFitnessMetricFields();
+    if (fitnessEntrySubmitButton) fitnessEntrySubmitButton.textContent = defaultFitnessEntrySubmitText;
+    renderFitnessEntrySelectionHint(hasBatch
+      ? '该幼儿在当前批次还未录入，请填写本次体测数据后提交。'
+      : defaultHint);
+  }
+
+  function clearFitnessEntryValidity() {
+    if (fitnessEntryManualChildInput) {
+      fitnessEntryManualChildInput.setCustomValidity('');
+    }
+    if (fitnessEntryManualGenderInput) {
+      fitnessEntryManualGenderInput.setCustomValidity('');
+    }
+    if (fitnessEntryManualBirthDateInput) {
+      fitnessEntryManualBirthDateInput.setCustomValidity('');
+    }
+    fitnessEntryMetricFields.forEach(function (field) {
+      if (!fitnessEntryForm || !fitnessEntryForm.elements[field.name]) return;
+      fitnessEntryForm.elements[field.name].setCustomValidity('');
+    });
+  }
+
+  function getManualMissingFitnessLabels() {
+    if (!fitnessEntryForm) return [];
+    return fitnessEntryMetricFields.filter(function (field) {
+      var input = fitnessEntryForm.elements[field.name];
+      return !input || String(input.value || '').trim() === '';
+    }).map(function (field) {
+      return field.label;
+    });
+  }
+
+  function reportFitnessEntryMissing(message, input) {
+    renderFitnessEntryFeedback(message, 'error');
+    if (input && typeof input.setCustomValidity === 'function') {
+      input.setCustomValidity(message);
+      if (typeof input.reportValidity === 'function') {
+        input.reportValidity();
+      }
+      if (typeof input.focus === 'function') {
+        input.focus();
+      }
+      return;
+    }
+    if (typeof window.alert === 'function') {
+      window.alert(message);
+    }
+  }
+
+  function validateFitnessEntryBeforeSubmit() {
+    clearFitnessEntryValidity();
+    if (isManualEntryMode()) {
+      var manualName = fitnessEntryManualChildInput ? String(fitnessEntryManualChildInput.value || '').trim() : '';
+      if (!manualName) {
+        reportFitnessEntryMissing('\u8bf7\u5148\u586b\u5199\u201c\u5176\u4ed6\u5e7c\u513f\u201d\u7684\u59d3\u540d', fitnessEntryManualChildInput);
+        return false;
+      }
+      var manualGender = fitnessEntryManualGenderInput ? String(fitnessEntryManualGenderInput.value || '').trim() : '';
+      if (!manualGender) {
+        reportFitnessEntryMissing('请选择手填新增幼儿的性别', fitnessEntryManualGenderInput);
+        return false;
+      }
+      var manualBirthDate = fitnessEntryManualBirthDateInput ? String(fitnessEntryManualBirthDateInput.value || '').trim() : '';
+      if (!manualBirthDate) {
+        reportFitnessEntryMissing('请填写手填新增幼儿的出生日期', fitnessEntryManualBirthDateInput);
+        return false;
+      }
+    }
+
+    var missingFields = fitnessEntryMetricFields.filter(function (field) {
+      var input = fitnessEntryForm && fitnessEntryForm.elements ? fitnessEntryForm.elements[field.name] : null;
+      return !input || String(input.value || '').trim() === '';
+    });
+    if (!missingFields.length) return true;
+
+    var firstMissing = missingFields[0];
+    var firstInput = fitnessEntryForm && fitnessEntryForm.elements ? fitnessEntryForm.elements[firstMissing.name] : null;
+    reportFitnessEntryMissing('\u7f3a\u5c11\u586b\u5199' + firstMissing.label, firstInput);
+    return false;
+  }
+
+  function syncAttentionForm() {
+    if (!attentionChildSelect) return;
+    var selectedOption = attentionChildSelect.options[attentionChildSelect.selectedIndex];
+    if (!selectedOption || !selectedOption.value) {
+      if (attentionReasonInput) attentionReasonInput.value = '';
+      if (attentionVestInput) attentionVestInput.value = 'yellow';
+      if (attentionStartInput) attentionStartInput.value = attentionDefaultStart;
+      if (attentionEndInput) attentionEndInput.value = '';
+      if (attentionTagsInput) attentionTagsInput.value = '';
+      return;
+    }
+    if (attentionReasonInput) attentionReasonInput.value = selectedOption.dataset.attentionReason || '';
+    if (attentionVestInput) {
+      attentionVestInput.value = selectedOption.dataset.attentionVestType === 'red'
+        ? 'red'
+        : (selectedOption.dataset.attentionVestType === 'green' ? 'green' : 'yellow');
+    }
+    if (attentionStartInput) attentionStartInput.value = selectedOption.dataset.attentionStart || attentionDefaultStart;
+    if (attentionEndInput) attentionEndInput.value = selectedOption.dataset.attentionEnd || '';
+    if (attentionTagsInput) attentionTagsInput.value = selectedOption.dataset.attentionTags || '';
+  }
+
+  if (attentionChildSelect) {
+    attentionChildSelect.addEventListener('change', syncAttentionForm);
+    syncAttentionForm();
+  }
+
+  if (fitnessBatchSelect && fitnessBatchForm) {
+    fitnessBatchSelect.addEventListener('change', function () {
+      fitnessBatchForm.submit();
+    });
+  }
+  if (fitnessBatchSelect && fitnessEntryDateInput && fitnessBatchSelect.value) {
+    fitnessEntryDateInput.value = fitnessBatchSelect.value;
+  }
+  if (fitnessEntryChildSelect && fitnessBatchSelect && fitnessBatchSelect.value && !fitnessEntryChildSelect.value) {
+    var firstMissingOption = fitnessEntryChildSelect.querySelector('option[data-entry-status="missing"]');
+    var firstRecordedOption = fitnessEntryChildSelect.querySelector('option[data-entry-status="recorded"]');
+    if (firstMissingOption) fitnessEntryChildSelect.value = firstMissingOption.value;
+    else if (firstRecordedOption) fitnessEntryChildSelect.value = firstRecordedOption.value;
+  }
+  if (fitnessEntryChildSelect) {
+    fitnessEntryChildSelect.addEventListener('change', function () {
+      toggleManualChildField();
+      syncFitnessEntrySelection();
+      clearFitnessEntryValidity();
+    });
+  }
+  toggleManualChildField();
+  syncFitnessEntrySelection();
+  clearFitnessEntryValidity();
+
+  if (fitnessEntryManualChildInput) {
+    fitnessEntryManualChildInput.addEventListener('input', clearFitnessEntryValidity);
+  }
+  if (fitnessEntryManualGenderInput) {
+    fitnessEntryManualGenderInput.addEventListener('change', clearFitnessEntryValidity);
+  }
+  if (fitnessEntryManualBirthDateInput) {
+    fitnessEntryManualBirthDateInput.addEventListener('input', clearFitnessEntryValidity);
+  }
+  fitnessEntryMetricFields.forEach(function (field) {
+    if (!fitnessEntryForm || !fitnessEntryForm.elements[field.name]) return;
+    fitnessEntryForm.elements[field.name].addEventListener('input', clearFitnessEntryValidity);
+  });
+
+  if (fitnessEntryForm) {
+    fitnessEntryForm.addEventListener('submit', function (event) {
+      event.preventDefault();
+      renderFitnessEntryFeedback('', 'success');
+
+      if (!validateFitnessEntryBeforeSubmit()) {
+        var missingLabels = getManualMissingFitnessLabels();
+        if (missingLabels.length) {
+          renderFitnessEntryFeedback('\u7f3a\u5c11\u586b\u5199' + missingLabels.join('\u3001'), 'error');
+        }
+        return;
+      }
+
+      if (!fitnessEntryForm.reportValidity()) {
+        return;
+      }
+
+      var formData = new FormData(fitnessEntryForm);
+      var body = new URLSearchParams();
+      formData.forEach(function (value, key) {
+        body.append(key, value == null ? '' : String(value));
+      });
+
+      if (fitnessEntrySubmitButton) {
+        fitnessEntrySubmitButton.disabled = true;
+      }
+
+      fetch(fitnessEntryForm.action, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+          'Accept': 'application/json',
+          'X-Requested-With': 'fetch'
+        },
+        body: body.toString(),
+        credentials: 'same-origin'
+      }).then(function (response) {
+        var contentType = String(response.headers.get('content-type') || '').toLowerCase();
+        if (!contentType.includes('application/json')) {
+          window.location.href = response.url || fitnessEntryForm.action;
+          return null;
+        }
+        return response.json().then(function (payload) {
+          if (!response.ok || !payload || payload.ok === false) {
+            renderFitnessEntryFeedback((payload && payload.message) || '\u63d0\u4ea4\u5931\u8d25\uff0c\u8bf7\u7a0d\u540e\u518d\u8bd5', 'error');
+            return null;
+          }
+          if (payload.changed) {
+            window.location.href = payload.redirectUrl || window.location.href;
+            return null;
+          }
+          renderFitnessEntryFeedback(payload.message || '\u6570\u636e\u5df2\u4fdd\u5b58', 'success');
+          return null;
+        });
+      }).catch(function () {
+        renderFitnessEntryFeedback('\u7f51\u7edc\u5f02\u5e38\uff0c\u8bf7\u7a0d\u540e\u518d\u8bd5', 'error');
+      }).finally(function () {
+        if (fitnessEntrySubmitButton) {
+          fitnessEntrySubmitButton.disabled = false;
+        }
+      });
+    });
+  }
+})();
+
+function openUserChildFitnessModal(data) {
+  var overlay = document.getElementById('userChildFitnessOverlay');
+  var title = document.getElementById('userChildFitnessTitle');
+  var meta = document.getElementById('userChildFitnessMeta');
+  var scores = document.getElementById('userChildFitnessScores');
+  var train = document.getElementById('userChildFitnessTraining');
+  var viewBtn = document.getElementById('userChildFitnessViewBtn');
+  if (!overlay) return;
+  var birthText = data && data.birthDate ? String(data.birthDate).slice(0, 10) : '-';
+  title.textContent = (data && data.childName) || '幼儿体测详情';
+  meta.innerHTML = '班级：' + ((data && data.className) || '-')
+    + '　|　性别：' + ((data && data.gender) || '-')
+    + '　|　出生日期：' + birthText
+    + '<br>最近体测：' + ((data && data.testDate) || '-')
+    + '　|　综合得分：' + ((data && data.totalScore) || '-')
+    + '　|　评级：' + ((data && data.rating) || '-');
+  scores.innerHTML = [
+    '身高：' + ((data && data.heightCm) || '-') + ' cm',
+    '体重：' + ((data && data.weightKg) || '-') + ' kg',
+    'BMI：' + ((data && data.bmi) || '-'),
+    '握力：' + ((data && data.gripKg) || '-') + ' kg（' + ((data && data.gripScore) || '-') + '分）',
+    '立定跳远：' + ((data && data.longJumpCm) || '-') + ' cm（' + ((data && data.jumpScore) || '-') + '分）',
+    '坐位体前屈：' + ((data && data.sitReachCm) || '-') + ' cm（' + ((data && data.sitScore) || '-') + '分）',
+    '双脚连续跳：' + ((data && data.doubleJumpSec) || '-') + ' 秒（' + ((data && data.djumpScore) || '-') + '分）',
+    '15米绕障碍跑：' + ((data && data.obstacleRunSec) || '-') + ' 秒（' + ((data && data.obstacleScore) || '-') + '分）',
+    '走平衡木：' + ((data && data.balanceBeamSec) || '-') + ' 秒（' + ((data && data.balanceScore) || '-') + '分）'
+  ].map(function (line) { return '<div style="margin:6px 0;">' + line + '</div>'; }).join('');
+  train.textContent = data && data.needTraining && data.needTraining.length ? '建议重点加强：' + data.needTraining.join('、') : '当前暂无明显薄弱项';
+  if (viewBtn) viewBtn.href = '/user?view=records&keyword=' + encodeURIComponent((data && data.childName) || '') + '#fitness-records';
+  overlay.style.display = 'flex';
+}
+function closeUserChildFitnessModal() {
+  var overlay = document.getElementById('userChildFitnessOverlay');
+  if (overlay) overlay.style.display = 'none';
+}
+</script>
+
+<div id="userChildFitnessOverlay" class="modal-overlay" style="display:none;" onclick="if(event.target===this) closeUserChildFitnessModal()">
+  <div class="modal-box" style="width:min(92vw,680px);max-height:86vh;overflow:auto;">
+    <div class="modal-header" style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
+      <div>
+        <h3 id="userChildFitnessTitle" style="margin:0;">幼儿体测详情</h3>
+        <div id="userChildFitnessMeta" class="muted" style="margin-top:8px;"></div>
+      </div>
+      <button class="modal-close" type="button" onclick="closeUserChildFitnessModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="card" style="margin-bottom:12px;">
+        <div class="section-head"><h3>最近一次体测</h3></div>
+        <div id="userChildFitnessScores"></div>
+      </div>
+      <div class="card">
+        <div class="section-head"><h3>训练建议</h3></div>
+        <div id="userChildFitnessTraining" class="muted"></div>
+      </div>
+      <div class="toolbar-links" style="margin-top:16px;">
+        <a id="userChildFitnessViewBtn" class="btn primary" href="/user?view=records#fitness-records">查看记录列表</a>
+        <button class="btn" type="button" onclick="closeUserChildFitnessModal()">关闭</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/footer') %>
