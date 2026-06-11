@@ -3009,3 +3009,126 @@ input:focus, textarea:focus, select:focus {
     border-radius: 20px;
   }
 }
+
+
+/* ---- 幼儿纵向对比面板 ---- */
+.child-compare-link {
+  color: #0f4fa8;
+  text-decoration: none;
+  border-bottom: 1px dashed #93b3e0;
+  transition: color .15s;
+}
+.child-compare-link:hover {
+  color: #1a5fca;
+  border-bottom-color: #1a5fca;
+}
+
+.compare-panel-overlay {
+  display: none;
+  position: fixed; inset: 0; z-index: 10000;
+  background: rgba(0,0,0,.55);
+  backdrop-filter: blur(4px);
+  justify-content: center; align-items: flex-start;
+  padding: 20px 12px 40px;
+  overflow-y: auto;
+}
+.compare-panel-overlay.is-open { display: flex; }
+
+.compare-panel {
+  width: min(98vw, 1120px);
+  background: #fff; border-radius: 16px;
+  box-shadow: 0 20px 80px rgba(0,0,0,.28);
+  overflow: hidden;
+}
+
+.compare-panel-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 18px 24px;
+  background: linear-gradient(135deg, #0f4fa8, #1a5fca);
+  color: #fff;
+}
+.compare-panel-header h3 { margin: 0; font-size: 18px; }
+.compare-panel-header .meta { font-size: 13px; opacity: .85; margin-top: 4px; }
+.compare-panel-close {
+  background: none; border: none; color: #fff; font-size: 28px;
+  cursor: pointer; line-height: 1; padding: 0 8px; opacity: .8;
+}
+.compare-panel-close:hover { opacity: 1; }
+
+.compare-panel-body { padding: 20px 24px 24px; }
+
+.compare-charts-row {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 18px;
+  margin-bottom: 18px;
+}
+@media (max-width: 800px) {
+  .compare-charts-row { grid-template-columns: 1fr; }
+}
+
+.compare-chart-card {
+  border: 1px solid #e2e8f0; border-radius: 10px;
+  padding: 14px 16px;
+  background: #f8fafc;
+}
+.compare-chart-card h4 {
+  margin: 0 0 10px; font-size: 14px; color: #334155;
+}
+
+.compare-growth-chart svg,
+.compare-fitness-chart svg {
+  display: block; width: 100%;
+}
+
+/* Rating timeline */
+.compare-rating-timeline {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  margin-bottom: 16px; padding: 12px 16px;
+  background: #f1f5f9; border-radius: 8px;
+}
+.compare-rating-timeline .timeline-label {
+  font-size: 13px; color: #64748b; margin-right: 6px;
+}
+.compare-rating-pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 12px; border-radius: 20px;
+  font-size: 12px; font-weight: 600;
+}
+.compare-rating-pill.rating-excellent { background: #dcfce7; color: #166534; }
+.compare-rating-pill.rating-good { background: #e8f1fd; color: #0071e3; }
+.compare-rating-pill.rating-pass { background: #fff8e1; color: #f09300; }
+.compare-rating-pill.rating-fail { background: #fce8e8; color: #ff3b30; }
+
+.compare-rating-arrow { color: #94a3b8; font-size: 13px; }
+
+/* Data table */
+.compare-data-table-wrap { overflow-x: auto; }
+.compare-data-table {
+  width: 100%; border-collapse: collapse; font-size: 13px;
+}
+.compare-data-table th,
+.compare-data-table td {
+  padding: 7px 10px; text-align: center;
+  border-bottom: 1px solid #e2e8f0;
+  white-space: nowrap;
+}
+.compare-data-table th {
+  background: #f1f5f9; color: #475569; font-weight: 600;
+  position: sticky; top: 0; z-index: 1;
+}
+.compare-data-table tbody tr:hover { background: #f8fafc; }
+.compare-panel-loading {
+  text-align: center; padding: 60px 20px; color: #94a3b8;
+}
+
+/* SVG chart helpers */
+.compare-growth-legend,
+.compare-fitness-legend {
+  display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 8px;
+}
+.compare-legend-item {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 12px; color: #475569;
+}
+.compare-legend-dot {
+  width: 10px; height: 10px; border-radius: 50%; display: inline-block;
+}
