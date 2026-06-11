@@ -1615,6 +1615,35 @@ module.exports = function mountAdminRoutes(app, upload) {
     res.redirect(buildFitnessUrl(`${record.child_name} 的体测记录已删除`, redirectExtras));
   }));
 
+  app.post('/admin/fitness/batch-delete', adminOnly, requirePermission('data.fitness.delete'), requireWritable(), asyncHandler(async (req, res) => {
+    const ids = (Array.isArray(req.body.ids) ? req.body.ids : String(req.body.ids || '').split(',').map(s => Number(s.trim())).filter(n => n > 0));
+    const redirectExtras = buildFitnessQueryExtras(req.body);
+    const redirectUrl = buildFitnessUrl('', redirectExtras);
+    if (!ids.length) {
+      return res.redirect(redirectUrl + '&message=' + encodeURIComponent('未选择要删除的记录'));
+    }
+    const placeholders = ids.map(() => '?').join(',');
+    const [existing] = await dbQuery(
+      `SELECT fr.id, fr.child_id, fr.test_date, ch.name AS child_name 
+       FROM fitness_records fr 
+       JOIN children ch ON ch.id = fr.child_id 
+       WHERE fr.id IN (${placeholders})`,
+      ids
+    );
+    if (existing.length) {
+      await dbQuery(`DELETE FROM fitness_records WHERE id IN (${placeholders})`, ids.filter(id => existing.some(e => e.id === id)));
+    }
+    audit('fitness_records_batch_deleted', {
+      actor: req.session.user,
+      action: '批量删除体测记录',
+      target: `${existing.length}条记录`,
+      count: existing.length,
+      childNames: existing.map(e => e.child_name),
+      ip: req.ip
+    });
+    res.redirect(redirectUrl + '&message=' + encodeURIComponent(`已删除 ${existing.length} 条体测记录`));
+  }));
+
   app.get('/admin/fitness/export', adminOnly, requirePermission('data.fitness.export'), requireWritable(), asyncHandler(async (req, res) => {
     const data = await fetchFitnessViewData(req.query, { includeChildren: false, paginate: false });
     const rows = data.records.map((r) => ({

@@ -536,7 +536,10 @@ async function bootstrap() {
     userName: process.env.DEFAULT_USER_NAME || '示例教师'
   });
 
-  await syncStoredFitnessScores();
+  if (process.env.SYNC_FITNESS_SCORES === 1) {
+    console.log(Syncing stored fitness scores...);
+    await syncStoredFitnessScores();
+  }
   await initRedis();
   ensureLogDir();
 
@@ -576,6 +579,15 @@ async function bootstrap() {
   app.use(express.urlencoded({ extended: true }));
   app.use(express.json());
   app.use(createSessionMiddleware());
+  // Flash message — merges session flash + URL query, templates use res.locals.message
+  app.use((req, res, next) => {
+    const flash = req.session._flashMessage || ;
+    const query = req.query.message || ;
+    res.locals.message = flash || query || ;
+    delete req.session._flashMessage;
+    req.setFlash = (msg) => { req.session._flashMessage = msg; };
+    next();
+  });
   app.use(requestLogger());
 
   app.get('/app-version', (req, res) => {
@@ -1309,6 +1321,68 @@ async function bootstrap() {
     return res.redirect(buildUserRecordsUrl(`${record.child_name} 的体测记录已修正，综合得分 ${result.totalScore}，评级 ${result.rating}`, redirectState));
   }));
 
+
+  // 幼儿个人纵向对比数据
+  app.get('/user/fitness/compare/:childId', requireRole('user'), asyncHandler(async (req, res) => {
+    const classId = req.session.user.classId;
+    const childId = Number(req.params.childId);
+    if (!classId || !childId) {
+      return res.json({ ok: false, message: '参数错误' });
+    }
+    
+    // 验证幼儿属于本班
+    const [child] = await dbQuery(
+      'SELECT id, name, gender, birth_date FROM children WHERE id = ? AND class_id = ? LIMIT 1',
+      [childId, classId]
+    );
+    if (!child) {
+      return res.json({ ok: false, message: '只能查看本班幼儿数据' });
+    }
+    
+    // 获取该幼儿所有体测记录，按日期排序
+    const records = await dbQuery(`
+      SELECT fr.id, fr.test_date, fr.height_cm, fr.weight_kg, fr.bmi,
+             fr.grip_kg, fr.long_jump_cm, fr.sit_reach_cm,
+             fr.double_jump_sec, fr.obstacle_run_sec, fr.balance_beam_sec,
+             fr.height_score, fr.bmi_score, fr.grip_score, fr.jump_score,
+             fr.sit_score, fr.djump_score, fr.obstacle_score, fr.balance_score,
+             fr.total_score, fr.rating
+      FROM fitness_records fr
+      WHERE fr.child_id = ?
+      ORDER BY fr.test_date ASC
+    `, [childId]);
+    
+    res.json({
+      ok: true,
+      child: {
+        id: child.id,
+        name: child.name,
+        gender: child.gender,
+        birthDate: child.birth_date ? new Date(child.birth_date).toISOString().slice(0, 10) : ''
+      },
+      records: records.map(r => ({
+        id: r.id,
+        testDate: r.test_date ? new Date(r.test_date).toISOString().slice(0, 10) : '',
+        heightCm: r.height_cm,
+        weightKg: r.weight_kg,
+        bmi: r.bmi,
+        gripKg: r.grip_kg,
+        gripScore: r.grip_score,
+        longJumpCm: r.long_jump_cm,
+        jumpScore: r.jump_score,
+        sitReachCm: r.sit_reach_cm,
+        sitScore: r.sit_score,
+        doubleJumpSec: r.double_jump_sec,
+        djumpScore: r.djump_score,
+        obstacleRunSec: r.obstacle_run_sec,
+        obstacleScore: r.obstacle_score,
+        balanceBeamSec: r.balance_beam_sec,
+        balanceScore: r.balance_score,
+        totalScore: r.total_score,
+        rating: r.rating
+      }))
+    });
+  }));
 
   // 教师体测模板下载
   app.get('/user/fitness/template', requireRole('user'), asyncHandler(async (req, res) => {
