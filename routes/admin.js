@@ -1615,6 +1615,30 @@ module.exports = function mountAdminRoutes(app, upload) {
     res.redirect(buildFitnessUrl(`${record.child_name} 的体测记录已删除`, redirectExtras));
   }));
 
+  // Admin 幼儿纵向对比数据 (不受班级限制)
+  app.get('/admin/fitness/compare/:childId', adminOnly, asyncHandler(async (req, res) => {
+    const childId = Number(req.params.childId);
+    if (!childId) {
+      return res.json({ ok: false, message: '参数错误' });
+    }
+    const [child] = await dbQuery(
+      'SELECT id, name, gender, birth_date FROM children WHERE id = ? LIMIT 1',
+      [childId]
+    );
+    if (!child) {
+      return res.json({ ok: false, message: '未找到该幼儿' });
+    }
+    const sql = 'SELECT fr.id, fr.test_date, fr.height_cm, fr.weight_kg, fr.bmi,' +
+      ' fr.grip_kg, fr.long_jump_cm, fr.sit_reach_cm,' +
+      ' fr.double_jump_sec, fr.obstacle_run_sec, fr.balance_beam_sec,' +
+      ' fr.height_score, fr.bmi_score, fr.grip_score, fr.jump_score,' +
+      ' fr.sit_score, fr.djump_score, fr.obstacle_score, fr.balance_score,' +
+      ' fr.total_score, fr.rating' +
+      ' FROM fitness_records fr WHERE fr.child_id = ? ORDER BY fr.test_date ASC';
+    const records = await dbQuery(sql, [childId]);
+    res.json({ ok: true, child: { id: child.id, name: child.name, gender: child.gender, birthDate: child.birth_date ? new Date(child.birth_date).toISOString().slice(0, 10) : '' }, records: records.map(r => ({ id: r.id, testDate: r.test_date ? new Date(r.test_date).toISOString().slice(0, 10) : '', heightCm: r.height_cm, weightKg: r.weight_kg, bmi: r.bmi, gripKg: r.grip_kg, gripScore: r.grip_score, longJumpCm: r.long_jump_cm, jumpScore: r.jump_score, sitReachCm: r.sit_reach_cm, sitScore: r.sit_score, doubleJumpSec: r.double_jump_sec, djumpScore: r.djump_score, obstacleRunSec: r.obstacle_run_sec, obstacleScore: r.obstacle_score, balanceBeamSec: r.balance_beam_sec, balanceScore: r.balance_score, totalScore: r.total_score, rating: r.rating })) });
+  }));
+
   app.post('/admin/fitness/batch-delete', adminOnly, requirePermission('data.fitness.delete'), requireWritable(), asyncHandler(async (req, res) => {
     const ids = (Array.isArray(req.body.ids) ? req.body.ids : String(req.body.ids || '').split(',').map(s => Number(s.trim())).filter(n => n > 0));
     const redirectExtras = buildFitnessQueryExtras(req.body);

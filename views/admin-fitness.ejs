@@ -736,7 +736,7 @@
               <% records.forEach(function(r) { %>
                 <tr>
                   <td><%= r.class_name || '-' %></td>
-                  <td><strong><%= r.child_name %></strong></td>
+                  <td><strong><a class="child-compare-link" data-child-id="<%= r.child_id %>" data-child-name="<%= r.child_name %>" role="button" tabindex="0"><%= r.child_name %></a></strong></td>
                   <td><%= r.gender || '-' %></td>
                   <td><%= r.test_date ? new Date(r.test_date).toISOString().slice(0,10) : '-' %></td>
                   <td><%= r.height_cm ?? '-' %></td>
@@ -1015,6 +1015,223 @@ function closeFitnessEditModal() {
   document.getElementById('fitnessEditOverlay').classList.remove('open');
   document.getElementById('fitnessEditDrawer').classList.remove('open');
 }
+</script>
+
+
+
+<!-- 幼儿纵向对比面板 -->
+<div id="childCompareOverlay" class="compare-panel-overlay" onclick="if(event.target===this) closeChildComparePanel()">
+  <div class="compare-panel">
+    <div class="compare-panel-header">
+      <div>
+        <h3 id="compareChildTitle">幼儿纵向对比</h3>
+        <div class="meta" id="compareChildMeta"></div>
+      </div>
+      <button class="compare-panel-close" onclick="closeChildComparePanel()">&times;</button>
+    </div>
+    <div class="compare-panel-body" id="comparePanelBody">
+      <div class="compare-panel-loading" id="compareLoading">加载中...</div>
+    </div>
+  </div>
+</div>
+
+
+
+<script>
+(function() {
+  function svgLine(points, color, width, dash) {
+    return '<polyline points="' + points.map(function(p) { return p.x.toFixed(1) + ',' + p.y.toFixed(1); }).join(' ') + '" fill="none" stroke="' + color + '" stroke-width="' + (width || 2) + '" stroke-linejoin="round"' + (dash ? ' stroke-dasharray="' + dash + '"' : '') + '/>';
+  }
+
+  function svgDot(cx, cy, r, color) {
+    return '<circle cx="' + cx.toFixed(1) + '" cy="' + cy.toFixed(1) + '" r="' + (r || 3.5) + '" fill="' + color + '"/>';
+  }
+
+  function renderGrowthChart(records) {
+    var W = 500, H = 280, padL = 50, padR = 30, padT = 20, padB = 35;
+    var iW = W - padL - padR, iH = H - padT - padB;
+    var heightVals = records.map(function(r) { return r.heightCm; }).filter(function(v) { return v != null; });
+    var weightVals = records.map(function(r) { return r.weightKg; }).filter(function(v) { return v != null; });
+    var bmiVals = records.map(function(r) { return r.bmi; }).filter(function(v) { return v != null; });
+    var hMin = Math.min.apply(null, heightVals.length ? heightVals : [0]) || 0;
+    var hMax = Math.max.apply(null, heightVals.length ? heightVals : [0]) || 100;
+    var hRange = hMax - hMin || 20;
+    hMin -= hRange * 0.15; hMax += hRange * 0.15; hRange = hMax - hMin;
+    var allW = weightVals.concat(bmiVals);
+    var wMin = Math.min.apply(null, allW.length ? allW : [0]) || 0;
+    var wMax = Math.max.apply(null, allW.length ? allW : [0]) || 30;
+    var wRange = wMax - wMin || 10;
+    wMin -= wRange * 0.15; wMax += wRange * 0.15; wRange = wMax - wMin;
+    var parts = [];
+    parts.push('<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="生长曲线">');
+    for (var i = 0; i <= 4; i++) {
+      var gy = padT + iH * i / 4;
+      parts.push('<line x1="' + padL + '" y1="' + gy.toFixed(1) + '" x2="' + (padL + iW) + '" y2="' + gy.toFixed(1) + '" stroke="#e2e8f0" stroke-width="1"/>');
+    }
+    for (var i = 0; i <= 4; i++) {
+      var valH = hMax - (hMax - hMin) * i / 4;
+      var ly = padT + iH * i / 4;
+      parts.push('<text x="' + (padL - 6) + '" y="' + (ly + 4).toFixed(1) + '" fill="#f97316" font-size="10" text-anchor="end">' + valH.toFixed(0) + '</text>');
+    }
+    for (var i = 0; i <= 4; i++) {
+      var valW = wMax - (wMax - wMin) * i / 4;
+      var ry = padT + iH * i / 4;
+      parts.push('<text x="' + (padL + iW + 6) + '" y="' + (ry + 4).toFixed(1) + '" fill="#8b5cf6" font-size="10" text-anchor="start">' + valW.toFixed(1) + '</text>');
+    }
+    records.forEach(function(r, idx) {
+      var x = padL + (records.length <= 1 ? iW / 2 : iW * idx / Math.max(1, records.length - 1));
+      var label = r.testDate ? r.testDate.slice(5) : '';
+      parts.push('<text x="' + x + '" y="' + (H - 6) + '" fill="#94a3b8" font-size="10" text-anchor="middle">' + label + '</text>');
+    });
+    var makeLine = function(records, valueKey, color, width, dash, useWMin) {
+      var points = [];
+      var rng = useWMin ? wRange : hRange;
+      var vmin = useWMin ? wMin : hMin;
+      records.forEach(function(r, idx) {
+        var x = padL + (records.length <= 1 ? iW / 2 : iW * idx / Math.max(1, records.length - 1));
+        var val = r[valueKey];
+        if (val != null) points.push({ x: x, y: padT + iH - (val - vmin) / rng * iH });
+      });
+      if (!points.length) return;
+      parts.push(svgLine(points, color, width, dash));
+      points.forEach(function(p) { parts.push(svgDot(p.x, p.y, width > 2 ? 4 : 3, color)); });
+    };
+    makeLine(records, 'heightCm', '#f97316', 2.5, null, false);
+    makeLine(records, 'weightKg', '#8b5cf6', 2.5, null, true);
+    makeLine(records, 'bmi', '#ec4899', 2, '5,3', true);
+    parts.push('</svg>');
+    return '<div class="compare-growth-legend"><span class="compare-legend-item"><span class="compare-legend-dot" style="background:#f97316;"></span>身高(cm)</span><span class="compare-legend-item"><span class="compare-legend-dot" style="background:#8b5cf6;"></span>体重(kg)</span><span class="compare-legend-item"><span class="compare-legend-dot" style="background:#ec4899;"></span>BMI</span></div>' + parts.join('\n');
+  }
+
+  function renderFitnessChart(records) {
+    var W = 500, H = 280, padL = 45, padR = 20, padT = 20, padB = 35;
+    var iW = W - padL - padR, iH = H - padT - padB;
+    var metrics = [
+      { key: 'gripScore', label: '握力', color: '#ef4444' },
+      { key: 'jumpScore', label: '跳远', color: '#f97316' },
+      { key: 'sitScore', label: '体前屈', color: '#eab308' },
+      { key: 'djumpScore', label: '双脚跳', color: '#22c55e' },
+      { key: 'obstacleScore', label: '障碍跑', color: '#06b6d4' },
+      { key: 'balanceScore', label: '平衡木', color: '#8b5cf6' }
+    ];
+    var allVals = [];
+    metrics.forEach(function(m) { records.forEach(function(r) { if (r[m.key] != null) allVals.push(r[m.key]); }); });
+    var yMin = allVals.length ? Math.min(0, Math.min.apply(null, allVals)) : 0;
+    var yMax = allVals.length ? Math.max(100, Math.max.apply(null, allVals)) : 100;
+    var yRange = yMax - yMin || 100;
+    var parts = [];
+    parts.push('<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="体测得分趋势">');
+    for (var i = 0; i <= 4; i++) {
+      var gy = padT + iH * i / 4;
+      parts.push('<line x1="' + padL + '" y1="' + gy.toFixed(1) + '" x2="' + (padL + iW) + '" y2="' + gy.toFixed(1) + '" stroke="#e2e8f0" stroke-width="1"/>');
+      var yval = yMax - (yMax - yMin) * i / 4;
+      parts.push('<text x="' + (padL - 6) + '" y="' + (gy + 4).toFixed(1) + '" fill="#94a3b8" font-size="10" text-anchor="end">' + yval.toFixed(0) + '</text>');
+    }
+    if (yMin <= 60 && yMax >= 60) {
+      var ref60y = padT + iH - (60 - yMin) / yRange * iH;
+      parts.push('<line x1="' + padL + '" y1="' + ref60y.toFixed(1) + '" x2="' + (padL + iW) + '" y2="' + ref60y.toFixed(1) + '" stroke="#fca5a5" stroke-width="1" stroke-dasharray="4,4"/>');
+    }
+    records.forEach(function(r, idx) {
+      var x = padL + (records.length <= 1 ? iW / 2 : iW * idx / Math.max(1, records.length - 1));
+      parts.push('<text x="' + x + '" y="' + (H - 6) + '" fill="#94a3b8" font-size="10" text-anchor="middle">' + (r.testDate ? r.testDate.slice(5) : '') + '</text>');
+    });
+    metrics.forEach(function(m) {
+      var points = [];
+      records.forEach(function(r, idx) {
+        var x = padL + (records.length <= 1 ? iW / 2 : iW * idx / Math.max(1, records.length - 1));
+        if (r[m.key] != null) points.push({ x: x, y: padT + iH - (r[m.key] - yMin) / yRange * iH });
+      });
+      if (points.length >= 1) {
+        parts.push(svgLine(points, m.color, 2));
+        points.forEach(function(p) { parts.push(svgDot(p.x, p.y, 3, m.color)); });
+      }
+    });
+    parts.push('</svg>');
+    var legend = '<div class="compare-fitness-legend">';
+    metrics.forEach(function(m) { legend += '<span class="compare-legend-item"><span class="compare-legend-dot" style="background:' + m.color + ';"></span>' + m.label + '</span>'; });
+    legend += '</div>';
+    return legend + parts.join('\n');
+  }
+
+  function renderRatingTimeline(records) {
+    var classMap = { '优秀': 'rating-excellent', '良好': 'rating-good', '合格': 'rating-pass', '不合格': 'rating-fail' };
+    var parts = ['<span class="timeline-label">历史评级：</span>'];
+    records.forEach(function(r, idx) {
+      if (idx > 0) parts.push('<span class="compare-rating-arrow">&rarr;</span>');
+      var label = (r.testDate || '').slice(0, 10) + ' ' + (r.rating || '-');
+      var cls = classMap[r.rating] || '';
+      parts.push('<span class="compare-rating-pill ' + cls + '">' + label + '</span>');
+    });
+    return '<div class="compare-rating-timeline">' + parts.join('') + '</div>';
+  }
+
+  function renderDataTable(records) {
+    var cols = [
+      { key: 'testDate', label: '测试日期', fmt: function(v) { return v ? v.slice(0,10) : '-'; } },
+      { key: 'heightCm', label: '身高' }, { key: 'weightKg', label: '体重' }, { key: 'bmi', label: 'BMI' },
+      { key: 'gripScore', label: '握力分' }, { key: 'jumpScore', label: '跳远分' },
+      { key: 'sitScore', label: '体前屈分' }, { key: 'djumpScore', label: '双脚跳分' },
+      { key: 'obstacleScore', label: '障碍跑分' }, { key: 'balanceScore', label: '平衡木分' },
+      { key: 'totalScore', label: '综合得分' }, { key: 'rating', label: '评级' }
+    ];
+    var th = cols.map(function(c) { return '<th>' + c.label + '</th>'; }).join('');
+    var rows = records.map(function(r) {
+      var tds = cols.map(function(c) {
+        var val = r[c.key]; if (c.fmt) val = c.fmt(val);
+        return '<td>' + (val != null ? val : '-') + '</td>';
+      }).join('');
+      return '<tr>' + tds + '</tr>';
+    }).join('');
+    return '<div class="compare-data-table-wrap"><table class="compare-data-table"><thead><tr>' + th + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+  }
+
+  var comparePanelLoading = false;
+  window.openChildComparePanel = function(el, childId, childName, noFetch) {
+    if (comparePanelLoading) return;
+    var overlay = document.getElementById('childCompareOverlay');
+    var titleEl = document.getElementById('compareChildTitle');
+    var metaEl = document.getElementById('compareChildMeta');
+    var body = document.getElementById('comparePanelBody');
+    if (noFetch) return;
+    titleEl.textContent = childName + ' · 纵向对比';
+    metaEl.textContent = '加载中...';
+    body.innerHTML = '<div class="compare-panel-loading">加载中...</div>';
+    overlay.classList.add('is-open');
+    document.body.style.overflow = 'hidden';
+    comparePanelLoading = true;
+    fetch('/admin/fitness/compare/' + childId)
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (!data.ok) { body.innerHTML = '<div class="compare-panel-loading" style="color:#ef4444;">' + (data.message || '获取数据失败') + '</div>'; comparePanelLoading = false; return; }
+        var child = data.child || {};
+        var records = data.records || [];
+        metaEl.textContent = (child.gender || '?') + ' · ' + (child.birthDate || '?') + ' 出生 · 共 ' + records.length + ' 次体测';
+        if (records.length === 0) { body.innerHTML = '<div class="compare-panel-loading">该幼儿暂无体测记录</div>'; comparePanelLoading = false; return; }
+        var growthSection = '<div class="compare-chart-card"><h4>身高 / 体重 / BMI 趋势</h4>' + renderGrowthChart(records) + '</div>';
+        var fitnessSection = '<div class="compare-chart-card"><h4>体测得分趋势</h4>' + renderFitnessChart(records) + '</div>';
+        var chartsRow = '<div class="compare-charts-row">' + growthSection + fitnessSection + '</div>';
+        body.innerHTML = chartsRow + renderRatingTimeline(records) + '<h4 style="margin:0 0 10px;color:#334155;">历史记录明细</h4>' + renderDataTable(records);
+        comparePanelLoading = false;
+      })
+      .catch(function(err) { body.innerHTML = '<div class="compare-panel-loading" style="color:#ef4444;">加载异常：' + err.message + '</div>'; comparePanelLoading = false; });
+  };
+
+  window.closeChildComparePanel = function() {
+    var overlay = document.getElementById('childCompareOverlay');
+    if (overlay) overlay.classList.remove('is-open');
+    document.body.style.overflow = '';
+  };
+
+  document.addEventListener('click', function(e) {
+    var link = e.target.closest('.child-compare-link');
+    if (!link) return;
+    e.preventDefault();
+    var childId = link.getAttribute('data-child-id');
+    var childName = link.getAttribute('data-child-name') || '幼儿';
+    if (!childId) return;
+    openChildComparePanel(link, Number(childId), childName);
+  });
+})();
 </script>
 
 <%- include('partials/footer') %>
