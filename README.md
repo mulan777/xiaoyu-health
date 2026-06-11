@@ -5,7 +5,6 @@
 ## 项目地址
 
 - GitHub 源码：<https://github.com/mulan777/xiaoyu-health>
-- Docker 镜像：`ghcr.io/mulan777/xiaoyu-health:latest`（已推送；如果 GHCR 包还是 Private，会拉取失败，按下方“从源码构建”部署即可）
 - 默认端口：`3070`
 - 应用入口：`server.js`
 
@@ -27,20 +26,7 @@
 - Redis
 - Docker / Docker Compose
 
-## 仓库不包含哪些文件
-
-为了避免把生产垃圾文件、隐私配置和大文件传到 GitHub，仓库不会上传以下内容：
-
-- `.env`、`.env.*` 等本地环境变量文件
-- `node_modules/`
-- `logs/`、`*.log`
-- `public/uploads/` 上传文件
-- `backups/`、`.deploy-backups/` 备份目录
-- `*.bak`、`*.tmp`、`*.upload.tmp` 等备份或临时文件
-
-注意：GitHub 保存的是源码，不保存生产数据。生产数据主要在 MySQL 和 `public/uploads/` 里，需要单独备份。
-
-## 一、最快 Docker 部署方式（不依赖 .env，不依赖私有镜像权限）
+## 一、最快 Docker 部署方式
 
 服务器安装好 Docker 和 Docker Compose 后，直接从 GitHub 拉源码构建：
 
@@ -50,8 +36,6 @@ cd xiaoyu-health
 # 可先编辑 docker-compose.yml 里的 SESSION_SECRET / MYSQL_PASSWORD / MYSQL_ROOT_PASSWORD
 docker compose up -d --build
 ```
-
-> 推荐这种方式：即使 GHCR 镜像包没有设置成 Public，也可以直接从 GitHub 源码构建运行。
 
 启动后访问：
 
@@ -82,7 +66,7 @@ docker compose up -d --build
 
 ## 二、推荐生产部署方式：直接改 docker-compose.yml
 
-如果不想用 `.env` 文件，可以直接打开 `docker-compose.yml` 修改配置。重点改下面这些值：
+本项目可以直接在 `docker-compose.yml` 里配置 MySQL、Redis 和应用参数。重点改下面这些值：
 
 ```yaml
 environment:
@@ -139,7 +123,7 @@ MYSQL_HOST: mysql
 MYSQL_PORT: 3306
 MYSQL_DATABASE: kindergarten_platform
 MYSQL_USER: kindergarten_app
-MYSQL_PASSWORD: 你的数据库密码
+MYSQL_PASSWORD: 数据库密码
 ```
 
 为什么 `MYSQL_HOST` 是 `mysql`：因为在 Docker Compose 内部，服务名 `mysql` 就是 MySQL 容器的网络地址，不要写 `127.0.0.1`。
@@ -152,11 +136,11 @@ MYSQL_PASSWORD: 你的数据库密码
 services:
   app:
     environment:
-      MYSQL_HOST: 你的MySQL地址
+      MYSQL_HOST: MySQL地址
       MYSQL_PORT: 3306
       MYSQL_DATABASE: kindergarten_platform
       MYSQL_USER: kindergarten_app
-      MYSQL_PASSWORD: 你的数据库密码
+      MYSQL_PASSWORD: 数据库密码
 ```
 
 然后删除或注释掉 `mysql:` 这个服务，以及 `depends_on` 里的 `mysql`。
@@ -165,7 +149,7 @@ services:
 
 ```sql
 CREATE DATABASE kindergarten_platform CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER 'kindergarten_app'@'%' IDENTIFIED BY '你的数据库密码';
+CREATE USER 'kindergarten_app'@'%' IDENTIFIED BY '数据库密码';
 GRANT ALL PRIVILEGES ON kindergarten_platform.* TO 'kindergarten_app'@'%';
 FLUSH PRIVILEGES;
 ```
@@ -212,7 +196,7 @@ REDIS_URL: redis://redis:6379
 如果使用外部 Redis，把 `REDIS_URL` 改成实际地址即可：
 
 ```yaml
-REDIS_URL: redis://你的Redis地址:6379
+REDIS_URL: redis://Redis地址:6379
 ```
 
 ## 五、AI 智能分析配置
@@ -283,28 +267,9 @@ Model: moonshot-v1-8k
 - 如果更换供应商，只需要改 Base URL、API Key、模型名称。
 - 只要供应商兼容 OpenAI Chat Completions 协议，一般都能接入。
 
-## 六、关于 GHCR 镜像下载
-
-我已经把镜像推送到了：
-
-```bash
-ghcr.io/mulan777/xiaoyu-health:latest
-```
-
-如果执行下面命令失败：
-
-```bash
-docker pull ghcr.io/mulan777/xiaoyu-health:latest
-```
-
-通常是因为 GitHub Packages 里的 Container Package 还处于 Private。解决办法有两种：
-
-1. 直接使用本文推荐的 `git clone` + `docker compose up -d --build`，不需要拉 GHCR 镜像。
-2. 到 GitHub 网页把包改成 Public：打开 `https://github.com/users/mulan777/packages/container/package/xiaoyu-health`，进入 Package settings，把 Visibility 改为 Public。
-
 ## 六、从源码构建 Docker 镜像
 
-如果你不想使用已经上传的 GHCR 镜像，也可以自己构建：
+如果需要手动构建镜像，可以执行：
 
 ```bash
 git clone https://github.com/mulan777/xiaoyu-health.git
@@ -319,12 +284,12 @@ docker run -d --name xiaoyu-health \
   --restart unless-stopped \
   -e PORT=3070 \
   -e SESSION_SECRET=please-change-this-session-secret \
-  -e MYSQL_HOST=你的MySQL地址 \
+  -e MYSQL_HOST=MySQL地址 \
   -e MYSQL_PORT=3306 \
   -e MYSQL_DATABASE=kindergarten_platform \
   -e MYSQL_USER=kindergarten_app \
-  -e MYSQL_PASSWORD=你的数据库密码 \
-  -e REDIS_URL=redis://你的Redis地址:6379 \
+  -e MYSQL_PASSWORD=数据库密码 \
+  -e REDIS_URL=redis://Redis地址:6379 \
   -p 3070:3070 \
   -v ./public/uploads:/app/public/uploads \
   -v ./logs:/app/logs \
