@@ -18,6 +18,7 @@ const { createClient } = require('redis');
 const { RedisStore } = require('connect-redis');
 const multer = require('multer');
 const rateLimit = require('express-rate-limit');
+const helmet = require('helmet');
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -471,7 +472,7 @@ function createSessionMiddleware() {
     resave: false,
     saveUninitialized: false,
     proxy: true,
-    cookie: { httpOnly: true, sameSite: 'lax', secure: true, maxAge: 1000 * 60 * 60 * 8 }
+    cookie: { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', maxAge: 1000 * 60 * 60 * 8 }
   });
 }
 
@@ -571,6 +572,7 @@ async function bootstrap() {
     }
     next();
   });
+  app.use(helmet({ contentSecurityPolicy: false }));
   app.use(express.urlencoded({ extended: true }));
   app.use(express.json());
   app.use(createSessionMiddleware());
@@ -1012,10 +1014,6 @@ async function bootstrap() {
       return sendUserEntryResponse(req, res, 400, '当前账号未绑定班级，无法录入体测数据', { entryBatchDate: batchDate }, { changed: false });
     }
 
-    if (!classId) {
-      return sendUserEntryResponse(req, res, 400, '当前账号未绑定班级，无法录入体测数据', { entryBatchDate: batchDate }, { changed: false });
-    }
-
     const data = parseFitnessEntryData(req.body);
     const missingLabels = getMissingFitnessFieldLabels(data);
     let targetChild;
@@ -1311,113 +1309,6 @@ async function bootstrap() {
     return res.redirect(buildUserRecordsUrl(`${record.child_name} 的体测记录已修正，综合得分 ${result.totalScore}，评级 ${result.rating}`, redirectState));
   }));
 
-  app.post('/user/fitness/add__legacy_unused', requireRole('user'), asyncHandler(async (req, res) => {
-    const { toNullableInt } = require('./lib/helpers');
-    const classId = Number(req.session.user.classId || 0);
-    const rawChildId = normalizeText(req.body.childId);
-    const isManualChild = rawChildId === '__manual__';
-    const manualChildName = normalizeText(req.body.manualChildName);
-    const childId = isManualChild ? null : toNullableInt(rawChildId);
-    const batchDate = normalizeDateInput(req.body.entryBatchDate);
-    const testDate = normalizeFlexibleDate(req.body.testDate) || batchDate || chinaNowText().slice(0, 10);
-    {
-      if (!classId) {
-        return sendUserEntryResponse(req, res, 400, '当前账号未绑定班级，无法录入体测数据', { entryBatchDate: batchDate }, { changed: false });
-      }
-
-      const entryData = parseFitnessEntryData(req.body);
-      let targetChild;
-      let createdChildInfo = { created: false, reactivated: false };
-
-      if (isManualChild) {
-        if (!manualChildName) {
-          return sendUserEntryResponse(req, res, 400, '请先填写“其他幼儿”的姓名', { entryBatchDate: batchDate }, { changed: false });
-        }
-        const missingLabels = getMissingFitnessFieldLabels(entryData);
-        if (missingLabels.length) {
-          return sendUserEntryResponse(req, res, 400, `手填录入失败：缺少填写 ${missingLabels.join('、')}`, { entryBatchDate: batchDate }, {
-            changed: false,
-            missingFields: missingLabels
-          });
-        }
-        createdChildInfo = await findOrCreateClassChild(classId, manualChildName);
-        targetChild = createdChildInfo.child;
-      } else {
-        if (!childId) {
-          return sendUserEntryResponse(req, res, 400, '请选择幼儿', { entryBatchDate: batchDate }, { changed: false });
-        }
-        const scopedChildRows = await dbQuery('SELECT id, name, gender, birth_date, class_id FROM children WHERE id = ? LIMIT 1', [childId]);
-        if (!scopedChildRows.length || Number(scopedChildRows[0].class_id || 0) !== classId) {
-          return sendUserEntryResponse(req, res, 400, '只能录入本班幼儿的体测数据', { entryBatchDate: batchDate }, { changed: false });
-        }
-        targetChild = scopedChildRows[0];
-      }
-
-      const entryMonthAge = calculateMonthAge(targetChild.birth_date, testDate);
-      const computedResult = computeFitnessResult(entryData, targetChild.gender, entryMonthAge);
-      const persistedResult = await saveFitnessRecord({
-        childId: targetChild.id,
-        testDate,
-        data: entryData,
-        result: computedResult,
-        userId: req.session.user.id
-      });
-
-      let responseMessage = '';
-      if (!persistedResult.changed) {
-        responseMessage = `${targetChild.name} 在 ${testDate} 的体测数据没有变化，已保留原记录`;
-      } else if (persistedResult.updated) {
-        responseMessage = `${targetChild.name} 在 ${testDate} 的体测记录已更新，综合得分 ${computedResult.totalScore ?? '-'}，评级 ${computedResult.rating ?? '-'}`;
-      } else {
-        responseMessage = `${targetChild.name} 体测录入成功，综合得分 ${computedResult.totalScore ?? '-'}，评级 ${computedResult.rating ?? '-'}`;
-      }
-      if (createdChildInfo.created) {
-        responseMessage += '；该幼儿已自动加入当前班级名单';
-      } else if (createdChildInfo.reactivated) {
-        responseMessage += '；该幼儿已重新加入当前班级名单';
-      }
-      if (!targetChild.birth_date) {
-        responseMessage += '；该幼儿暂未填写生日，系统已保存原始体测数据，补充生日后即可自动计算完整评分';
-      }
-
-      return sendUserEntryResponse(req, res, 200, responseMessage, { entryBatchDate: batchDate }, {
-        changed: !!persistedResult.changed,
-        updated: !!persistedResult.updated,
-        createdChild: !!createdChildInfo.created,
-        reactivatedChild: !!createdChildInfo.reactivated
-      });
-    }
-    if (!childId) return res.redirect(buildUserEntryUrl('请选择幼儿', { entryBatchDate: batchDate }));
-    // 确保是本班幼儿
-    const childRows = await dbQuery('SELECT id, name, gender, birth_date, class_id FROM children WHERE id = ? LIMIT 1', [childId]);
-    if (!childRows.length || childRows[0].class_id !== req.session.user.classId) {
-      return res.redirect(buildUserEntryUrl('只能录入本班幼儿的体测数据', { entryBatchDate: batchDate }));
-    }
-    const child = childRows[0];
-    const monthAge = calculateMonthAge(child.birth_date, testDate);
-    const data = {
-      heightCm: req.body.heightCm ? Number(req.body.heightCm) : null,
-      weightKg: req.body.weightKg ? Number(req.body.weightKg) : null,
-      gripKg: req.body.gripKg ? Number(req.body.gripKg) : null,
-      longJumpCm: req.body.longJumpCm ? Number(req.body.longJumpCm) : null,
-      sitReachCm: req.body.sitReachCm ? Number(req.body.sitReachCm) : null,
-      doubleJumpSec: req.body.doubleJumpSec ? Number(req.body.doubleJumpSec) : null,
-      obstacleRunSec: req.body.obstacleRunSec ? Number(req.body.obstacleRunSec) : null,
-      balanceBeamSec: req.body.balanceBeamSec ? Number(req.body.balanceBeamSec) : null
-    };
-    const result = computeFitnessResult(data, child.gender, monthAge);
-    const saveResult = await saveFitnessRecord({
-      childId,
-      testDate,
-      data,
-      result,
-      userId: req.session.user.id
-    });
-    const successMessage = saveResult.updated
-      ? `${child.name} 在 ${testDate} 的体测记录已更新，综合得分 ${result.totalScore ?? '-'}，评级 ${result.rating ?? '-'}`
-      : `${child.name} 体测录入成功，综合得分 ${result.totalScore ?? '-'}，评级 ${result.rating ?? '-'}`;
-    res.redirect(buildUserEntryUrl(successMessage, { entryBatchDate: batchDate }));
-  }));
 
   // 教师体测模板下载
   app.get('/user/fitness/template', requireRole('user'), asyncHandler(async (req, res) => {
