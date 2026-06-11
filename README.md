@@ -324,17 +324,7 @@ tar -xzf xiaoyu-uploads.tar.gz -C ./
 
 ## 八、常见问题排查
 
-### 1. 镜像下载失败
-
-确认镜像地址：
-
-```bash
-docker pull ghcr.io/mulan777/xiaoyu-health:latest
-```
-
-如果提示没有权限，说明 GHCR 镜像可能还不是公开包，需要到 GitHub Package 设置为 Public。
-
-### 2. 页面打不开
+### 1. 页面打不开
 
 检查容器是否运行：
 
@@ -354,7 +344,7 @@ docker compose logs --tail=100 app
 ss -ltnp | grep 3070
 ```
 
-### 3. MySQL 连接失败
+### 2. MySQL 连接失败
 
 应用日志里如果出现 `Access denied`、`ECONNREFUSED`、`ETIMEDOUT`，说明数据库连接配置有问题。
 
@@ -365,7 +355,7 @@ ss -ltnp | grep 3070
 - MySQL 首次初始化还没完成，等 30 秒后再看
 - 使用外部 MySQL 时，防火墙没放通 3306
 
-### 4. AI 报告不能生成
+### 3. AI 报告不能生成
 
 检查后台 AI 接入配置：
 
@@ -374,13 +364,3 @@ ss -ltnp | grep 3070
 - Base URL 是否填到 `/v1`
 - 模型名是否正确
 - “测试连通性”是否成功
-
-## 九、线上原服务器说明
-
-原服务器 `/opt/kindergarten-fitness-platform` 当前是 PM2 方式运行，进程名为：
-
-```text
-kindergarten-platform
-```
-
-Docker 化不会自动替换 PM2。如果要切换线上 3070 到 Docker，需要先备份 MySQL 和上传文件，再停 PM2，最后让 Docker Compose 接管 3070 端口。

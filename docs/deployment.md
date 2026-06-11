@@ -125,7 +125,3 @@ docker compose logs --tail=100 app
 - MySQL 地址、用户名、密码是否正确
 - Redis 地址是否正确
 - 3070 端口是否被占用
-
-### 7.2 想继续使用原服务器 PM2 方式
-
-原服务器当前是 PM2 启动 Node 应用，Docker 化不会自动替换 PM2。若要切换，需要先备份数据，再停 PM2，最后用 Docker Compose 接管 3070 端口。
