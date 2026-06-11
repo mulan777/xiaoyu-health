@@ -552,7 +552,7 @@
                       <tr>
                         <td class="checkbox-cell"><input type="checkbox" name="selectedIds" value="<%= child.id %>" form="children-batch-form" /></td>
                         <td><%= child.class_name || '-' %></td>
-                        <td><strong><%= child.name %></strong></td>
+                        <td><strong><a class="child-compare-link" data-child-id="<%= child.id %>" data-child-name="<%= child.name %>" role="button" tabindex="0"><%= child.name %></a></strong></td>
                         <td><%= child.gender || '-' %></td>
                         <td><%= child.birth_date ? new Date(child.birth_date).toISOString().slice(0,10) : '-' %></td>
                         <td><span class="status-badge <%= child.enabled ? 'ok' : 'off' %>"><%= child.enabled ? '启用中' : '已禁用' %></span></td>
@@ -820,7 +820,7 @@
                     tabindex="0">
                   <td class="checkbox-cell"><input type="radio" class="attention-row-radio" name="attentionRowSelector" <%= selectedAttentionChild && selectedAttentionChild.id === child.id ? 'checked' : '' %> /></td>
                   <td><%= child.class_name || '-' %></td>
-                  <td><strong><%= child.name %></strong></td>
+                  <td><strong><a class="child-compare-link" data-child-id="<%= child.id %>" data-child-name="<%= child.name %>" role="button" tabindex="0"><%= child.name %></a></strong></td>
                   <td><span class="status-badge <%= childStatusClass %>"><%= childStatusLabel %></span></td>
                   <td><%= child.attention_marked ? ((childStart || '即日起') + ' ~ ' + (childEnd || '长期')) : '-' %></td>
                   <td>
@@ -1330,6 +1330,211 @@
   normalizeClassTeacherSlots(document.querySelector('form[action="/admin/classes/add"]'));
   document.querySelectorAll('form[action^="/admin/classes/"][action$="/edit"]').forEach(normalizeClassTeacherSlots);
 })();
+
+(function() {
+  function svgLine(points, color, width, dash) {
+    return '<polyline points="' + points.map(function(p) { return p.x.toFixed(1) + ',' + p.y.toFixed(1); }).join(' ') + '" fill="none" stroke="' + color + '" stroke-width="' + (width || 2) + '" stroke-linejoin="round"' + (dash ? ' stroke-dasharray="' + dash + '"' : '') + '/>';
+  }
+  function svgDot(cx, cy, r, color) {
+    return '<circle cx="' + cx.toFixed(1) + '" cy="' + cy.toFixed(1) + '" r="' + (r || 3.5) + '" fill="' + color + '"/>';
+  }
+  function renderGrowthChart(records) {
+    var W = 500, H = 280, padL = 50, padR = 30, padT = 20, padB = 35;
+    var iW = W - padL - padR, iH = H - padT - padB;
+    var heightVals = records.map(function(r) { return r.heightCm; }).filter(function(v) { return v != null; });
+    var weightVals = records.map(function(r) { return r.weightKg; }).filter(function(v) { return v != null; });
+    var bmiVals = records.map(function(r) { return r.bmi; }).filter(function(v) { return v != null; });
+    var hMin = Math.min.apply(null, heightVals.length ? heightVals : [0]) || 0;
+    var hMax = Math.max.apply(null, heightVals.length ? heightVals : [0]) || 100;
+    var hRange = hMax - hMin || 20;
+    hMin -= hRange * 0.15; hMax += hRange * 0.15; hRange = hMax - hMin;
+    var allW = weightVals.concat(bmiVals);
+    var wMin = Math.min.apply(null, allW.length ? allW : [0]) || 0;
+    var wMax = Math.max.apply(null, allW.length ? allW : [0]) || 30;
+    var wRange = wMax - wMin || 10;
+    wMin -= wRange * 0.15; wMax += wRange * 0.15; wRange = wMax - wMin;
+    var parts = [];
+    parts.push('<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="\u751f\u957f\u66f2\u7ebf">');
+    for (var i = 0; i <= 4; i++) {
+      var gy = padT + iH * i / 4;
+      parts.push('<line x1="' + padL + '" y1="' + gy.toFixed(1) + '" x2="' + (padL + iW) + '" y2="' + gy.toFixed(1) + '" stroke="#e2e8f0" stroke-width="1"/>');
+    }
+    for (var i = 0; i <= 4; i++) {
+      var valH = hMax - (hMax - hMin) * i / 4;
+      var ly = padT + iH * i / 4;
+      parts.push('<text x="' + (padL - 6) + '" y="' + (ly + 4).toFixed(1) + '" fill="#f97316" font-size="10" text-anchor="end">' + valH.toFixed(0) + '</text>');
+    }
+    for (var i = 0; i <= 4; i++) {
+      var valW = wMax - (wMax - wMin) * i / 4;
+      var ry = padT + iH * i / 4;
+      parts.push('<text x="' + (padL + iW + 6) + '" y="' + (ry + 4).toFixed(1) + '" fill="#8b5cf6" font-size="10" text-anchor="start">' + valW.toFixed(1) + '</text>');
+    }
+    records.forEach(function(r, idx) {
+      var x = padL + (records.length <= 1 ? iW / 2 : iW * idx / Math.max(1, records.length - 1));
+      var label = r.testDate ? r.testDate.slice(5) : '';
+      parts.push('<text x="' + x + '" y="' + (H - 6) + '" fill="#94a3b8" font-size="10" text-anchor="middle">' + label + '</text>');
+    });
+    var makeLine = function(records, valueKey, color, width, dash, useWMin) {
+      var points = [];
+      var rng = useWMin ? wRange : hRange;
+      var vmin = useWMin ? wMin : hMin;
+      records.forEach(function(r, idx) {
+        var x = padL + (records.length <= 1 ? iW / 2 : iW * idx / Math.max(1, records.length - 1));
+        var val = r[valueKey];
+        if (val != null) points.push({ x: x, y: padT + iH - (val - vmin) / rng * iH });
+      });
+      if (!points.length) return;
+      parts.push(svgLine(points, color, width, dash));
+      points.forEach(function(p) { parts.push(svgDot(p.x, p.y, width > 2 ? 4 : 3, color)); });
+    };
+    makeLine(records, 'heightCm', '#f97316', 2.5, null, false);
+    makeLine(records, 'weightKg', '#8b5cf6', 2.5, null, true);
+    makeLine(records, 'bmi', '#ec4899', 2, '5,3', true);
+    parts.push('</svg>');
+    return '<div class="compare-growth-legend"><span class="compare-legend-item"><span class="compare-legend-dot" style="background:#f97316;"></span>\u8eab\u9ad8(cm)</span><span class="compare-legend-item"><span class="compare-legend-dot" style="background:#8b5cf6;"></span>\u4f53\u91cd(kg)</span><span class="compare-legend-item"><span class="compare-legend-dot" style="background:#ec4899;"></span>BMI</span></div>' + parts.join('\\n');
+  }
+  function renderFitnessChart(records) {
+    var W = 500, H = 280, padL = 45, padR = 20, padT = 20, padB = 35;
+    var iW = W - padL - padR, iH = H - padT - padB;
+    var metrics = [
+      { key: 'gripScore', label: '\u63e1\u529b', color: '#ef4444' },
+      { key: 'jumpScore', label: '\u8df3\u8fdc', color: '#f97316' },
+      { key: 'sitScore', label: '\u4f53\u524d\u5c48', color: '#eab308' },
+      { key: 'djumpScore', label: '\u53cc\u811a\u8df3', color: '#22c55e' },
+      { key: 'obstacleScore', label: '\u969c\u788c\u8dd1', color: '#06b6d4' },
+      { key: 'balanceScore', label: '\u5e73\u8861\u6728', color: '#8b5cf6' }
+    ];
+    var allVals = [];
+    metrics.forEach(function(m) { records.forEach(function(r) { if (r[m.key] != null) allVals.push(r[m.key]); }); });
+    var yMin = allVals.length ? Math.min(0, Math.min.apply(null, allVals)) : 0;
+    var yMax = allVals.length ? Math.max(100, Math.max.apply(null, allVals)) : 100;
+    var yRange = yMax - yMin || 100;
+    var parts = [];
+    parts.push('<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="\u4f53\u6d4b\u5f97\u5206\u8d8b\u52bf">');
+    for (var i = 0; i <= 4; i++) {
+      var gy = padT + iH * i / 4;
+      parts.push('<line x1="' + padL + '" y1="' + gy.toFixed(1) + '" x2="' + (padL + iW) + '" y2="' + gy.toFixed(1) + '" stroke="#e2e8f0" stroke-width="1"/>');
+      var yval = yMax - (yMax - yMin) * i / 4;
+      parts.push('<text x="' + (padL - 6) + '" y="' + (gy + 4).toFixed(1) + '" fill="#94a3b8" font-size="10" text-anchor="end">' + yval.toFixed(0) + '</text>');
+    }
+    if (yMin <= 60 && yMax >= 60) {
+      var ref60y = padT + iH - (60 - yMin) / yRange * iH;
+      parts.push('<line x1="' + padL + '" y1="' + ref60y.toFixed(1) + '" x2="' + (padL + iW) + '" y2="' + ref60y.toFixed(1) + '" stroke="#fca5a5" stroke-width="1" stroke-dasharray="4,4"/>');
+    }
+    records.forEach(function(r, idx) {
+      var x = padL + (records.length <= 1 ? iW / 2 : iW * idx / Math.max(1, records.length - 1));
+      parts.push('<text x="' + x + '" y="' + (H - 6) + '" fill="#94a3b8" font-size="10" text-anchor="middle">' + (r.testDate ? r.testDate.slice(5) : '') + '</text>');
+    });
+    metrics.forEach(function(m) {
+      var points = [];
+      records.forEach(function(r, idx) {
+        var x = padL + (records.length <= 1 ? iW / 2 : iW * idx / Math.max(1, records.length - 1));
+        if (r[m.key] != null) points.push({ x: x, y: padT + iH - (r[m.key] - yMin) / yRange * iH });
+      });
+      if (points.length >= 1) {
+        parts.push(svgLine(points, m.color, 2));
+        points.forEach(function(p) { parts.push(svgDot(p.x, p.y, 3, m.color)); });
+      }
+    });
+    parts.push('</svg>');
+    var legend = '<div class="compare-fitness-legend">';
+    metrics.forEach(function(m) { legend += '<span class="compare-legend-item"><span class="compare-legend-dot" style="background:' + m.color + ';"></span>' + m.label + '</span>'; });
+    legend += '</div>';
+    return legend + parts.join('\\n');
+  }
+  function renderRatingTimeline(records) {
+    var classMap = { '\u4f18\u79c0': 'rating-excellent', '\u826f\u597d': 'rating-good', '\u5408\u683c': 'rating-pass', '\u4e0d\u5408\u683c': 'rating-fail' };
+    var parts = ['<span class="timeline-label">\u5386\u53f2\u8bc4\u7ea7\uff1a</span>'];
+    records.forEach(function(r, idx) {
+      if (idx > 0) parts.push('<span class="compare-rating-arrow">&rarr;</span>');
+      var label = (r.testDate || '').slice(0, 10) + ' ' + (r.rating || '-');
+      var cls = classMap[r.rating] || '';
+      parts.push('<span class="compare-rating-pill ' + cls + '">' + label + '</span>');
+    });
+    return '<div class="compare-rating-timeline">' + parts.join('') + '</div>';
+  }
+  function renderDataTable(records) {
+    var cols = [
+      { key: 'testDate', label: '\u6d4b\u8bd5\u65e5\u671f', fmt: function(v) { return v ? v.slice(0,10) : '-'; } },
+      { key: 'heightCm', label: '\u8eab\u9ad8' }, { key: 'weightKg', label: '\u4f53\u91cd' }, { key: 'bmi', label: 'BMI' },
+      { key: 'gripScore', label: '\u63e1\u529b\u5206' }, { key: 'jumpScore', label: '\u8df3\u8fdc\u5206' },
+      { key: 'sitScore', label: '\u4f53\u524d\u5c48\u5206' }, { key: 'djumpScore', label: '\u53cc\u811a\u8df3\u5206' },
+      { key: 'obstacleScore', label: '\u969c\u788c\u8dd1\u5206' }, { key: 'balanceScore', label: '\u5e73\u8861\u6728\u5206' },
+      { key: 'totalScore', label: '\u7efc\u5408\u5f97\u5206' }, { key: 'rating', label: '\u8bc4\u7ea7' }
+    ];
+    var th = cols.map(function(c) { return '<th>' + c.label + '</th>'; }).join('');
+    var rows = records.map(function(r) {
+      var tds = cols.map(function(c) {
+        var val = r[c.key]; if (c.fmt) val = c.fmt(val);
+        return '<td>' + (val != null ? val : '-') + '</td>';
+      }).join('');
+      return '<tr>' + tds + '</tr>';
+    }).join('');
+    return '<div class="compare-data-table-wrap"><table class="compare-data-table"><thead><tr>' + th + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+  }
+  var comparePanelLoading = false;
+  window.openChildComparePanel = function(el, childId, childName, noFetch) {
+    if (comparePanelLoading) return;
+    var overlay = document.getElementById('childCompareOverlay');
+    var titleEl = document.getElementById('compareChildTitle');
+    var metaEl = document.getElementById('compareChildMeta');
+    var body = document.getElementById('comparePanelBody');
+    if (noFetch) return;
+    titleEl.textContent = childName + ' \u00b7 \u7eb5\u5411\u5bf9\u6bd4';
+    metaEl.textContent = '\u52a0\u8f7d\u4e2d...';
+    body.innerHTML = '<div class="compare-panel-loading">\u52a0\u8f7d\u4e2d...</div>';
+    overlay.classList.add('is-open');
+    document.body.style.overflow = 'hidden';
+    comparePanelLoading = true;
+    fetch('/admin/fitness/compare/' + childId)
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (!data.ok) { body.innerHTML = '<div class="compare-panel-loading" style="color:#ef4444;">' + (data.message || '\u83b7\u53d6\u6570\u636e\u5931\u8d25') + '</div>'; comparePanelLoading = false; return; }
+        var child = data.child || {};
+        var records = data.records || [];
+        metaEl.textContent = (child.gender || '?') + ' \u00b7 ' + (child.birthDate || '?') + ' \u51fa\u751f \u00b7 \u5171 ' + records.length + ' \u6b21\u4f53\u6d4b';
+        if (records.length === 0) { body.innerHTML = '<div class="compare-panel-loading">\u8be5\u5e7c\u513f\u6682\u65e0\u4f53\u6d4b\u8bb0\u5f55</div>'; comparePanelLoading = false; return; }
+        var growthSection = '<div class="compare-chart-card"><h4>\u8eab\u9ad8 / \u4f53\u91cd / BMI \u8d8b\u52bf</h4>' + renderGrowthChart(records) + '</div>';
+        var fitnessSection = '<div class="compare-chart-card"><h4>\u4f53\u6d4b\u5f97\u5206\u8d8b\u52bf</h4>' + renderFitnessChart(records) + '</div>';
+        var chartsRow = '<div class="compare-charts-row">' + growthSection + fitnessSection + '</div>';
+        body.innerHTML = chartsRow + renderRatingTimeline(records) + '<h4 style="margin:0 0 10px;color:#334155;">\u5386\u53f2\u8bb0\u5f55\u660e\u7ec6</h4>' + renderDataTable(records);
+        comparePanelLoading = false;
+      })
+      .catch(function(err) { body.innerHTML = '<div class="compare-panel-loading" style="color:#ef4444;">\u52a0\u8f7d\u5f02\u5e38\uff1a' + err.message + '</div>'; comparePanelLoading = false; });
+  };
+  window.closeChildComparePanel = function() {
+    var overlay = document.getElementById('childCompareOverlay');
+    if (overlay) overlay.classList.remove('is-open');
+    document.body.style.overflow = '';
+  };
+  document.addEventListener('click', function(e) {
+    var link = e.target.closest('.child-compare-link');
+    if (!link) return;
+    e.preventDefault();
+    var childId = link.getAttribute('data-child-id');
+    var childName = link.getAttribute('data-child-name') || '\u5e7c\u513f';
+    if (!childId) return;
+    openChildComparePanel(link, Number(childId), childName);
+  });
+})();
+
 </script>
+
+
+<!-- 幼儿纵向对比面板 -->
+<div id="childCompareOverlay" class="compare-panel-overlay" onclick="if(event.target===this) closeChildComparePanel()">
+  <div class="compare-panel">
+    <div class="compare-panel-header">
+      <div>
+        <h3 id="compareChildTitle">幼儿纵向对比</h3>
+        <div class="meta" id="compareChildMeta"></div>
+      </div>
+      <button class="compare-panel-close" onclick="closeChildComparePanel()">&times;</button>
+    </div>
+    <div class="compare-panel-body" id="comparePanelBody">
+      <div class="compare-panel-loading" id="compareLoading">加载中...</div>
+    </div>
+  </div>
+</div>
 
 <%- include('partials/footer') %>

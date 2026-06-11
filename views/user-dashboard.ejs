@@ -403,7 +403,7 @@
               <div class="venue-attention-current-item">
                 <div class="venue-attention-current-meta">
                   <div>
-                    <strong><%= child.name %></strong>
+                    <strong><a class="child-compare-link" data-child-id="<%= child.id %>" data-child-name="<%= child.name %>" role="button" tabindex="0"><%= child.name %></a></strong>
                     <div class="muted"><%= formatAttentionPeriod(child.attention_start_date, child.attention_end_date) %></div>
                   </div>
                   <span class="vest-badge <%= attentionVestKey(child) %>"><%= attentionVestLabel(child) %></span>
@@ -584,7 +584,7 @@
                 <div class="muted" style="margin-top:6px;">对应人员：
                   <% if (item.nameLinks && item.nameLinks.length) { %>
                     <% item.nameLinks.forEach(function(link) { const quick = (childQuickLookup && childQuickLookup[link.name]) || null; %>
-                      <button type="button" class="btn small" style="margin:4px 6px 0 0;" onclick='openUserChildFitnessModal(<%- JSON.stringify(quick || { childName: link.name }) %>)'><%= link.name %></button>
+                      <a class="child-compare-link" data-child-id="<%= quick && quick.childId ? quick.childId : '' %>" data-child-name="<%= link.name %>" role="button" tabindex="0" style="margin:4px 6px 0 0;display:inline-block;color:#2563eb;cursor:pointer;font-size:13px;"><%= link.name %></a>
                     <% }) %>
                   <% } else { %>
                     暂无
@@ -597,48 +597,162 @@
       </div>
     </div>
 
-    <div class="card chart-card" style="margin-bottom:16px;">
-      <h3 style="margin-top:0;">班级体测趋势波形图</h3>
+    <!-- 班级生长趋势（范围级身高/体重/BMI折线图） -->
+    <section class="card chart-card" style="margin-bottom:16px;">
+      <div class="section-head">
+        <div>
+          <h3>班级生长趋势</h3>
+          <div class="muted no-margin">按测试日期展示本班幼儿身高/体重/BMI均值趋势</div>
+        </div>
+      </div>
       <div class="wave-chart-wrap">
-        <% const trendItems = trendSummary || []; const chartWidth = 760; const chartHeight = 220; const padX = 36; const padY = 24; const innerWidth = chartWidth - padX * 2; const innerHeight = chartHeight - padY * 2; const validTrend = trendItems.filter(function(item) { return item.avgScore != null; }); const minScore = validTrend.length ? Math.min.apply(null, validTrend.map(function(item) { return Number(item.avgScore); })) : 0; const maxScore = validTrend.length ? Math.max.apply(null, validTrend.map(function(item) { return Number(item.avgScore); })) : 100; const scoreGap = Math.max(1, maxScore - minScore); %>
-        <svg class="wave-chart-svg" viewBox="0 0 760 220" role="img" aria-label="班级体测趋势波形图">
-          <line class="wave-grid" x1="36" y1="24" x2="36" y2="196"></line>
-          <line class="wave-grid" x1="36" y1="196" x2="724" y2="196"></line>
-          <% let points = []; %>
-          <% trendItems.forEach(function(item, index) { const x = trendItems.length <= 1 ? padX : padX + innerWidth * index / Math.max(1, trendItems.length - 1); const y = item.avgScore == null ? (padY + innerHeight) : (padY + innerHeight - ((Number(item.avgScore) - minScore) / scoreGap) * innerHeight); points.push(x.toFixed(1) + ',' + y.toFixed(1)); %>
-            <circle class="wave-point" cx="<%= x.toFixed(1) %>" cy="<%= y.toFixed(1) %>" r="4"></circle>
-            <text class="wave-label" x="<%= x.toFixed(1) %>" y="210"><%= (item.label || '').slice(5) %></text>
-            <% if (item.avgScore != null) { %><text class="wave-value" x="<%= x.toFixed(1) %>" y="<%= (y - 10).toFixed(1) %>"><%= item.avgScore %></text><% } %>
+        <%
+          var scopeItems = scopeTrendData || [];
+          var GW = 760, GH = 280, gPadL = 52, gPadR = 48, gPadT = 20, gPadB = 40;
+          var gIW = GW - gPadL - gPadR, gIH = GH - gPadT - gPadB;
+          var hVals = scopeItems.map(function(r) { return r.heightAvg; }).filter(function(v) { return v != null; });
+          var wVals = scopeItems.map(function(r) { return r.weightAvg; }).filter(function(v) { return v != null; });
+          var bVals = scopeItems.map(function(r) { return r.bmiAvg; }).filter(function(v) { return v != null; });
+          var hMin = Math.min.apply(null, hVals.length ? hVals : [0]) || 0;
+          var hMax = Math.max.apply(null, hVals.length ? hVals : [0]) || 100;
+          var hRange = hMax - hMin || 20;
+          hMin -= hRange * 0.15; hMax += hRange * 0.15; hRange = hMax - hMin;
+          var allWB = wVals.concat(bVals);
+          var wMin = Math.min.apply(null, allWB.length ? allWB : [0]) || 0;
+          var wMax = Math.max.apply(null, allWB.length ? allWB : [0]) || 30;
+          var wRange = wMax - wMin || 10;
+          wMin -= wRange * 0.15; wMax += wRange * 0.15; wRange = wMax - wMin;
+        %>
+        <svg viewBox="0 0 <%= GW %> <%= GH %>" role="img" aria-label="班级生长趋势">
+          <% for (var i = 0; i <= 4; i++) { var gy = gPadT + gIH * i / 4; %>
+            <line x1="<%= gPadL %>" y1="<%= gy.toFixed(1) %>" x2="<%= (gPadL + gIW).toFixed(1) %>" y2="<%= gy.toFixed(1) %>" stroke="#e2e8f0" stroke-width="1"/>
+          <% } %>
+          <% for (var i = 0; i <= 4; i++) {
+            var valH = hMax - (hMax - hMin) * i / 4;
+            var ly = gPadT + gIH * i / 4;
+          %>
+            <text x="<%= gPadL - 6 %>" y="<%= (ly + 4).toFixed(1) %>" fill="#f97316" font-size="10" text-anchor="end"><%= valH.toFixed(0) %></text>
+          <% } %>
+          <% for (var i = 0; i <= 4; i++) {
+            var valW = wMax - (wMax - wMin) * i / 4;
+            var ry = gPadT + gIH * i / 4;
+          %>
+            <text x="<%= gPadL + gIW + 6 %>" y="<%= (ry + 4).toFixed(1) %>" fill="#8b5cf6" font-size="10" text-anchor="start"><%= valW.toFixed(1) %></text>
+          <% } %>
+          <% scopeItems.forEach(function(item, idx) {
+            var x = gPadL + (scopeItems.length <= 1 ? gIW / 2 : gIW * idx / Math.max(1, scopeItems.length - 1));
+          %>
+            <text x="<%= x.toFixed(1) %>" y="<%= GH - 8 %>" fill="#94a3b8" font-size="10" text-anchor="middle"><%= (item.testDate || '').slice(5) %></text>
           <% }) %>
-          <% if (points.length) { %><polyline class="wave-line" points="<%= points.join(' ') %>"></polyline><% } %>
+          <%
+            function makeGrowthLine(records, valueKey, color, width, dash, useWMin) {
+              var points = [];
+              var rng = useWMin ? wRange : hRange;
+              var vmin = useWMin ? wMin : hMin;
+              records.forEach(function(r, idx) {
+                var x = gPadL + (records.length <= 1 ? gIW / 2 : gIW * idx / Math.max(1, records.length - 1));
+                if (r[valueKey] != null) {
+                  var y = gPadT + gIH - (Number(r[valueKey]) - vmin) / rng * gIH;
+                  points.push({ x: x, y: y });
+                }
+              });
+              var svg = '';
+              if (points.length >= 1) {
+                svg += '<polyline points="' + points.map(function(p) { return p.x.toFixed(1) + ',' + p.y.toFixed(1); }).join(' ') + '" fill="none" stroke="' + color + '" stroke-width="' + width + '"';
+                if (dash) svg += ' stroke-dasharray="' + dash + '"';
+                svg += ' stroke-linejoin="round"/>';
+                points.forEach(function(p) { svg += '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="3" fill="' + color + '"/>'; });
+              }
+              return svg;
+            }
+          %>
+          <%- makeGrowthLine(scopeItems, 'heightAvg', '#f97316', 2.5, null, false) %>
+          <%- makeGrowthLine(scopeItems, 'weightAvg', '#8b5cf6', 2.5, null, true) %>
+          <%- makeGrowthLine(scopeItems, 'bmiAvg', '#ec4899', 2, '5,4', true) %>
         </svg>
+        <div style="display:flex;flex-wrap:wrap;gap:10px 18px;justify-content:center;margin-top:10px;">
+          <span style="display:inline-flex;align-items:center;gap:4px;font-size:12px;color:#475569;">
+            <span style="width:10px;height:10px;background:#f97316;border-radius:50%;"></span>身高 (cm) 左轴
+          </span>
+          <span style="display:inline-flex;align-items:center;gap:4px;font-size:12px;color:#475569;">
+            <span style="width:10px;height:10px;background:#8b5cf6;border-radius:50%;"></span>体重 (kg) 右轴
+          </span>
+          <span style="display:inline-flex;align-items:center;gap:4px;font-size:12px;color:#475569;">
+            <span style="width:10px;height:10px;background:#ec4899;border-radius:50%;"></span>BMI 右轴
+          </span>
+        </div>
       </div>
-    </div>
+    </section>
 
-    <div class="card" style="margin-bottom:16px;">
-      <h3 style="margin-top:0;">单项提升空间分析</h3>
-      <div class="stats-grid overview-stats">
-        <% (metricNeedTrainingSummary || []).forEach(function(item) { %>
-          <details class="card stat-card fitness-detail-card">
-            <summary style="cursor:pointer;list-style:none;">
-              <div class="stat-label"><%= item.label %></div>
-              <div class="stat-number"><%= item.percent %>%</div>
-              <div class="muted"><%= item.count %> / <%= item.total %> 人需重点提升</div>
-              <div class="muted" style="margin-top:6px;">点击查看对应人员名单</div>
-            </summary>
-            <div class="muted" style="margin-top:10px;">对应人员：
-              <% if (item.nameLinks && item.nameLinks.length) { %>
-                <% item.nameLinks.forEach(function(link) { const quick = (childQuickLookup && childQuickLookup[link.name]) || null; %>
-                  <button type="button" class="btn small" style="margin:4px 6px 0 0;" onclick='openUserChildFitnessModal(<%- JSON.stringify(quick || { childName: link.name }) %>)'><%= link.name %></button>
-                <% }) %>
-              <% } else { %>
-                暂无
-              <% } %>
-            </div>
-          </details>
-        <% }) %>
+    <!-- 班级体测趋势对比（范围级纵向折线图） -->
+    <section class="card chart-card" style="margin-bottom:16px;">
+      <div class="section-head">
+        <div>
+          <h3>班级体测趋势对比</h3>
+          <div class="muted no-margin">按测试日期展示本班各体测项目的均分趋势（班级级纵向对比）</div>
+        </div>
       </div>
-    </div>
+      <div class="wave-chart-wrap">
+        <%
+          var scopeItems2 = scopeTrendData || [];
+          var FW = 760, FH = 280, fPadL = 42, fPadR = 20, fPadT = 20, fPadB = 40;
+          var fIW = FW - fPadL - fPadR, fIH = FH - fPadT - fPadB;
+          var fitnessMetrics = [
+            { key: 'gripAvg', label: '握力', color: '#ef4444' },
+            { key: 'jumpAvg', label: '跳远', color: '#f97316' },
+            { key: 'sitAvg', label: '体前屈', color: '#eab308' },
+            { key: 'djumpAvg', label: '双脚跳', color: '#22c55e' },
+            { key: 'obstacleAvg', label: '障碍跑', color: '#06b6d4' },
+            { key: 'balanceAvg', label: '平衡木', color: '#8b5cf6' }
+          ];
+          var allFVals = [];
+          fitnessMetrics.forEach(function(m) { scopeItems2.forEach(function(r) { if (r[m.key] != null) allFVals.push(r[m.key]); }); });
+          var fyMin = allFVals.length ? Math.min(0, Math.min.apply(null, allFVals)) : 0;
+          var fyMax = allFVals.length ? Math.max(100, Math.max.apply(null, allFVals)) : 100;
+          var fyRange = fyMax - fyMin || 100;
+        %>
+        <svg viewBox="0 0 <%= FW %> <%= FH %>" role="img" aria-label="班级体测趋势对比">
+          <% for (var i = 0; i <= 4; i++) {
+            var gy = fPadT + fIH * i / 4;
+            var yval = fyMax - (fyMax - fyMin) * i / 4;
+          %>
+            <line x1="<%= fPadL %>" y1="<%= gy.toFixed(1) %>" x2="<%= (fPadL + fIW).toFixed(1) %>" y2="<%= gy.toFixed(1) %>" stroke="#e2e8f0" stroke-width="1"/>
+            <text x="<%= fPadL - 6 %>" y="<%= (gy + 4).toFixed(1) %>" fill="#94a3b8" font-size="10" text-anchor="end"><%= yval.toFixed(0) %></text>
+          <% } %>
+          <% if (fyMin <= 60 && fyMax >= 60) {
+            var ref60y = fPadT + fIH - (60 - fyMin) / fyRange * fIH;
+          %>
+            <line x1="<%= fPadL %>" y1="<%= ref60y.toFixed(1) %>" x2="<%= (fPadL + fIW).toFixed(1) %>" y2="<%= ref60y.toFixed(1) %>" stroke="#fca5a5" stroke-width="1" stroke-dasharray="4,4"/>
+          <% } %>
+          <% scopeItems2.forEach(function(item, idx) {
+            var x = fPadL + (scopeItems2.length <= 1 ? fIW / 2 : fIW * idx / Math.max(1, scopeItems2.length - 1));
+          %>
+            <text x="<%= x.toFixed(1) %>" y="<%= FH - 8 %>" fill="#94a3b8" font-size="10" text-anchor="middle"><%= (item.testDate || '').slice(5) %></text>
+          <% }) %>
+          <% fitnessMetrics.forEach(function(m) {
+            var points = [];
+            scopeItems2.forEach(function(item, idx) {
+              var x = fPadL + (scopeItems2.length <= 1 ? fIW / 2 : fIW * idx / Math.max(1, scopeItems2.length - 1));
+              if (item[m.key] != null) points.push({ x: x, y: fPadT + fIH - (item[m.key] - fyMin) / fyRange * fIH });
+            });
+            if (points.length >= 1) {
+          %>
+            <polyline points="<%= points.map(function(p) { return p.x.toFixed(1) + ',' + p.y.toFixed(1); }).join(' ') %>"
+              fill="none" stroke="<%= m.color %>" stroke-width="2" stroke-linejoin="round"/>
+            <% points.forEach(function(p) { %>
+              <circle cx="<%= p.x.toFixed(1) %>" cy="<%= p.y.toFixed(1) %>" r="3" fill="<%= m.color %>"/>
+            <% }) %>
+          <% }}) %>
+        </svg>
+        <div style="display:flex;flex-wrap:wrap;gap:10px 18px;justify-content:center;margin-top:10px;">
+          <% fitnessMetrics.forEach(function(m) { %>
+            <span style="display:inline-flex;align-items:center;gap:4px;font-size:12px;color:#475569;">
+              <span style="width:10px;height:10px;background:<%= m.color %>;border-radius:50%;"></span><%= m.label %>
+            </span>
+          <% }) %>
+        </div>
+      </div>
+    </section>
 
     <div id="user-record-filter-anchor" class="toolbar" style="margin:16px 0 12px; align-items:flex-start; gap:10px;">
       <div>
@@ -1395,6 +1509,7 @@
 })();
 
 function openUserChildFitnessModal(data) {
+  window._modalChildData = data;
   var overlay = document.getElementById('userChildFitnessOverlay');
   var title = document.getElementById('userChildFitnessTitle');
   var meta = document.getElementById('userChildFitnessMeta');
@@ -1451,6 +1566,7 @@ function closeUserChildFitnessModal() {
       </div>
       <div class="toolbar-links" style="margin-top:16px;">
         <a id="userChildFitnessViewBtn" class="btn primary" href="/user?view=records#fitness-records">查看记录列表</a>
+        <button class="btn" type="button" onclick="if(window._modalChildData && window._modalChildData.childId) { closeUserChildFitnessModal(); openChildComparePanel(this, window._modalChildData.childId, window._modalChildData.childName || '幼儿'); }">查看纵向对比</button>
         <button class="btn" type="button" onclick="closeUserChildFitnessModal()">关闭</button>
       </div>
     </div>
