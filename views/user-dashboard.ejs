@@ -721,7 +721,7 @@
         <tbody>
           <% fitnessRecords.forEach(function(r) { %>
             <tr>
-              <td><strong><a href="#" class="child-compare-link" data-child-id="<%= r.child_id %>" data-child-name="<%= r.child_name %>"><%= r.child_name %></a></strong></td>
+              <td><strong><a class="child-compare-link" data-child-id="<%= r.child_id %>" data-child-name="<%= r.child_name %>" role="button" tabindex="0"><%= r.child_name %></a></strong></td>
               <td><%= r.gender || '-' %></td>
               <td><%= r.test_date ? new Date(r.test_date).toISOString().slice(0,10) : '-' %></td>
               <td><%= r.height_cm ?? '-' %></td>
