@@ -536,8 +536,8 @@ async function bootstrap() {
     userName: process.env.DEFAULT_USER_NAME || '示例教师'
   });
 
-  if (process.env.SYNC_FITNESS_SCORES === 1) {
-    console.log(Syncing stored fitness scores...);
+  if (process.env.SYNC_FITNESS_SCORES === '1') {
+    console.log('Syncing stored fitness scores...');
     await syncStoredFitnessScores();
   }
   await initRedis();
@@ -581,9 +581,9 @@ async function bootstrap() {
   app.use(createSessionMiddleware());
   // Flash message — merges session flash + URL query, templates use res.locals.message
   app.use((req, res, next) => {
-    const flash = req.session._flashMessage || ;
-    const query = req.query.message || ;
-    res.locals.message = flash || query || ;
+    const flash = req.session._flashMessage || '';
+    const query = req.query.message || '';
+    res.locals.message = flash || query || '';
     delete req.session._flashMessage;
     req.setFlash = (msg) => { req.session._flashMessage = msg; };
     next();
