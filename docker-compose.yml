@@ -1,15 +1,16 @@
 services:
   app:
-    build: .
-    image: xiaoyu-health:latest
+    image: ghcr.io/mulan777/xiaoyu-health:latest
     container_name: xiaoyu-health
     restart: unless-stopped
-    env_file:
-      - .env
     environment:
       PORT: 3070
+      SESSION_SECRET: ${SESSION_SECRET:-please-change-this-session-secret}
       MYSQL_HOST: mysql
       MYSQL_PORT: 3306
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-kindergarten_platform}
+      MYSQL_USER: ${MYSQL_USER:-kindergarten_app}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-please-change-this-mysql-password}
       REDIS_URL: redis://redis:6379
     ports:
       - "3070:3070"
@@ -28,8 +29,8 @@ services:
     environment:
       MYSQL_DATABASE: ${MYSQL_DATABASE:-kindergarten_platform}
       MYSQL_USER: ${MYSQL_USER:-kindergarten_app}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-change-me}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-change-root-me}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-please-change-this-mysql-password}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-please-change-this-root-password}
     volumes:
       - mysql_data:/var/lib/mysql
     ports:
