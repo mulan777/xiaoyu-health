@@ -899,6 +899,59 @@ async function bootstrap() {
       };
     });
 
+    // 年级均分对比基准（教师端班级趋势图上的虚线）
+    var gradeTrendData = [];
+    if (classId && dashboard.assignedClass && dashboard.assignedClass.grade_level) {
+      var gradeAllRecords = await dbQuery(`
+        SELECT fr.*, DATE_FORMAT(fr.test_date, "%Y-%m-%d") AS test_day
+        FROM fitness_records fr
+        JOIN children ch ON ch.id = fr.child_id
+        LEFT JOIN classes c ON c.id = ch.class_id
+        WHERE c.grade_level = ?
+        ORDER BY fr.test_date ASC
+      `, [dashboard.assignedClass.grade_level]);
+      var gTrendMap = {};
+      for (var gi = 0; gi < gradeAllRecords.length; gi++) {
+        var gItem = gradeAllRecords[gi];
+        var day = gItem.test_day;
+        if (!gTrendMap[day]) {
+          gTrendMap[day] = {
+            testDate: day,
+            heightSum: 0, heightCnt: 0, weightSum: 0, weightCnt: 0, bmiSum: 0, bmiCnt: 0,
+            gripSum: 0, gripCnt: 0, jumpSum: 0, jumpCnt: 0,
+            sitSum: 0, sitCnt: 0, djumpSum: 0, djumpCnt: 0,
+            obstacleSum: 0, obstacleCnt: 0, balanceSum: 0, balanceCnt: 0
+          };
+        }
+        var gb = gTrendMap[day];
+        if (gItem.grip_score != null) { gb.gripSum += Number(gItem.grip_score); gb.gripCnt++; }
+        if (gItem.jump_score != null) { gb.jumpSum += Number(gItem.jump_score); gb.jumpCnt++; }
+        if (gItem.sit_score != null) { gb.sitSum += Number(gItem.sit_score); gb.sitCnt++; }
+        if (gItem.djump_score != null) { gb.djumpSum += Number(gItem.djump_score); gb.djumpCnt++; }
+        if (gItem.obstacle_score != null) { gb.obstacleSum += Number(gItem.obstacle_score); gb.obstacleCnt++; }
+        if (gItem.height_cm != null) { gb.heightSum += Number(gItem.height_cm); gb.heightCnt++; }
+        if (gItem.weight_kg != null) { gb.weightSum += Number(gItem.weight_kg); gb.weightCnt++; }
+        if (gItem.bmi != null) { gb.bmiSum += Number(gItem.bmi); gb.bmiCnt++; }
+        if (gItem.balance_score != null) { gb.balanceSum += Number(gItem.balance_score); gb.balanceCnt++; }
+      }
+      gradeTrendData = Object.values(gTrendMap).sort(function(a, b) {
+        return a.testDate.localeCompare(b.testDate);
+      }).map(function(bucket) {
+        return {
+          testDate: bucket.testDate,
+          heightAvg: bucket.heightCnt ? Number((bucket.heightSum / bucket.heightCnt).toFixed(1)) : null,
+          weightAvg: bucket.weightCnt ? Number((bucket.weightSum / bucket.weightCnt).toFixed(1)) : null,
+          bmiAvg: bucket.bmiCnt ? Number((bucket.bmiSum / bucket.bmiCnt).toFixed(1)) : null,
+          gripAvg: bucket.gripCnt ? Number((bucket.gripSum / bucket.gripCnt).toFixed(1)) : null,
+          jumpAvg: bucket.jumpCnt ? Number((bucket.jumpSum / bucket.jumpCnt).toFixed(1)) : null,
+          sitAvg: bucket.sitCnt ? Number((bucket.sitSum / bucket.sitCnt).toFixed(1)) : null,
+          djumpAvg: bucket.djumpCnt ? Number((bucket.djumpSum / bucket.djumpCnt).toFixed(1)) : null,
+          obstacleAvg: bucket.obstacleCnt ? Number((bucket.obstacleSum / bucket.obstacleCnt).toFixed(1)) : null,
+          balanceAvg: bucket.balanceCnt ? Number((bucket.balanceSum / bucket.balanceCnt).toFixed(1)) : null
+        };
+      });
+    }
+
     const childPageData = paginateItems(allChildren, childPage, 10);
     const childQuickLookup = {};
     for (const item of fitnessRecords) {
@@ -1039,6 +1092,7 @@ async function bootstrap() {
       fitnessRecordDates,
       avgScore, ratingCounts, ratingSummary, metricNeedTrainingSummary, metricHealthSummary, radarChartData, trendSummary,
       scopeTrendData,
+      gradeTrendData,
       teacherBirthday, todayBirthdayChildren,
       userView,
       entryBatchDate,

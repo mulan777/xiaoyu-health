@@ -397,6 +397,7 @@ input:focus, textarea:focus, select:focus {
   background-clip: padding-box;
 }
 
+
 .data-table th {
   font-size: 12px;
   font-weight: 600;

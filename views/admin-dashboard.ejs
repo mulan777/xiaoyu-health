@@ -1516,6 +1516,12 @@
     if (!childId) return;
     openChildComparePanel(link, Number(childId), childName);
   });
+  document.addEventListener('keydown', function(e) {
+    var overlay = document.getElementById('childCompareOverlay');
+    if (e.key === 'Escape' && overlay && overlay.classList.contains('is-open')) {
+      closeChildComparePanel();
+    }
+  });
 })();
 
 </script>

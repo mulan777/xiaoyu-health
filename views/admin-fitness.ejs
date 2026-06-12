@@ -1,5 +1,51 @@
 <%- include('partials/header', { pageClass: 'admin-page' + (typeof isReadonly !== 'undefined' && isReadonly ? ' readonly-mode' : '') }) %>
 
+<style>
+  /* P1-4: 冻结体测明细表前4列 */
+  .data-table th:nth-child(1), .data-table td:nth-child(1) { width: 80px; min-width: 80px; max-width: 80px; }
+  .data-table th:nth-child(2), .data-table td:nth-child(2) { width: 72px; min-width: 72px; max-width: 72px; }
+  .data-table th:nth-child(3), .data-table td:nth-child(3) { width: 48px; min-width: 48px; max-width: 48px; }
+  .data-table th:nth-child(4), .data-table td:nth-child(4) { width: 92px; min-width: 92px; max-width: 92px; }
+  .data-table th:nth-child(1), .data-table td:nth-child(1) { position: sticky; left: 0; }
+  .data-table th:nth-child(2), .data-table td:nth-child(2) { position: sticky; left: 80px; }
+  .data-table th:nth-child(3), .data-table td:nth-child(3) { position: sticky; left: 152px; }
+  .data-table th:nth-child(4), .data-table td:nth-child(4) { position: sticky; left: 200px; }
+  .data-table thead th:nth-child(1),
+  .data-table thead th:nth-child(2),
+  .data-table thead th:nth-child(3),
+  .data-table thead th:nth-child(4) { z-index: 4; background: #f9fafb; }
+  .data-table tbody td:nth-child(1),
+  .data-table tbody td:nth-child(2),
+  .data-table tbody td:nth-child(3),
+  .data-table tbody td:nth-child(4) { z-index: 1; background: #ffffff; }
+  .data-table tbody tr:nth-child(even) td:nth-child(1),
+  .data-table tbody tr:nth-child(even) td:nth-child(2),
+  .data-table tbody tr:nth-child(even) td:nth-child(3),
+  .data-table tbody tr:nth-child(even) td:nth-child(4) { background: #f9fafb; }
+  .data-table tbody tr:hover td:nth-child(1),
+  .data-table tbody tr:hover td:nth-child(2),
+  .data-table tbody tr:hover td:nth-child(3),
+  .data-table tbody tr:hover td:nth-child(4) { background: #f3f4f6; }
+  @media (prefers-color-scheme: dark) {
+    .data-table thead th:nth-child(1),
+    .data-table thead th:nth-child(2),
+    .data-table thead th:nth-child(3),
+    .data-table thead th:nth-child(4) { background: #0f172a; }
+    .data-table tbody td:nth-child(1),
+    .data-table tbody td:nth-child(2),
+    .data-table tbody td:nth-child(3),
+    .data-table tbody td:nth-child(4) { background: #1e293b; }
+    .data-table tbody tr:nth-child(even) td:nth-child(1),
+    .data-table tbody tr:nth-child(even) td:nth-child(2),
+    .data-table tbody tr:nth-child(even) td:nth-child(3),
+    .data-table tbody tr:nth-child(even) td:nth-child(4) { background: #1a2332; }
+    .data-table tbody tr:hover td:nth-child(1),
+    .data-table tbody tr:hover td:nth-child(2),
+    .data-table tbody tr:hover td:nth-child(3),
+    .data-table tbody tr:hover td:nth-child(4) { background: #334155; }
+  }
+</style>
+
 
 <%
   const activeFilters = filters || {};
@@ -508,8 +554,17 @@
         </div>
       </div>
       <div class="wave-chart-wrap">
-        <%
-          var scopeItems = scopeTrendData || [];
+                              <%
+              var scopeItems = scopeTrendData || [];
+            %>
+            <% if (scopeItems.length >= 2) { %>
+            <%
+
+                      %>
+
+          <% if (scopeItems.length >= 2) { %>
+          <%
+
           var GW = 760, GH = 280, gPadL = 52, gPadR = 48, gPadT = 20, gPadB = 40;
           var gIW = GW - gPadL - gPadR, gIH = GH - gPadT - gPadB;
           var hVals = scopeItems.map(function(r) { return r.heightAvg; }).filter(function(v) { return v != null; });
@@ -524,8 +579,11 @@
           var wMax = Math.max.apply(null, allWB.length ? allWB : [0]) || 30;
           var wRange = wMax - wMin || 10;
           wMin -= wRange * 0.15; wMax += wRange * 0.15; wRange = wMax - wMin;
-        %>
+                  %>
+
         <svg viewBox="0 0 <%= GW %> <%= GH %>" role="img" aria-label="全园生长趋势">
+            <text x="<%= gPadL %>" y="<%= (gPadT - 2).toFixed(1) %>" fill="#f97316" font-size="10" font-weight="600" text-anchor="start">身高 (cm)</text>
+            <text x="<%= (gPadL + gIW).toFixed(1) %>" y="<%= (gPadT - 2).toFixed(1) %>" fill="#8b5cf6" font-size="10" font-weight="600" text-anchor="end">体重/BMI</text>
           <% for (var i = 0; i <= 4; i++) { var gy = gPadT + gIH * i / 4; %>
             <line x1="<%= gPadL %>" y1="<%= gy.toFixed(1) %>" x2="<%= (gPadL + gIW).toFixed(1) %>" y2="<%= gy.toFixed(1) %>" stroke="#e2e8f0" stroke-width="1"/>
           <% } %>
@@ -555,7 +613,7 @@
                 var x = gPadL + (records.length <= 1 ? gIW / 2 : gIW * idx / Math.max(1, records.length - 1));
                 if (r[valueKey] != null) {
                   var y = gPadT + gIH - (Number(r[valueKey]) - vmin) / rng * gIH;
-                  points.push({ x: x, y: y });
+                  points.push({ x: x, y: y, tip: (r.testDate || "").slice(5) + " " + (Number(r[valueKey]).toFixed(1) || "") });
                 }
               });
               var svg = '';
@@ -563,7 +621,7 @@
                 svg += '<polyline points="' + points.map(function(p) { return p.x.toFixed(1) + ',' + p.y.toFixed(1); }).join(' ') + '" fill="none" stroke="' + color + '" stroke-width="' + width + '"';
                 if (dash) svg += ' stroke-dasharray="' + dash + '"';
                 svg += ' stroke-linejoin="round"/>';
-                points.forEach(function(p) { svg += '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="3" fill="' + color + '"/>'; });
+                points.forEach(function(p, pi) { svg += '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="6" fill="' + color + '" style="cursor:pointer"';if (p.tip) svg += '><title>' + p.tip + '</title></circle>'; else svg += '/>'; });
               }
               return svg;
             }
@@ -583,7 +641,29 @@
             <span style="width:10px;height:10px;background:#ec4899;border-radius:50%;"></span>BMI 右轴
           </span>
         </div>
-      </div>
+      
+          <% } else { %>
+          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:280px;color:#94a3b8;background:#f8fafc;border-radius:8px;border:2px dashed #e2e8f0;">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" style="margin-bottom:12px;">
+              <path d="M3 3v18h18"/>
+              <path d="M7 16l4-8 4 4 4-6"/>
+            </svg>
+            <span style="font-size:14px;font-weight:500;margin-bottom:4px;">暂无足够数据</span>
+            <span style="font-size:12px;">至少需要 2 次不同日期的测试记录才能生成趋势对比</span>
+          </div>
+          <% } %>
+
+            <% } else { %>
+          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:280px;color:#94a3b8;background:#f8fafc;border-radius:8px;border:2px dashed #e2e8f0;">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" style="margin-bottom:12px;">
+              <path d="M3 3v18h18"/>
+              <path d="M7 16l4-8 4 4 4-6"/>
+            </svg>
+            <span style="font-size:14px;font-weight:500;margin-bottom:4px;">暂无足够数据</span>
+            <span style="font-size:12px;">至少需要 2 次不同日期的测试记录才能生成趋势对比</span>
+          </div>
+            <% } %>
+</div>
     </section>
 
     <!-- 全园体测趋势对比（范围级纵向折线图） -->
@@ -635,14 +715,14 @@
             var points = [];
             scopeItems.forEach(function(item, idx) {
               var x = padL + (scopeItems.length <= 1 ? iW / 2 : iW * idx / Math.max(1, scopeItems.length - 1));
-              if (item[m.key] != null) points.push({ x: x, y: padT + iH - (item[m.key] - yMin) / yRange * iH });
+              if (item[m.key] != null) points.push({ x: x, y: padT + iH - (item[m.key] - yMin) / yRange * iH , val: item[m.key], date: (item.testDate || '').slice(5) });
             });
             if (points.length >= 1) {
           %>
             <polyline points="<%= points.map(function(p) { return p.x.toFixed(1) + ',' + p.y.toFixed(1); }).join(' ') %>"
               fill="none" stroke="<%= m.color %>" stroke-width="2" stroke-linejoin="round"/>
             <% points.forEach(function(p) { %>
-              <circle cx="<%= p.x.toFixed(1) %>" cy="<%= p.y.toFixed(1) %>" r="3" fill="<%= m.color %>"/>
+              <circle cx="<%= p.x.toFixed(1) %>" cy="<%= p.y.toFixed(1) %>" r="6" fill="<%= m.color %>" style="cursor:pointer"><title><%= m.label %>: <%= p.val %> (日期: <%= p.date %>)</title></circle>
             <% }) %>
           <% }}) %>
         </svg>

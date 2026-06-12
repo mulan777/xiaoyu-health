@@ -220,7 +220,7 @@
       .birthday-letter-seal { width: 72px; height: 72px; font-size: 22px; }
       .birthday-letter-actions .btn { min-width: 180px; }
     }
-  </style>
+</style>
   <div class="modal-overlay birthday-letter-overlay" id="birthdayLetterOverlay">
     <div class="modal-box birthday-letter-modal" role="dialog" aria-modal="true" aria-labelledby="birthdayLetterTitle">
       <button class="modal-close birthday-letter-close" type="button" aria-label="关闭" data-birthday-close>×</button>
@@ -271,6 +271,47 @@
     })();
   </script>
 <% } %>
+
+<style>
+  /* P1-4: 冻结体测明细表前3列 — 固定宽度确保偏移精准 */
+  .data-table th:nth-child(1), .data-table td:nth-child(1) { width: 72px; min-width: 72px; max-width: 72px; }
+  .data-table th:nth-child(2), .data-table td:nth-child(2) { width: 52px; min-width: 52px; max-width: 52px; }
+  .data-table th:nth-child(3), .data-table td:nth-child(3) { width: 92px; min-width: 92px; max-width: 92px; }
+  .data-table th:nth-child(1), .data-table td:nth-child(1) { position: sticky; left: 0; }
+  .data-table th:nth-child(2), .data-table td:nth-child(2) { position: sticky; left: 72px; }
+  .data-table th:nth-child(3), .data-table td:nth-child(3) { position: sticky; left: 124px; }
+  /* 表头始终在最上层 */
+  .data-table thead th:nth-child(1),
+  .data-table thead th:nth-child(2),
+  .data-table thead th:nth-child(3) { z-index: 4; background: #f9fafb; }
+  /* 数据单元格默认背景，覆盖滚动穿透 */
+  .data-table tbody td:nth-child(1),
+  .data-table tbody td:nth-child(2),
+  .data-table tbody td:nth-child(3) { z-index: 1; background: #ffffff; }
+  /* 斑马行背景同步 */
+  .data-table tbody tr:nth-child(even) td:nth-child(1),
+  .data-table tbody tr:nth-child(even) td:nth-child(2),
+  .data-table tbody tr:nth-child(even) td:nth-child(3) { background: #f9fafb; }
+  /* 悬停行背景同步 */
+  .data-table tbody tr:hover td:nth-child(1),
+  .data-table tbody tr:hover td:nth-child(2),
+  .data-table tbody tr:hover td:nth-child(3) { background: #f3f4f6; }
+  /* dark theme */
+  @media (prefers-color-scheme: dark) {
+    .data-table thead th:nth-child(1),
+    .data-table thead th:nth-child(2),
+    .data-table thead th:nth-child(3) { background: #0f172a; }
+    .data-table tbody td:nth-child(1),
+    .data-table tbody td:nth-child(2),
+    .data-table tbody td:nth-child(3) { background: #1e293b; }
+    .data-table tbody tr:nth-child(even) td:nth-child(1),
+    .data-table tbody tr:nth-child(even) td:nth-child(2),
+    .data-table tbody tr:nth-child(even) td:nth-child(3) { background: #1a2332; }
+    .data-table tbody tr:hover td:nth-child(1),
+    .data-table tbody tr:hover td:nth-child(2),
+    .data-table tbody tr:hover td:nth-child(3) { background: #334155; }
+  }
+</style>
 
 <section class="user-fitness-layout">
   <aside class="card user-fitness-sidebar">
@@ -606,8 +647,12 @@
         </div>
       </div>
       <div class="wave-chart-wrap">
-        <%
-          var scopeItems = scopeTrendData || [];
+                  <%
+            var scopeItems = scopeTrendData || [];
+          %>
+          <% if (scopeItems.length >= 2) { %>
+          <%
+
           var GW = 760, GH = 280, gPadL = 52, gPadR = 48, gPadT = 20, gPadB = 40;
           var gIW = GW - gPadL - gPadR, gIH = GH - gPadT - gPadB;
           var hVals = scopeItems.map(function(r) { return r.heightAvg; }).filter(function(v) { return v != null; });
@@ -622,8 +667,11 @@
           var wMax = Math.max.apply(null, allWB.length ? allWB : [0]) || 30;
           var wRange = wMax - wMin || 10;
           wMin -= wRange * 0.15; wMax += wRange * 0.15; wRange = wMax - wMin;
-        %>
+                  %>
+
         <svg viewBox="0 0 <%= GW %> <%= GH %>" role="img" aria-label="班级生长趋势">
+            <text x="<%= gPadL %>" y="<%= (gPadT - 2).toFixed(1) %>" fill="#f97316" font-size="10" font-weight="600" text-anchor="start">身高 (cm)</text>
+            <text x="<%= (gPadL + gIW).toFixed(1) %>" y="<%= (gPadT - 2).toFixed(1) %>" fill="#8b5cf6" font-size="10" font-weight="600" text-anchor="end">体重/BMI</text>
           <% for (var i = 0; i <= 4; i++) { var gy = gPadT + gIH * i / 4; %>
             <line x1="<%= gPadL %>" y1="<%= gy.toFixed(1) %>" x2="<%= (gPadL + gIW).toFixed(1) %>" y2="<%= gy.toFixed(1) %>" stroke="#e2e8f0" stroke-width="1"/>
           <% } %>
@@ -653,7 +701,7 @@
                 var x = gPadL + (records.length <= 1 ? gIW / 2 : gIW * idx / Math.max(1, records.length - 1));
                 if (r[valueKey] != null) {
                   var y = gPadT + gIH - (Number(r[valueKey]) - vmin) / rng * gIH;
-                  points.push({ x: x, y: y });
+                  points.push({ x: x, y: y, tip: (r.testDate || "").slice(5) + " " + (Number(r[valueKey]).toFixed(1) || "") });
                 }
               });
               var svg = '';
@@ -661,7 +709,7 @@
                 svg += '<polyline points="' + points.map(function(p) { return p.x.toFixed(1) + ',' + p.y.toFixed(1); }).join(' ') + '" fill="none" stroke="' + color + '" stroke-width="' + width + '"';
                 if (dash) svg += ' stroke-dasharray="' + dash + '"';
                 svg += ' stroke-linejoin="round"/>';
-                points.forEach(function(p) { svg += '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="3" fill="' + color + '"/>'; });
+                points.forEach(function(p, pi) { svg += '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="6" fill="' + color + '" style="cursor:pointer"';if (p.tip) svg += '><title>' + p.tip + '</title></circle>'; else svg += '/>'; });
               }
               return svg;
             }
@@ -669,7 +717,8 @@
           <%- makeGrowthLine(scopeItems, 'heightAvg', '#f97316', 2.5, null, false) %>
           <%- makeGrowthLine(scopeItems, 'weightAvg', '#8b5cf6', 2.5, null, true) %>
           <%- makeGrowthLine(scopeItems, 'bmiAvg', '#ec4899', 2, '5,4', true) %>
-        </svg>
+
+</svg>
         <div style="display:flex;flex-wrap:wrap;gap:10px 18px;justify-content:center;margin-top:10px;">
           <span style="display:inline-flex;align-items:center;gap:4px;font-size:12px;color:#475569;">
             <span style="width:10px;height:10px;background:#f97316;border-radius:50%;"></span>身高 (cm) 左轴
@@ -680,8 +729,21 @@
           <span style="display:inline-flex;align-items:center;gap:4px;font-size:12px;color:#475569;">
             <span style="width:10px;height:10px;background:#ec4899;border-radius:50%;"></span>BMI 右轴
           </span>
+
+
         </div>
-      </div>
+      
+          <% } else { %>
+          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:280px;color:#94a3b8;background:#f8fafc;border-radius:8px;border:2px dashed #e2e8f0;">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" style="margin-bottom:12px;">
+              <path d="M3 3v18h18"/>
+              <path d="M7 16l4-8 4 4 4-6"/>
+            </svg>
+            <span style="font-size:14px;font-weight:500;margin-bottom:4px;">暂无足够数据</span>
+            <span style="font-size:12px;">至少需要 2 次不同日期的测试记录才能生成趋势对比</span>
+          </div>
+          <% } %>
+</div>
     </section>
 
     <!-- 班级体测趋势对比（范围级纵向折线图） -->
@@ -693,8 +755,12 @@
         </div>
       </div>
       <div class="wave-chart-wrap">
-        <%
-          var scopeItems2 = scopeTrendData || [];
+                  <%
+            var scopeItems2 = scopeTrendData || [];
+          %>
+          <% if (scopeItems2.length >= 2) { %>
+          <%
+
           var FW = 760, FH = 280, fPadL = 42, fPadR = 20, fPadT = 20, fPadB = 40;
           var fIW = FW - fPadL - fPadR, fIH = FH - fPadT - fPadB;
           var fitnessMetrics = [
@@ -710,7 +776,8 @@
           var fyMin = allFVals.length ? Math.min(0, Math.min.apply(null, allFVals)) : 0;
           var fyMax = allFVals.length ? Math.max(100, Math.max.apply(null, allFVals)) : 100;
           var fyRange = fyMax - fyMin || 100;
-        %>
+                  %>
+
         <svg viewBox="0 0 <%= FW %> <%= FH %>" role="img" aria-label="班级体测趋势对比">
           <% for (var i = 0; i <= 4; i++) {
             var gy = fPadT + fIH * i / 4;
@@ -733,17 +800,18 @@
             var points = [];
             scopeItems2.forEach(function(item, idx) {
               var x = fPadL + (scopeItems2.length <= 1 ? fIW / 2 : fIW * idx / Math.max(1, scopeItems2.length - 1));
-              if (item[m.key] != null) points.push({ x: x, y: fPadT + fIH - (item[m.key] - fyMin) / fyRange * fIH });
+              if (item[m.key] != null) points.push({ x: x, y: fPadT + fIH - (item[m.key] - fyMin) / fyRange * fIH , val: item[m.key], date: (item.testDate || '').slice(5) });
             });
             if (points.length >= 1) {
           %>
             <polyline points="<%= points.map(function(p) { return p.x.toFixed(1) + ',' + p.y.toFixed(1); }).join(' ') %>"
               fill="none" stroke="<%= m.color %>" stroke-width="2" stroke-linejoin="round"/>
             <% points.forEach(function(p) { %>
-              <circle cx="<%= p.x.toFixed(1) %>" cy="<%= p.y.toFixed(1) %>" r="3" fill="<%= m.color %>"/>
+              <circle cx="<%= p.x.toFixed(1) %>" cy="<%= p.y.toFixed(1) %>" r="6" fill="<%= m.color %>" style="cursor:pointer"><title><%= m.label %>: <%= p.val %> (日期: <%= p.date %>)</title></circle>
             <% }) %>
           <% }}) %>
-        </svg>
+
+</svg>
         <div style="display:flex;flex-wrap:wrap;gap:10px 18px;justify-content:center;margin-top:10px;">
           <% fitnessMetrics.forEach(function(m) { %>
             <span style="display:inline-flex;align-items:center;gap:4px;font-size:12px;color:#475569;">
@@ -751,7 +819,18 @@
             </span>
           <% }) %>
         </div>
-      </div>
+      
+          <% } else { %>
+          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:280px;color:#94a3b8;background:#f8fafc;border-radius:8px;border:2px dashed #e2e8f0;">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" style="margin-bottom:12px;">
+              <path d="M3 3v18h18"/>
+              <path d="M7 16l4-8 4 4 4-6"/>
+            </svg>
+            <span style="font-size:14px;font-weight:500;margin-bottom:4px;">暂无足够数据</span>
+            <span style="font-size:12px;">至少需要 2 次不同日期的测试记录才能生成趋势对比</span>
+          </div>
+          <% } %>
+</div>
     </section>
 
     <div id="user-record-filter-anchor" class="toolbar" style="margin:16px 0 12px; align-items:flex-start; gap:10px;">
@@ -1849,6 +1928,12 @@ function closeUserChildFitnessModal() {
     var childName = link.getAttribute('data-child-name') || '幼儿';
     if (!childId) return;
     openChildComparePanel(link, Number(childId), childName);
+  });
+  document.addEventListener('keydown', function(e) {
+    var overlay = document.getElementById('childCompareOverlay');
+    if (e.key === 'Escape' && overlay && overlay.classList.contains('is-open')) {
+      closeChildComparePanel();
+    }
   });
 })();
 </script>
