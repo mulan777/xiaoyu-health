@@ -4833,3 +4833,8 @@ body.modal-open {
 .premium-mini-pills a { display: inline-flex; align-items: center; justify-content: center; min-width: 72px; height: 38px; padding: 0 14px; border-radius: 999px; text-decoration: none; color: #0f172a; background: rgba(255,255,255,.72); border: 1px solid rgba(148,163,184,.18); font-size: 14px; font-weight: 700; box-shadow: 0 8px 20px rgba(15,23,42,.05); }
 @media (max-width: 980px) { .premium-mini-pills { justify-content: center; } }
 @media (max-width: 640px) { .premium-mini-pills { gap: 8px; } .premium-mini-pills a { height: 34px; min-width: 64px; font-size: 13px; } }
+
+
+/* ========== Hide legacy homepage metric text ========== */
+.premium-panel-metrics { display: none !important; }
+.premium-glass-panel svg { margin-bottom: 0 !important; }
