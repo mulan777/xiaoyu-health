@@ -1,30 +1,34 @@
 <%- include('partials/header') %>
 
-<section class="auth-wrapper">
-  <div class="auth-card card">
-    <div class="eyebrow">账号登录</div>
-    <h1>登录平台</h1>
-    <p>Admin 与 User 分角色登录，手机和电脑均可访问。</p>
+<section class="auth-wrapper modern-auth-wrapper">
+  <div class="auth-visual-panel" aria-hidden="true">
+    <div class="auth-orb auth-orb-blue"></div>
+    <div class="auth-orb auth-orb-orange"></div>
+    <div class="auth-chart-preview">
+      <div class="auth-chart-head"><span>今日数据工作台</span><strong>趋势已同步</strong></div>
+      <svg viewBox="0 0 360 180">
+        <path class="auth-grid" d="M24 38H336M24 78H336M24 118H336M24 158H336" />
+        <path class="auth-line auth-line-a" d="M24 140 C68 118 82 128 116 92 C152 54 186 78 220 50 C264 14 296 38 336 22" />
+        <path class="auth-line auth-line-b" d="M24 132 C70 122 92 108 126 112 C166 118 190 74 232 82 C276 90 292 58 336 48" />
+      </svg>
+      <div class="auth-preview-metrics"><span>生长趋势</span><span>体测对比</span><span>AI 报告</span></div>
+    </div>
+  </div>
 
-    <% if (error) { %>
-      <div class="alert error"><%= error %></div>
-    <% } %>
+  <div class="auth-card card modern-auth-card">
+    <div class="eyebrow">账号登录</div>
+    <h1>进入平台</h1>
+    <p>Admin 与教师端共用同一套数据能力，登录后可查看生长趋势、体测趋势和个人纵向对比。</p>
+
+    <% if (error) { %><div class="alert error"><%= error %></div><% } %>
 
     <form method="post" action="/login" class="form-grid" role="form" aria-label="登录表单">
-      <label>
-        <span>用户名</span>
-        <input type="text" name="username" placeholder="请输入用户名" required autocomplete="username" aria-label="用户名" />
-      </label>
-      <label>
-        <span>密码</span>
-        <input type="password" name="password" placeholder="请输入密码" required autocomplete="current-password" aria-label="密码" />
-      </label>
-      <button class="btn primary full" type="submit">登录</button>
+      <label><span>用户名</span><input type="text" name="username" placeholder="请输入用户名" required autocomplete="username" aria-label="用户名" /></label>
+      <label><span>密码</span><input type="password" name="password" placeholder="请输入密码" required autocomplete="current-password" aria-label="密码" /></label>
+      <button class="btn primary full" type="submit">登录数据工作台</button>
     </form>
 
-    <div class="tips compact">
-      <div>如需开通账号、重置密码或调整权限，请联系管理员处理。</div>
-    </div>
+    <div class="tips compact modern-auth-tips"><div>如需开通账号、重置密码或调整权限，请联系管理员处理。</div></div>
   </div>
 </section>
 
