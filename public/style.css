@@ -4838,3 +4838,1119 @@ body.modal-open {
 /* ========== Hide legacy homepage metric text ========== */
 .premium-panel-metrics { display: none !important; }
 .premium-glass-panel svg { margin-bottom: 0 !important; }
+
+/* ========== Luxe redesign: homepage + login ========== */
+:root {
+  --lux-bg: #f6f4ef;
+  --lux-surface: rgba(255, 255, 255, 0.76);
+  --lux-border: rgba(148, 163, 184, 0.18);
+  --lux-text: #102033;
+  --lux-muted: #5f6b7a;
+  --lux-blue: #2563eb;
+  --lux-cyan: #06b6d4;
+  --lux-coral: #fb7185;
+  --lux-gold: #f59e0b;
+  --lux-shadow: 0 24px 80px rgba(16, 32, 51, 0.12);
+}
+
+body {
+  background:
+    radial-gradient(circle at top left, rgba(37, 99, 235, 0.08), transparent 26%),
+    radial-gradient(circle at 90% 12%, rgba(251, 113, 133, 0.08), transparent 22%),
+    linear-gradient(180deg, #f7f5f1 0%, #f3f6fb 100%);
+  color: var(--lux-text);
+}
+
+.topbar {
+  background: rgba(247, 245, 241, 0.82);
+  border-bottom-color: rgba(16, 32, 51, 0.08);
+}
+
+.brand-title {
+  background: linear-gradient(135deg, #2b4cc7, #0f766e);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.nav a {
+  font-weight: 600;
+  color: #304152;
+}
+
+.nav a:hover {
+  color: var(--lux-blue);
+  background: rgba(37, 99, 235, 0.08);
+}
+
+.card {
+  background: var(--lux-surface);
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  box-shadow: var(--lux-shadow);
+  backdrop-filter: blur(22px);
+}
+
+.lux-home {
+  display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(460px, 1.08fr);
+  align-items: center;
+  gap: clamp(24px, 5vw, 72px);
+  min-height: calc(100vh - 132px);
+  padding: clamp(28px, 5vw, 72px) 0 40px;
+}
+
+.lux-home-copy h1,
+.lux-section-head h2,
+.lux-auth-story h1,
+.lux-login-card h1 {
+  margin: 10px 0 14px;
+  color: #102033;
+  letter-spacing: -0.05em;
+  line-height: 0.96;
+  font-weight: 800;
+}
+
+.lux-home-copy h1 {
+  font-size: clamp(50px, 7vw, 92px);
+  max-width: 8ch;
+}
+
+.lux-kicker,
+.lux-section-kicker,
+.lux-auth-badge,
+.lux-login-mark {
+  color: #5c6b7a;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+}
+
+.lux-home-copy p,
+.lux-section-head p,
+.lux-auth-story p,
+.lux-login-card p {
+  color: var(--lux-muted);
+  line-height: 1.7;
+  font-size: 17px;
+  max-width: 54ch;
+}
+
+.lux-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 28px;
+}
+
+.lux-btn,
+.lux-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 50px;
+  padding: 0 22px;
+  border-radius: 999px;
+  border: 0;
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 800;
+  transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
+}
+
+.lux-btn.primary,
+.lux-submit {
+  color: #fff;
+  background: linear-gradient(135deg, var(--lux-blue), var(--lux-cyan));
+  box-shadow: 0 16px 34px rgba(37, 99, 235, 0.22);
+}
+
+.lux-btn.secondary {
+  color: #102033;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid var(--lux-border);
+}
+
+.lux-btn:hover,
+.lux-submit:hover {
+  transform: translateY(-2px);
+}
+
+.lux-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.lux-tags span,
+.lux-inline-notes span,
+.lux-auth-metrics span {
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  color: #203040;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.lux-stats-row,
+.lux-capability-grid,
+.lux-auth-metrics {
+  display: grid;
+  gap: 12px;
+}
+
+.lux-stats-row {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 28px;
+}
+
+.lux-stats-row div,
+.lux-capability-grid article,
+.lux-dashboard-grid article {
+  padding: 18px 18px 16px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  box-shadow: 0 14px 30px rgba(16, 32, 51, 0.05);
+}
+
+.lux-stats-row strong,
+.lux-dashboard-grid strong {
+  display: block;
+  font-size: 28px;
+  line-height: 1;
+  color: #102033;
+}
+
+.lux-stats-row span,
+.lux-dashboard-grid span {
+  display: block;
+  margin-top: 6px;
+  color: var(--lux-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.lux-home-visual {
+  position: relative;
+  min-height: 560px;
+  display: grid;
+  place-items: center;
+}
+
+.lux-blob {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(12px);
+  pointer-events: none;
+}
+
+.blob-a { width: 360px; height: 360px; background: radial-gradient(circle, rgba(37,99,235,.24), transparent 66%); left: 4%; top: 6%; }
+.blob-b { width: 280px; height: 280px; background: radial-gradient(circle, rgba(6,182,212,.18), transparent 68%); right: 2%; bottom: 2%; }
+.blob-c { width: 220px; height: 220px; background: radial-gradient(circle, rgba(251,113,133,.14), transparent 66%); right: 24%; top: 12%; }
+
+.lux-hero-card,
+.lux-auth-board {
+  position: relative;
+  width: min(100%, 760px);
+  padding: clamp(20px, 3vw, 30px);
+  border-radius: clamp(28px, 4vw, 40px);
+  background: linear-gradient(145deg, rgba(255,255,255,.86), rgba(246,248,252,.72));
+  border: 1px solid rgba(255,255,255,.92);
+  box-shadow: 0 36px 90px rgba(16, 32, 51, .14);
+  backdrop-filter: blur(24px);
+  overflow: hidden;
+}
+
+.lux-hero-card::after,
+.lux-auth-board::after {
+  content: '';
+  position: absolute;
+  inset: auto -18% -30% 18%;
+  height: 210px;
+  background: radial-gradient(ellipse, rgba(37,99,235,.14), transparent 70%);
+  pointer-events: none;
+}
+
+.lux-card-top,
+.lux-auth-board-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  color: #5f6b7a;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+
+.lux-card-top em,
+.lux-auth-board-head strong {
+  color: var(--lux-blue);
+  font-style: normal;
+}
+
+.lux-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.lux-hero-card svg,
+.lux-auth-board svg {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.lux-inline-notes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.lux-section {
+  padding: 10px 0 56px;
+}
+
+.lux-section-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(280px, .8fr);
+  gap: 24px;
+  align-items: end;
+  margin-bottom: 18px;
+}
+
+.lux-section-head h2 {
+  font-size: clamp(28px, 4vw, 48px);
+  max-width: 12ch;
+}
+
+.lux-capability-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.lux-capability-grid article h3 {
+  margin: 0 0 8px;
+  font-size: 17px;
+  letter-spacing: -.03em;
+}
+
+.lux-capability-grid article p {
+  margin: 0;
+  color: var(--lux-muted);
+  line-height: 1.65;
+  font-size: 14px;
+}
+
+.lux-auth-shell {
+  min-height: calc(100vh - 132px);
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) 480px;
+  align-items: center;
+  gap: clamp(28px, 5vw, 72px);
+  padding: clamp(28px, 5vw, 72px) 0 40px;
+}
+
+.lux-auth-story h1 {
+  font-size: clamp(38px, 5vw, 62px);
+  max-width: 12ch;
+}
+
+.lux-auth-story p { max-width: 42ch; }
+
+.lux-auth-board { width: min(100%, 500px); margin-top: 28px; }
+.lux-auth-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 14px; }
+
+.lux-login-card {
+  max-width: 500px;
+  margin-left: auto;
+  padding: 34px;
+  border-radius: 32px;
+}
+
+.lux-login-mark { margin-bottom: 6px; color: var(--lux-blue); }
+
+.lux-login-card h1 {
+  font-size: clamp(32px, 4.8vw, 52px);
+}
+
+.lux-form { display: grid; gap: 14px; margin-top: 22px; }
+.lux-form label span { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 800; color: #203040; }
+.lux-form input {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, .18);
+  background: rgba(247, 250, 255, .9);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.82);
+}
+.lux-form input:focus {
+  border-color: rgba(37, 99, 235, .45);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, .12);
+}
+.lux-submit { width: 100%; margin-top: 4px; }
+.lux-login-tips {
+  margin-top: 16px;
+  color: #6b7280;
+  font-size: 13px;
+  line-height: 1.7;
+  text-align: center;
+}
+
+@media (max-width: 1080px) {
+  .lux-home,
+  .lux-auth-shell,
+  .lux-section-head {
+    grid-template-columns: 1fr;
+  }
+  .lux-home,
+  .lux-auth-shell {
+    min-height: auto;
+    text-align: center;
+  }
+  .lux-home-copy,
+  .lux-auth-story {
+    margin: 0 auto;
+  }
+  .lux-actions,
+  .lux-tags {
+    justify-content: center;
+  }
+  .lux-home-visual,
+  .lux-auth-board,
+  .lux-login-card {
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .lux-capability-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .lux-home,
+  .lux-auth-shell {
+    padding: 24px 0 24px;
+    gap: 22px;
+  }
+  .lux-home-copy h1 {
+    max-width: none;
+  }
+  .lux-dashboard-grid,
+  .lux-stats-row,
+  .lux-inline-notes,
+  .lux-auth-metrics,
+  .lux-capability-grid {
+    grid-template-columns: 1fr;
+  }
+  .lux-hero-card,
+  .lux-auth-board,
+  .lux-login-card {
+    border-radius: 26px;
+    padding: 20px;
+  }
+  .lux-home-visual {
+    min-height: auto;
+  }
+  .lux-home-copy p,
+  .lux-section-head p,
+  .lux-auth-story p,
+  .lux-login-card p {
+    font-size: 16px;
+  }
+}
+
+
+/* ========== Luxe V3 safety patch ========== */
+.lux-login-card, .lux-hero-card, .lux-auth-board { position: relative; }
+
+/* ========== Luxe V4: centered desktop, mobile auth polish, scroll motion ========== */
+html { --lux-scroll: 0; }
+.container:not(.admin-container) {
+  width: min(1060px, calc(100vw - 44px));
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.lux-auth-shell {
+  grid-template-columns: minmax(0, 470px) 400px !important;
+  justify-content: center !important;
+  gap: clamp(26px, 3.2vw, 44px) !important;
+  min-height: calc(100vh - 118px);
+  padding: clamp(22px, 3vw, 42px) 0 26px !important;
+}
+
+.lux-auth-shell::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 14%;
+  bottom: 16%;
+  width: 1px;
+  background: linear-gradient(180deg, transparent, rgba(37,99,235,.14), rgba(6,182,212,.08), transparent);
+  transform: translateX(-50%) translateY(calc(var(--lux-scroll) * -18px));
+  pointer-events: none;
+}
+
+.lux-auth-story {
+  max-width: 470px;
+  align-self: center;
+}
+
+.lux-auth-story h1 {
+  max-width: 12ch !important;
+  font-size: clamp(26px, 2.65vw, 36px) !important;
+  line-height: 1.1 !important;
+}
+
+.lux-auth-story p { max-width: 40ch; font-size: 14px !important; }
+.lux-auth-board { max-width: 360px !important; margin-top: 18px !important; padding: 18px !important; border-radius: 28px !important; }
+.lux-auth-board svg { max-height: 160px !important; }
+.lux-auth-metrics { gap: 8px !important; margin-top: 10px !important; }
+.lux-auth-metrics span { padding: 8px 9px !important; font-size: 11px !important; }
+
+.lux-login-card {
+  justify-self: start !important;
+  max-width: 400px !important;
+  padding: 28px !important;
+  border-radius: 30px !important;
+}
+
+.lux-login-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 16px;
+  margin-bottom: 14px;
+  background:
+    radial-gradient(circle at 35% 30%, rgba(255,255,255,.95) 0 18%, transparent 19%),
+    linear-gradient(135deg, rgba(37,99,235,.98), rgba(6,182,212,.9));
+  box-shadow: 0 16px 34px rgba(37,99,235,.22), inset 0 1px 0 rgba(255,255,255,.38);
+  position: relative;
+  overflow: hidden;
+}
+.lux-login-icon::after {
+  content: "";
+  position: absolute;
+  left: 11px;
+  right: 9px;
+  bottom: 10px;
+  height: 10px;
+  border: 2px solid rgba(255,255,255,.86);
+  border-top: 0;
+  border-left: 0;
+  border-radius: 0 0 12px 0;
+  transform: rotate(-18deg);
+}
+
+.lux-login-mark { letter-spacing: .08em !important; margin-bottom: 4px; }
+.lux-login-card .eyebrow { opacity: .72; padding-left: 0; }
+.lux-login-card h1 { font-size: clamp(27px, 2.75vw, 36px) !important; line-height: 1.06 !important; }
+.lux-login-card p { font-size: 14px !important; line-height: 1.6 !important; }
+
+/* Homepage desktop: same centered rhythm, no fake middle void */
+.lux-home {
+  grid-template-columns: minmax(0, 450px) minmax(420px, 540px) !important;
+  justify-content: center !important;
+  gap: clamp(28px, 3.8vw, 48px) !important;
+  min-height: calc(100vh - 118px) !important;
+}
+.lux-home-copy h1 { max-width: 9.4ch !important; font-size: clamp(38px, 4.45vw, 58px) !important; }
+.lux-hero-card { max-width: 540px !important; }
+.lux-home-visual { min-height: 440px !important; }
+
+/* Scroll-responsive polish */
+.lux-auth-board,
+.lux-hero-card {
+  transform: translate3d(var(--lux-x, 0px), calc(var(--lux-y, 0px) + var(--lux-scroll) * -18px), 0) !important;
+}
+.lux-login-card {
+  transform: translate3d(var(--lux-x, 0px), calc(var(--lux-y, 0px) + var(--lux-scroll) * -8px), 0) !important;
+}
+.lux-auth-story,
+.lux-home-copy {
+  transform: translateY(calc(var(--lux-scroll) * 10px));
+}
+
+@media (max-width: 980px) {
+  .container:not(.admin-container) { width: min(720px, calc(100vw - 32px)); }
+  .lux-auth-shell::before { display: none; }
+  .lux-auth-shell,
+  .lux-home {
+    grid-template-columns: 1fr !important;
+    justify-content: stretch !important;
+    gap: 20px !important;
+    min-height: auto !important;
+  }
+  .lux-login-card,
+  .lux-auth-story,
+  .lux-auth-board,
+  .lux-home-copy,
+  .lux-hero-card {
+    max-width: none !important;
+    width: 100% !important;
+    justify-self: stretch !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .topbar { padding: 9px 12px !important; }
+  .brand-logo { width: 30px !important; height: 30px !important; border-radius: 11px !important; }
+  .brand-title { font-size: 15px !important; }
+  .nav a { padding: 6px 8px !important; font-size: 12px !important; }
+  .container:not(.admin-container) { width: min(100% - 20px, 430px); padding-top: 10px !important; }
+
+  .lux-auth-shell {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    padding: 10px 0 22px !important;
+  }
+  .lux-login-card {
+    order: 1;
+    padding: 20px !important;
+    border-radius: 24px !important;
+  }
+  .lux-login-icon {
+    display: block;
+    width: 42px;
+    height: 42px;
+    margin-bottom: 12px;
+  }
+  .lux-login-mark { font-size: 10px !important; margin-bottom: 2px !important; }
+  .lux-login-card .eyebrow { display: none !important; }
+  .lux-login-card h1 { font-size: clamp(24px, 7.2vw, 30px) !important; margin: 4px 0 8px !important; }
+  .lux-login-card p { font-size: 12.5px !important; line-height: 1.55 !important; margin-bottom: 12px; }
+  .lux-form { gap: 10px !important; margin-top: 12px !important; }
+  .lux-form label span { font-size: 12px !important; margin-bottom: 5px !important; }
+  .lux-form input { min-height: 43px !important; padding: 10px 12px !important; border-radius: 14px !important; }
+  .lux-submit { min-height: 44px !important; }
+  .lux-login-tips { font-size: 11.5px !important; margin-top: 10px !important; }
+
+  .lux-auth-story {
+    order: 2;
+    padding: 0 !important;
+  }
+  .lux-auth-badge,
+  .lux-auth-story h1,
+  .lux-auth-story > p { display: none !important; }
+  .lux-auth-board {
+    display: block !important;
+    margin-top: 0 !important;
+    padding: 14px !important;
+    border-radius: 22px !important;
+  }
+  .lux-auth-board svg { max-height: 126px !important; }
+  .lux-auth-board-head { margin-bottom: 5px !important; font-size: 10px !important; letter-spacing: .1em !important; }
+  .lux-auth-metrics { grid-template-columns: repeat(3, 1fr) !important; gap: 6px !important; margin-top: 8px !important; }
+  .lux-auth-metrics span { padding: 7px 3px !important; font-size: 10px !important; text-align: center; }
+
+  .lux-home { padding-top: 12px !important; }
+  .lux-home-copy h1 { max-width: 9.2ch !important; font-size: clamp(31px, 9.2vw, 40px) !important; }
+  .lux-home-copy p { font-size: 13px !important; }
+  .lux-actions { grid-template-columns: 1fr 1fr !important; gap: 9px !important; }
+  .lux-tags { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
+  .lux-stats-row { grid-template-columns: repeat(3, 1fr) !important; gap: 7px !important; }
+  .lux-stats-row div { padding: 10px 6px !important; text-align: center; }
+  .lux-stats-row strong { font-size: 18px !important; }
+  .lux-stats-row span { font-size: 10px !important; }
+  .lux-hero-card { padding: 14px !important; border-radius: 22px !important; }
+  .lux-dashboard-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 6px !important; }
+  .lux-dashboard-grid article { padding: 9px 5px !important; text-align: center; }
+  .lux-dashboard-grid strong { font-size: 17px !important; }
+  .lux-dashboard-grid span { font-size: 10px !important; }
+  .lux-hero-card svg { max-height: 176px !important; }
+}
+
+@media (max-width: 420px) {
+  .brand-title { max-width: 7.5em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lux-stats-row,
+  .lux-dashboard-grid { grid-template-columns: 1fr !important; }
+  .lux-actions,
+  .lux-tags { grid-template-columns: 1fr !important; }
+}
+
+/* ========== Luxe V5: no parallax, clean homepage copy, numeric/status motion only ========== */
+.brand { cursor: pointer; text-decoration: none; }
+.brand:hover .brand-title { filter: brightness(1.08); }
+
+.lux-actions { grid-template-columns: auto !important; }
+.lux-actions .lux-btn.primary { min-width: 132px; }
+.lux-section-head h2 {
+  font-size: clamp(24px, 3vw, 36px) !important;
+  line-height: 1.16 !important;
+  letter-spacing: -0.035em !important;
+  max-width: 15ch !important;
+}
+.lux-section { padding-top: 0 !important; }
+
+.lux-auth-board,
+.lux-hero-card,
+.lux-login-card,
+.lux-auth-story,
+.lux-home-copy,
+[data-lux-parallax] {
+  transform: none !important;
+  transition-property: opacity, box-shadow, border-color, background !important;
+}
+.lux-auth-shell::before { transform: translateX(-50%) !important; }
+.lux-blob { animation: none !important; opacity: .55; }
+.lux-login-card::after,
+.lux-hero-card::before,
+.lux-auth-board::before { display: none !important; }
+.lux-submit,
+.lux-btn.primary { animation: none !important; }
+
+@keyframes luxNumberLift {
+  0%, 100% { opacity: .96; filter: brightness(1); }
+  50% { opacity: 1; filter: brightness(1.15); }
+}
+@keyframes luxStatusBlink {
+  0%, 100% { opacity: .78; box-shadow: 0 0 0 0 rgba(34,197,94,.18); }
+  50% { opacity: 1; box-shadow: 0 0 0 7px rgba(34,197,94,0); }
+}
+@keyframes luxDashFlow {
+  from { stroke-dashoffset: 24; }
+  to { stroke-dashoffset: 0; }
+}
+
+.lux-dashboard-grid strong,
+.lux-stats-row strong {
+  animation: luxNumberLift 3.4s ease-in-out infinite;
+}
+.lux-dashboard-grid article:nth-child(2) strong,
+.lux-stats-row div:nth-child(2) strong { animation-delay: .45s; }
+.lux-dashboard-grid article:nth-child(3) strong,
+.lux-stats-row div:nth-child(3) strong { animation-delay: .9s; }
+.lux-card-top em::before,
+.lux-auth-board-head strong::before {
+  animation: luxStatusBlink 1.9s ease-in-out infinite !important;
+}
+.lux-hero-card svg path[stroke="url(#luxWarm)"],
+.lux-auth-board svg path[stroke="url(#authCoral)"] {
+  animation: luxDashFlow 1.8s linear infinite !important;
+}
+
+@media (max-width: 720px) {
+  .lux-section-head h2 { font-size: clamp(22px, 6.4vw, 28px) !important; max-width: none !important; }
+  .lux-actions { display: block !important; }
+  .lux-actions .lux-btn.primary { width: 100%; }
+}
+
+/* ========== Luxe V6: mobile homepage compact + Safari safe area ========== */
+@media (max-width: 720px) {
+  html, body { overflow-x: hidden; }
+  body { padding-bottom: env(safe-area-inset-bottom, 0); }
+  .container:not(.admin-container) {
+    width: min(100% - 22px, 420px) !important;
+    padding-top: 8px !important;
+    padding-bottom: calc(92px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .topbar {
+    min-height: 56px !important;
+    padding: 8px 12px !important;
+  }
+  .brand { gap: 8px !important; min-width: 0; }
+  .brand-logo { width: 30px !important; height: 30px !important; }
+  .brand-title { font-size: 15px !important; max-width: 8em; }
+  .nav { gap: 4px !important; }
+  .nav a {
+    font-size: 12px !important;
+    padding: 6px 8px !important;
+    border-radius: 999px !important;
+  }
+  .nav a[href="/login"] {
+    color: #fff !important;
+    background: linear-gradient(135deg, #2563eb, #06b6d4) !important;
+    box-shadow: 0 8px 18px rgba(37,99,235,.18);
+  }
+
+  .lux-home {
+    padding: 18px 0 18px !important;
+    gap: 14px !important;
+    text-align: center !important;
+  }
+  .lux-kicker {
+    font-size: 11px !important;
+    letter-spacing: .18em !important;
+    margin-bottom: 8px !important;
+  }
+  .lux-home-copy h1 {
+    max-width: none !important;
+    font-size: clamp(35px, 10vw, 44px) !important;
+    line-height: 1.02 !important;
+    margin: 4px 0 10px !important;
+    letter-spacing: -0.055em !important;
+  }
+  .lux-home-copy p {
+    max-width: 29em !important;
+    margin: 0 auto !important;
+    font-size: 13px !important;
+    line-height: 1.65 !important;
+  }
+  .lux-actions {
+    margin-top: 18px !important;
+    display: block !important;
+  }
+  .lux-actions .lux-btn.primary {
+    width: 100% !important;
+    min-height: 50px !important;
+    border-radius: 24px !important;
+    font-size: 15px !important;
+    box-shadow: 0 12px 26px rgba(37,99,235,.20) !important;
+  }
+
+  .lux-tags {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 9px !important;
+    margin-top: 18px !important;
+  }
+  .lux-tags span {
+    width: 100% !important;
+    min-height: 42px !important;
+    padding: 0 10px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 18px !important;
+    font-size: 13px !important;
+    box-shadow: 0 8px 18px rgba(16,32,51,.045) !important;
+  }
+
+  .lux-stats-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    margin-top: 16px !important;
+  }
+  .lux-stats-row div {
+    min-width: 0 !important;
+    padding: 12px 6px !important;
+    border-radius: 18px !important;
+    box-shadow: 0 8px 18px rgba(16,32,51,.045) !important;
+  }
+  .lux-stats-row strong { font-size: 20px !important; }
+  .lux-stats-row span {
+    margin-top: 5px !important;
+    font-size: 10px !important;
+    line-height: 1.25 !important;
+  }
+
+  .lux-home-visual { min-height: auto !important; margin-top: 8px !important; }
+  .lux-hero-card {
+    padding: 16px 14px 18px !important;
+    border-radius: 24px !important;
+    box-shadow: 0 18px 46px rgba(16,32,51,.10) !important;
+  }
+  .lux-card-top {
+    margin-bottom: 12px !important;
+    font-size: 10px !important;
+    letter-spacing: .28em !important;
+  }
+  .lux-dashboard-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    margin-bottom: 6px !important;
+  }
+  .lux-dashboard-grid article {
+    padding: 11px 4px !important;
+    border-radius: 18px !important;
+  }
+  .lux-dashboard-grid strong { font-size: 19px !important; }
+  .lux-dashboard-grid span { font-size: 10px !important; line-height: 1.2 !important; }
+  .lux-hero-card svg {
+    height: 210px !important;
+    max-height: 210px !important;
+    margin-top: 2px !important;
+  }
+  .lux-inline-notes {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 7px !important;
+    margin-top: 8px !important;
+  }
+  .lux-inline-notes span {
+    font-size: 10px !important;
+    padding: 7px 2px !important;
+  }
+
+  .lux-section {
+    padding-bottom: calc(110px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+@media (max-width: 390px) {
+  .lux-home-copy h1 { font-size: clamp(32px, 9.5vw, 38px) !important; }
+  .lux-home-copy p { font-size: 12.5px !important; }
+  .lux-dashboard-grid,
+  .lux-stats-row { gap: 6px !important; }
+  .lux-dashboard-grid strong,
+  .lux-stats-row strong { font-size: 17px !important; }
+}
+
+/* ========== Luxe V7: clean mobile + CSS-only repeated number/curve motion ========== */
+@keyframes luxMetricBreatheV7 {
+  0%, 100% { transform: translateY(0) scale(1); color: #102033; filter: brightness(1); }
+  40% { transform: translateY(-2px) scale(1.035); color: #2563eb; filter: brightness(1.12); }
+  70% { transform: translateY(0) scale(1); color: #0f766e; filter: brightness(1.04); }
+}
+@keyframes luxCurveRunV7 {
+  0% { stroke-dashoffset: 0; filter: drop-shadow(0 0 0 rgba(37,99,235,0)); }
+  50% { stroke-dashoffset: -42; filter: drop-shadow(0 0 8px rgba(37,99,235,.22)); }
+  100% { stroke-dashoffset: -84; filter: drop-shadow(0 0 0 rgba(37,99,235,0)); }
+}
+@keyframes luxCurveDashV7 {
+  from { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: -48; }
+}
+@keyframes luxPointPulseV7 {
+  0%,100% { r: 8; opacity: .9; }
+  50% { r: 10; opacity: 1; }
+}
+
+.lux-dashboard-grid strong,
+.lux-stats-row strong,
+.lux-auth-board-head strong {
+  display: inline-block;
+  animation: luxMetricBreatheV7 3.2s ease-in-out infinite !important;
+}
+.lux-dashboard-grid article:nth-child(2) strong,
+.lux-stats-row div:nth-child(2) strong { animation-delay: .45s !important; }
+.lux-dashboard-grid article:nth-child(3) strong,
+.lux-stats-row div:nth-child(3) strong { animation-delay: .9s !important; }
+
+.lux-hero-card svg path[stroke="url(#luxBlue)"],
+.lux-auth-board svg path[stroke="url(#authBlue)"] {
+  stroke-dasharray: 28 10 120 10 !important;
+  animation: luxCurveRunV7 3.6s linear infinite !important;
+}
+.lux-hero-card svg path[stroke="url(#luxWarm)"],
+.lux-auth-board svg path[stroke="url(#authCoral)"] {
+  stroke-dasharray: 10 12 !important;
+  animation: luxCurveDashV7 2.2s linear infinite !important;
+}
+.lux-hero-card svg circle,
+.lux-auth-board svg circle {
+  animation: luxPointPulseV7 2.4s ease-in-out infinite !important;
+}
+
+.lux-login-icon { display: none !important; }
+
+@media (max-width: 720px) {
+  /* Mobile homepage: stop cramming many boxes into one screen */
+  .lux-home {
+    text-align: center !important;
+    padding-top: 14px !important;
+    gap: 12px !important;
+  }
+  .lux-home-copy,
+  .lux-home-copy h1,
+  .lux-home-copy p {
+    text-align: center !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+  .lux-home-copy h1 {
+    width: 100% !important;
+    max-width: none !important;
+    font-size: clamp(34px, 9.4vw, 42px) !important;
+    line-height: 1.05 !important;
+  }
+  .lux-kicker { text-align: center !important; }
+  .lux-tags,
+  .lux-stats-row {
+    display: none !important;
+  }
+  .lux-actions { margin-top: 16px !important; }
+  .lux-actions .lux-btn.primary {
+    max-width: 320px !important;
+    margin: 0 auto !important;
+  }
+
+  .lux-home-visual { margin-top: 14px !important; }
+  .lux-hero-card {
+    padding: 15px !important;
+    border-radius: 24px !important;
+  }
+  .lux-dashboard-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+  }
+  .lux-dashboard-grid article {
+    padding: 10px 4px !important;
+    box-shadow: none !important;
+    background: rgba(255,255,255,.62) !important;
+  }
+  .lux-dashboard-grid strong { font-size: 20px !important; }
+  .lux-dashboard-grid span { font-size: 10px !important; }
+  .lux-hero-card svg {
+    height: 190px !important;
+    max-height: 190px !important;
+  }
+  .lux-inline-notes { display: none !important; }
+
+  /* Mobile login: remove decorative icon, keep chart motion as the visual interest */
+  .lux-login-card { padding-top: 20px !important; }
+  .lux-login-mark { text-align: left !important; }
+  .lux-auth-board {
+    display: block !important;
+    padding: 14px !important;
+  }
+  .lux-auth-board svg {
+    height: 126px !important;
+    max-height: 126px !important;
+  }
+}
+
+/* ========== Luxe V8: cleaner mobile login vertical rhythm ========== */
+@media (max-width: 720px) {
+  .lux-auth-shell {
+    padding-top: clamp(44px, 13vh, 82px) !important;
+  }
+  .lux-login-card {
+    padding: 24px 20px 22px !important;
+  }
+  .lux-login-card h1 {
+    margin: 8px 0 18px !important;
+  }
+  .lux-form {
+    margin-top: 0 !important;
+  }
+  .lux-auth-story {
+    margin-top: 12px !important;
+  }
+}
+
+/* ========== Luxe V9: restore desktop login presence + add auth stats ========== */
+.lux-auth-shell {
+  grid-template-columns: minmax(0, 540px) 470px !important;
+  gap: clamp(38px, 5vw, 76px) !important;
+  min-height: calc(100vh - 104px) !important;
+  padding: clamp(44px, 5vw, 74px) 0 44px !important;
+}
+.lux-auth-story { max-width: 540px !important; }
+.lux-auth-story h1 {
+  max-width: 12.6ch !important;
+  font-size: clamp(34px, 3.6vw, 54px) !important;
+  line-height: 1.03 !important;
+}
+.lux-auth-board {
+  max-width: 500px !important;
+  padding: 24px !important;
+  border-radius: 34px !important;
+  margin-top: 24px !important;
+}
+.lux-auth-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 12px 0 8px;
+}
+.lux-auth-stats article {
+  padding: 14px 12px;
+  border-radius: 18px;
+  background: rgba(255,255,255,.68);
+  border: 1px solid rgba(148,163,184,.14);
+  box-shadow: 0 10px 24px rgba(16,32,51,.045);
+}
+.lux-auth-stats strong {
+  display: block;
+  font-size: 24px;
+  line-height: 1;
+  color: #102033;
+  animation: luxMetricBreatheV7 3.2s ease-in-out infinite !important;
+}
+.lux-auth-stats article:nth-child(2) strong { animation-delay: .45s !important; }
+.lux-auth-stats article:nth-child(3) strong { animation-delay: .9s !important; }
+.lux-auth-stats span {
+  display: block;
+  margin-top: 6px;
+  color: #5f6b7a;
+  font-size: 11px;
+  font-weight: 800;
+}
+.lux-auth-board svg { max-height: 190px !important; }
+.lux-login-card {
+  max-width: 470px !important;
+  padding: 38px 40px !important;
+  border-radius: 34px !important;
+}
+.lux-login-card h1 {
+  font-size: clamp(36px, 3.4vw, 50px) !important;
+  margin: 8px 0 22px !important;
+}
+.lux-form { gap: 18px !important; margin-top: 0 !important; }
+.lux-form input {
+  min-height: 52px !important;
+  border-radius: 18px !important;
+}
+.lux-submit { min-height: 56px !important; margin-top: 6px !important; }
+
+@media (max-width: 980px) {
+  .lux-auth-shell {
+    grid-template-columns: 1fr !important;
+    min-height: auto !important;
+    padding: 22px 0 28px !important;
+  }
+  .lux-auth-story h1 { font-size: clamp(28px, 7vw, 42px) !important; }
+  .lux-auth-board,
+  .lux-login-card { max-width: none !important; }
+}
+
+@media (max-width: 720px) {
+  .lux-auth-shell { padding-top: clamp(44px, 13vh, 82px) !important; }
+  .lux-login-card {
+    max-width: none !important;
+    padding: 24px 20px 22px !important;
+    border-radius: 24px !important;
+  }
+  .lux-login-card h1 {
+    font-size: clamp(24px, 7.2vw, 30px) !important;
+    margin: 8px 0 18px !important;
+  }
+  .lux-form { gap: 10px !important; }
+  .lux-form input { min-height: 43px !important; border-radius: 14px !important; }
+  .lux-submit { min-height: 44px !important; }
+  .lux-auth-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    margin: 8px 0 4px;
+  }
+  .lux-auth-stats article {
+    padding: 9px 4px;
+    border-radius: 14px;
+    box-shadow: none;
+  }
+  .lux-auth-stats strong { font-size: 16px; }
+  .lux-auth-stats span { font-size: 9px; line-height: 1.2; }
+}
+
+/* ========== Luxe V10: desktop auth headline smaller + mobile gap trim ========== */
+@media (min-width: 981px) {
+  .lux-auth-story h1 {
+    font-size: clamp(28px, 2.8vw, 42px) !important;
+    line-height: 1.08 !important;
+    max-width: 12.8ch !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .lux-auth-shell {
+    padding-top: clamp(20px, 6vh, 38px) !important;
+    gap: 8px !important;
+  }
+  .lux-auth-story {
+    margin-top: 4px !important;
+  }
+  .lux-auth-board {
+    margin-top: 0 !important;
+  }
+}

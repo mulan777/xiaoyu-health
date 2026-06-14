@@ -1,35 +1,68 @@
 <%- include('partials/header') %>
 
-<section class="auth-wrapper modern-auth-wrapper">
-  <div class="auth-visual-panel" aria-hidden="true">
-    <div class="auth-orb auth-orb-blue"></div>
-    <div class="auth-orb auth-orb-orange"></div>
-    <div class="auth-chart-preview">
-      <div class="auth-chart-head"><span>今日数据工作台</span><strong>趋势已同步</strong></div>
-      <svg viewBox="0 0 360 180">
-        <path class="auth-grid" d="M24 38H336M24 78H336M24 118H336M24 158H336" />
-        <path class="auth-line auth-line-a" d="M24 140 C68 118 82 128 116 92 C152 54 186 78 220 50 C264 14 296 38 336 22" />
-        <path class="auth-line auth-line-b" d="M24 132 C70 122 92 108 126 112 C166 118 190 74 232 82 C276 90 292 58 336 48" />
+<section class="lux-auth-shell">
+  <div class="lux-auth-story" aria-hidden="true">
+    <div class="lux-auth-badge">Daily Sync · 18:30</div>
+    <h1>今天的数据，已经整理成清晰工作台。</h1>
+
+    <div class="lux-auth-board">
+      <div class="lux-auth-board-head">
+        <span>今日数据</span>
+        <strong>已同步</strong>
+      </div>
+      <div class="lux-auth-stats" aria-label="登录页核心指标">
+        <article><strong>93%</strong><span>出勤覆盖</span></article>
+        <article><strong>128</strong><span>今日体测任务</span></article>
+        <article><strong>AI</strong><span>趋势洞察</span></article>
+      </div>
+      <svg viewBox="0 0 420 210" role="img" aria-label="登录页数据趋势">
+        <defs>
+          <linearGradient id="authBlue" x1="0" x2="1" y1="0" y2="0">
+            <stop offset="0" stop-color="#2563eb" />
+            <stop offset="1" stop-color="#06b6d4" />
+          </linearGradient>
+          <linearGradient id="authCoral" x1="0" x2="1" y1="0" y2="0">
+            <stop offset="0" stop-color="#fb7185" />
+            <stop offset="1" stop-color="#f59e0b" />
+          </linearGradient>
+        </defs>
+        <g stroke="#94a3b8" stroke-width="1" opacity=".2">
+          <line x1="28" y1="42" x2="392" y2="42" />
+          <line x1="28" y1="86" x2="392" y2="86" />
+          <line x1="28" y1="130" x2="392" y2="130" />
+          <line x1="28" y1="174" x2="392" y2="174" />
+        </g>
+        <path d="M30 168 C78 132 104 154 146 106 C188 58 220 94 262 66 C314 30 350 54 390 34" fill="none" stroke="url(#authBlue)" stroke-width="7" stroke-linecap="round" />
+        <path d="M30 154 C80 142 112 120 154 128 C204 138 226 88 274 96 C326 104 350 72 390 62" fill="none" stroke="url(#authCoral)" stroke-width="5" stroke-linecap="round" stroke-dasharray="10 10" />
       </svg>
-      <div class="auth-preview-metrics"><span>生长趋势</span><span>体测对比</span><span>AI 报告</span></div>
+      <div class="lux-auth-metrics">
+        <span>生长趋势</span>
+        <span>体测对比</span>
+        <span>AI 报告</span>
+      </div>
     </div>
   </div>
 
-  <div class="auth-card card modern-auth-card">
+  <div class="lux-login-card card">
+    <div class="lux-login-mark">小鱼健康平台</div>
     <div class="eyebrow">账号登录</div>
-    <h1>进入平台</h1>
-    <p>Admin 与教师端共用同一套数据能力，登录后可查看生长趋势、体测趋势和个人纵向对比。</p>
-
+    <h1>进入数据工作台</h1>
     <% if (error) { %><div class="alert error"><%= error %></div><% } %>
 
-    <form method="post" action="/login" class="form-grid" role="form" aria-label="登录表单">
-      <label><span>用户名</span><input type="text" name="username" placeholder="请输入用户名" required autocomplete="username" aria-label="用户名" /></label>
-      <label><span>密码</span><input type="password" name="password" placeholder="请输入密码" required autocomplete="current-password" aria-label="密码" /></label>
-      <button class="btn primary full" type="submit">登录数据工作台</button>
+    <form method="post" action="/login" class="lux-form" role="form" aria-label="登录表单">
+      <label>
+        <span>用户名</span>
+        <input type="text" name="username" placeholder="请输入用户名" required autocomplete="username" aria-label="用户名" />
+      </label>
+      <label>
+        <span>密码</span>
+        <input type="password" name="password" placeholder="请输入密码" required autocomplete="current-password" aria-label="密码" />
+      </label>
+      <button class="lux-submit" type="submit">登录数据工作台</button>
     </form>
 
-    <div class="tips compact modern-auth-tips"><div>如需开通账号、重置密码或调整权限，请联系管理员处理。</div></div>
   </div>
 </section>
+
 
 <%- include('partials/footer') %>

@@ -1,48 +1,130 @@
 <%- include('partials/header') %>
 
-<section class="premium-home">
-  <div class="premium-hero">
-    <div class="premium-kicker"><%= settings.subtitle || '幼儿园体适能教研平台' %></div>
+<section class="lux-home">
+  <div class="lux-home-copy">
+    <div class="lux-kicker"><%= settings.subtitle || '幼儿园体适能教研平台' %></div>
     <h1><%= settings.heroTitle || settings.siteName %></h1>
-    <p>体测、生长、预约与 AI 分析，一站式完成。</p>
-    <div class="premium-actions">
-      <a class="premium-btn primary" href="/login">进入平台</a>
-      <a class="premium-btn ghost" href="#capabilities">查看能力</a>
+    <p><%= settings.heroDesc || '体测、生长、预约与 AI 分析，一站式完成。' %></p>
+
+    <div class="lux-actions">
+      <a class="lux-btn primary" href="/login">进入平台</a>
     </div>
-    <div class="premium-mini-pills" aria-label="平台功能入口">
-      <a href="/login">体测</a>
-      <a href="/login">成长</a>
-      <a href="/login">预约</a>
-      <a href="/login">AI</a>
+
+    <div class="lux-tags">
+      <span>体测管理</span>
+      <span>成长档案</span>
+      <span>预约排班</span>
+      <span>AI 分析</span>
+    </div>
+
+    <div class="lux-stats-row" aria-label="平台核心指标">
+      <div>
+        <strong>3+1</strong>
+        <span>教师、园所、家长协同</span>
+      </div>
+      <div>
+        <strong>实时</strong>
+        <span>体测与成长数据同步</span>
+      </div>
+      <div>
+        <strong>AI</strong>
+        <span>自动生成分析与建议</span>
+      </div>
     </div>
   </div>
 
-  <div class="premium-visual" aria-label="平台能力视觉预览">
-    <div class="premium-orb orb-a"></div>
-    <div class="premium-orb orb-b"></div>
-    <div class="premium-orb orb-c"></div>
-    <div class="premium-glass-panel">
-      <div class="premium-panel-top">
+  <div class="lux-home-visual">
+    <div class="lux-blob blob-a"></div>
+    <div class="lux-blob blob-b"></div>
+    <div class="lux-blob blob-c"></div>
+    <div class="lux-hero-card">
+      <div class="lux-card-top">
         <span>Health Intelligence</span>
-        <i></i>
+        <em>Live</em>
+      </div>
+      <div class="lux-dashboard-grid">
+        <article>
+          <strong>93%</strong>
+          <span>出勤覆盖</span>
+        </article>
+        <article>
+          <strong>128</strong>
+          <span>今日体测任务</span>
+        </article>
+        <article>
+          <strong>AI</strong>
+          <span>趋势洞察</span>
+        </article>
       </div>
       <svg viewBox="0 0 760 360" role="img" aria-label="平台趋势视觉">
         <defs>
-          <linearGradient id="premiumBlue" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#60a5fa"/><stop offset="1" stop-color="#22d3ee"/></linearGradient>
-          <linearGradient id="premiumPurple" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#a78bfa"/><stop offset="1" stop-color="#60a5fa"/></linearGradient>
-          <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          <linearGradient id="luxBlue" x1="0" x2="1" y1="0" y2="0">
+            <stop offset="0" stop-color="#2563eb" />
+            <stop offset="1" stop-color="#06b6d4" />
+          </linearGradient>
+          <linearGradient id="luxWarm" x1="0" x2="1" y1="0" y2="0">
+            <stop offset="0" stop-color="#fb7185" />
+            <stop offset="1" stop-color="#f59e0b" />
+          </linearGradient>
+          <filter id="luxGlow" x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur stdDeviation="6" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
         </defs>
-        <g opacity=".34" stroke="#94a3b8" stroke-width="1">
-          <line x1="64" y1="72" x2="700" y2="72"/><line x1="64" y1="144" x2="700" y2="144"/><line x1="64" y1="216" x2="700" y2="216"/><line x1="64" y1="288" x2="700" y2="288"/>
+        <g opacity=".22" stroke="#94a3b8" stroke-width="1">
+          <line x1="60" y1="64" x2="704" y2="64" />
+          <line x1="60" y1="128" x2="704" y2="128" />
+          <line x1="60" y1="192" x2="704" y2="192" />
+          <line x1="60" y1="256" x2="704" y2="256" />
         </g>
-        <path d="M66 276 C142 224 190 244 258 194 C334 138 392 160 466 108 C548 50 612 80 700 44" fill="none" stroke="url(#premiumBlue)" stroke-width="8" stroke-linecap="round" filter="url(#softGlow)"/>
-        <path d="M66 292 C150 260 202 258 274 226 C348 192 414 210 492 162 C572 112 632 126 700 92" fill="none" stroke="url(#premiumPurple)" stroke-width="6" stroke-linecap="round" stroke-dasharray="14 14" opacity=".9"/>
-        <g fill="#fff" stroke="#3b82f6" stroke-width="5">
-          <circle cx="258" cy="194" r="8"/><circle cx="466" cy="108" r="8"/><circle cx="700" cy="44" r="8"/>
+        <path d="M64 272 C132 232 186 238 250 188 C320 134 386 160 456 114 C540 58 616 74 702 42" fill="none" stroke="url(#luxBlue)" stroke-width="9" stroke-linecap="round" filter="url(#luxGlow)" />
+        <path d="M64 292 C144 256 200 258 274 226 C346 196 414 214 494 166 C570 120 628 126 702 96" fill="none" stroke="url(#luxWarm)" stroke-width="6" stroke-linecap="round" stroke-dasharray="12 12" opacity=".95" />
+        <g fill="#fff" stroke="#2563eb" stroke-width="5">
+          <circle cx="250" cy="188" r="8" />
+          <circle cx="456" cy="114" r="8" />
+          <circle cx="702" cy="42" r="8" />
         </g>
       </svg>
+      <div class="lux-inline-notes">
+        <span>体测</span>
+        <span>成长曲线</span>
+        <span>AI 报告</span>
+      </div>
     </div>
   </div>
 </section>
+
+<section id="capabilities" class="lux-section">
+  <div class="lux-section-head">
+    <div>
+      <span class="lux-section-kicker">核心能力</span>
+      <h2>围绕幼儿体适能的四个工作场景</h2>
+    </div>
+    <p>围绕体测、成长、预约和分析四个核心动作，把园所日常运营收拢到同一个系统里。</p>
+  </div>
+
+  <div class="lux-capability-grid">
+    <article>
+      <h3>体测管理</h3>
+      <p>支持测试安排、数据录入、成绩汇总与班级对比。</p>
+    </article>
+    <article>
+      <h3>成长档案</h3>
+      <p>沉淀每位孩子的纵向变化，形成可追踪的成长视图。</p>
+    </article>
+    <article>
+      <h3>预约排班</h3>
+      <p>把活动、场地和教师资源组织成更顺滑的排课流程。</p>
+    </article>
+    <article>
+      <h3>AI 分析</h3>
+      <p>自动生成趋势洞察、风险提醒与可读性更高的报告。</p>
+    </article>
+  </div>
+</section>
+
 
 <%- include('partials/footer') %>

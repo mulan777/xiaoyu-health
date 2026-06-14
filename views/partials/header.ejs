@@ -37,13 +37,13 @@
 </head>
 <body class="<%= typeof pageClass !== 'undefined' ? pageClass : '' %>">
   <header class="topbar">
-    <div class="brand">
+    <a class="brand" href="/" aria-label="返回首页">
       <div class="brand-logo"><img src="/static/site-logo-sm.jpg?v=20260613b" alt="<%= settings.siteName || '小鱼健康平台' %>" /></div>
       <div>
         <div class="brand-title"><%= settings.siteName || '小鱼健康平台' %></div>
         <div class="brand-subtitle"><%= settings.subtitle || '' %></div>
       </div>
-    </div>
+    </a>
     <nav class="nav">
       <% if (!currentUser) { %>
         <a href="/">首页</a>
