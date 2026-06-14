@@ -1,69 +1,37 @@
 <%- include('partials/header') %>
 
-<% const ft = content.features || []; %>
-
-<section class="apple-hero data-hero clean-home-hero">
-  <div class="data-hero-grid">
-    <div class="data-hero-copy clean-hero-copy">
-      <div class="apple-eyebrow"><%= settings.subtitle || '教研管理平台' %></div>
-      <h1 class="apple-hero-title"><%= settings.heroTitle || settings.siteName %></h1>
-      <div class="apple-hero-actions data-hero-actions">
-        <a class="apple-btn apple-btn-primary" href="/login">进入平台</a>
-        <a class="apple-btn apple-btn-secondary" href="#fitness-preview">趋势看板</a>
-      </div>
-    </div>
-    <div class="hero-chart-card clean-chart-card" aria-label="平台趋势能力预览">
-      <div class="hero-chart-topline">
-        <div><span class="apple-section-kicker">Growth Trend</span><h2>生长 · 体测 · 对比</h2></div>
-        <span class="hero-live-pill">LIVE</span>
-      </div>
-      <svg class="hero-trend-svg clean-trend-svg" viewBox="0 0 640 330" role="img" aria-label="趋势示意图">
-        <defs>
-          <linearGradient id="cleanAreaBlue" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#3b82f6" stop-opacity=".22" /><stop offset="1" stop-color="#3b82f6" stop-opacity="0" /></linearGradient>
-          <linearGradient id="cleanAreaCyan" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#06b6d4" stop-opacity=".16" /><stop offset="1" stop-color="#06b6d4" stop-opacity="0" /></linearGradient>
-        </defs>
-        <g class="hero-grid-lines"><line x1="52" y1="58" x2="590" y2="58" /><line x1="52" y1="116" x2="590" y2="116" /><line x1="52" y1="174" x2="590" y2="174" /><line x1="52" y1="232" x2="590" y2="232" /><line x1="52" y1="290" x2="590" y2="290" /></g>
-        <path d="M52 248 C116 214 150 220 204 182 C266 138 312 168 368 124 C430 74 492 104 590 66 L590 290 L52 290 Z" fill="url(#cleanAreaBlue)" />
-        <path d="M52 262 C122 236 160 242 218 210 C276 178 326 202 386 158 C448 112 508 132 590 96 L590 290 L52 290 Z" fill="url(#cleanAreaCyan)" />
-        <path class="hero-line-blue" d="M52 248 C116 214 150 220 204 182 C266 138 312 168 368 124 C430 74 492 104 590 66" />
-        <path class="hero-line-orange" d="M52 262 C122 236 160 242 218 210 C276 178 326 202 386 158 C448 112 508 132 590 96" />
-        <path class="hero-line-pink" d="M52 222 C120 204 170 220 232 168 C300 112 360 150 420 116 C482 80 530 92 590 76" />
-        <g class="hero-chart-dots"><circle cx="204" cy="182" r="6" /><circle cx="368" cy="124" r="6" /><circle cx="590" cy="66" r="6" /></g>
-        <g class="hero-axis-labels"><text x="52" y="315">3月</text><text x="204" y="315">4月</text><text x="368" y="315">5月</text><text x="590" y="315" text-anchor="end">6月</text></g>
-      </svg>
-      <div class="hero-chart-legend"><span><i class="legend-blue"></i>综合</span><span><i class="legend-cyan"></i>生长</span><span><i class="legend-violet"></i>对比</span></div>
+<section class="minimal-home">
+  <div class="minimal-home-copy">
+    <div class="minimal-kicker"><%= settings.subtitle || '教研管理平台' %></div>
+    <h1><%= settings.heroTitle || settings.siteName %></h1>
+    <div class="minimal-actions">
+      <a class="apple-btn apple-btn-primary" href="/login">进入平台</a>
+      <a class="apple-btn apple-btn-secondary" href="/login">查看趋势</a>
     </div>
   </div>
-</section>
 
-<section class="apple-stats card data-stat-strip clean-stat-strip">
-  <div class="apple-stat-item"><div class="apple-stat-value">8</div><div class="apple-stat-label">评分维度</div></div>
-  <div class="apple-stat-item"><div class="apple-stat-value">趋势</div><div class="apple-stat-label">生长 / 体测</div></div>
-  <div class="apple-stat-item"><div class="apple-stat-value">对比</div><div class="apple-stat-label">个人 / 班级</div></div>
-  <div class="apple-stat-item"><div class="apple-stat-value">AI</div><div class="apple-stat-label">分析报告</div></div>
-</section>
-
-<section class="apple-section clean-visual-section" id="fitness-preview">
-  <div class="home-visual-grid clean-visual-grid">
-    <article class="home-visual-card home-visual-card-large clean-dark-card">
-      <div class="home-visual-head"><span>Fitness Trend</span><strong>项目均分</strong></div>
-      <div class="mini-bars" aria-hidden="true"><i style="--h:62%;--c:#60a5fa"></i><i style="--h:78%;--c:#38bdf8"></i><i style="--h:54%;--c:#22d3ee"></i><i style="--h:84%;--c:#34d399"></i><i style="--h:69%;--c:#818cf8"></i><i style="--h:76%;--c:#a78bfa"></i></div>
-    </article>
-    <article class="home-visual-card clean-light-card">
-      <div class="home-visual-head"><span>Child Compare</span><strong>个人轨迹</strong></div>
-      <div class="mini-sparkline"><svg viewBox="0 0 260 96"><path d="M8 72 C42 58 58 68 86 42 S142 44 170 28 S220 38 252 18"/></svg></div>
-    </article>
-    <article class="home-visual-card clean-light-card">
-      <div class="home-visual-head"><span>Admin View</span><strong>全局分析</strong></div>
-      <div class="mini-rings"><span style="--p:78%">78</span><span style="--p:64%">64</span><span style="--p:86%">86</span></div>
-    </article>
+  <div class="minimal-chart-card" aria-label="生长与体测趋势预览">
+    <div class="minimal-chart-head">
+      <span>Growth / Fitness</span>
+      <strong>趋势看板</strong>
+    </div>
+    <svg viewBox="0 0 720 360" role="img" aria-label="趋势示意图">
+      <defs>
+        <linearGradient id="minimalBlue" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#60a5fa" stop-opacity=".20"/><stop offset="1" stop-color="#60a5fa" stop-opacity="0"/></linearGradient>
+        <linearGradient id="minimalCyan" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#22d3ee" stop-opacity=".14"/><stop offset="1" stop-color="#22d3ee" stop-opacity="0"/></linearGradient>
+      </defs>
+      <g class="minimal-grid">
+        <line x1="54" y1="64" x2="666" y2="64"/><line x1="54" y1="126" x2="666" y2="126"/><line x1="54" y1="188" x2="666" y2="188"/><line x1="54" y1="250" x2="666" y2="250"/><line x1="54" y1="312" x2="666" y2="312"/>
+      </g>
+      <path d="M54 270 C128 232 170 238 234 198 C304 154 354 174 420 126 C498 70 560 100 666 58 L666 312 L54 312 Z" fill="url(#minimalBlue)"/>
+      <path d="M54 286 C132 256 178 260 246 224 C318 186 372 208 444 164 C510 122 576 136 666 104 L666 312 L54 312 Z" fill="url(#minimalCyan)"/>
+      <path class="minimal-line line-main" d="M54 270 C128 232 170 238 234 198 C304 154 354 174 420 126 C498 70 560 100 666 58"/>
+      <path class="minimal-line line-second" d="M54 286 C132 256 178 260 246 224 C318 186 372 208 444 164 C510 122 576 136 666 104"/>
+      <path class="minimal-line line-third" d="M54 238 C126 220 184 230 254 178 C326 126 390 150 456 116 C524 84 588 92 666 76"/>
+      <g class="minimal-dots"><circle cx="234" cy="198" r="6"/><circle cx="420" cy="126" r="6"/><circle cx="666" cy="58" r="6"/></g>
+    </svg>
+    <div class="minimal-legend"><span><i class="a"></i>综合</span><span><i class="b"></i>生长</span><span><i class="c"></i>对比</span></div>
   </div>
 </section>
-
-<% if (ft.length) { %>
-<section class="apple-section compact-capability-section">
-  <div class="apple-feature-grid compact-feature-grid"><% ft.slice(0, 4).forEach(function(item) { %><article class="apple-feature-card"><h3><%= item.title %></h3></article><% }) %></div>
-</section>
-<% } %>
 
 <%- include('partials/footer') %>
