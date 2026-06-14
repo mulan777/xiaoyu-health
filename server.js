@@ -13,6 +13,7 @@ require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
 const path = require('path');
+const https = require('https');
 const bcrypt = require('bcryptjs');
 const { createClient } = require('redis');
 const { RedisStore } = require('connect-redis');
@@ -67,6 +68,78 @@ const upload = multer({
 
 const PORT = Number(process.env.PORT || 3070);
 const APP_START_TIME = Date.now();
+const WEATHER_CITY = '无锡';
+const WEATHER_CACHE_MS = 30 * 60 * 1000;
+let weatherCareCache = { expiresAt: 0, data: null };
+
+function getWeatherCareFallback() {
+  return {
+    city: WEATHER_CITY,
+    summary: '今天也辛苦啦，记得课间喝口水。',
+    detail: '天气信息暂时获取不到，户外活动前可以再看一眼窗外和场地情况。',
+    temperature: '',
+    rainHint: '出门前留意天气变化',
+    source: 'fallback'
+  };
+}
+
+function fetchJson(url, timeoutMs = 2500) {
+  return new Promise((resolve, reject) => {
+    const req = https.get(url, { timeout: timeoutMs, headers: { 'User-Agent': 'xiaoyu-health/2.0' } }, (res) => {
+      let body = '';
+      res.setEncoding('utf8');
+      res.on('data', (chunk) => { body += chunk; });
+      res.on('end', () => {
+        if (res.statusCode < 200 || res.statusCode >= 300) {
+          reject(new Error(`weather status ${res.statusCode}`));
+          return;
+        }
+        try { resolve(JSON.parse(body)); }
+        catch (error) { reject(error); }
+      });
+    });
+    req.on('timeout', () => req.destroy(new Error('weather timeout')));
+    req.on('error', reject);
+  });
+}
+
+function buildWeatherCare(data) {
+  const current = data && data.current_condition && data.current_condition[0] ? data.current_condition[0] : {};
+  const today = data && data.weather && data.weather[0] ? data.weather[0] : {};
+  const temp = current.temp_C || '';
+  const minTemp = today.mintempC || '';
+  const maxTemp = today.maxtempC || '';
+  const hourly = Array.isArray(today.hourly) ? today.hourly : [];
+  const maxRainChance = hourly.reduce((max, item) => Math.max(max, Number(item.chanceofrain || 0)), 0);
+  const desc = current.weatherDesc && current.weatherDesc[0] ? current.weatherDesc[0].value : '';
+  const willRain = maxRainChance >= 50 || /雨|rain|shower/i.test(desc);
+  const temperature = minTemp && maxTemp ? `${minTemp}–${maxTemp}℃` : (temp ? `${temp}℃` : '温度暂无');
+  const summary = willRain
+    ? `早上好，今天无锡约 ${temperature}，可能有雨，户外体能活动建议准备室内备选方案。`
+    : `早上好，今天无锡约 ${temperature}，天气整体适合活动，记得提醒孩子们及时补水。`;
+  return {
+    city: WEATHER_CITY,
+    summary,
+    detail: desc ? `当前天气：${desc}。` : '愿今天也是轻松顺利的一天。',
+    temperature,
+    rainHint: willRain ? `降雨概率约 ${maxRainChance}%` : `降雨概率约 ${maxRainChance}%`,
+    source: 'wttr.in'
+  };
+}
+
+async function getWeatherCare() {
+  if (weatherCareCache.data && weatherCareCache.expiresAt > Date.now()) return weatherCareCache.data;
+  try {
+    const url = 'https://wttr.in/' + encodeURIComponent(WEATHER_CITY) + '?format=j1&lang=zh-cn';
+    const data = buildWeatherCare(await fetchJson(url));
+    weatherCareCache = { expiresAt: Date.now() + WEATHER_CACHE_MS, data };
+    return data;
+  } catch (error) {
+    const fallback = getWeatherCareFallback();
+    weatherCareCache = { expiresAt: Date.now() + 5 * 60 * 1000, data: fallback };
+    return fallback;
+  }
+}
 
 function normalizeFitnessSortField(value) {
   const allowed = new Set(['test_date', 'child_name', 'height_score', 'bmi_score', 'grip_score', 'jump_score', 'sit_score', 'djump_score', 'obstacle_score', 'balance_score', 'total_score']);
@@ -706,6 +779,7 @@ async function bootstrap() {
   // ========== 教师端 ==========
   app.get('/user', requireRole('user'), asyncHandler(async (req, res) => {
     const dashboard = await buildUserDashboard(req.session.user);
+    const weatherCare = await getWeatherCare();
     const classId = req.session.user.classId;
     const childPage = normalizePageNumber(req.query.childPage, 1);
     const recordPage = normalizePageNumber(req.query.recordPage, 1);
@@ -1189,6 +1263,7 @@ async function bootstrap() {
       growthDeclineChildren,
       fitnessDeclineChildren,
       teacherBirthday, todayBirthdayChildren,
+      weatherCare,
       userView,
       entryBatchDate,
       entryTestDate: entryBatchDate || chinaNowText().slice(0, 10),

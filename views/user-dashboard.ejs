@@ -330,7 +330,19 @@
       <div>
         <div class="eyebrow">教师工作台</div>
         <h1>你好，<%= currentUser.name %></h1>
-        <p>教师端工作台，支持查看本班体测记录、录入体测数据与场地预约。</p>
+        <% const care = weatherCare || {}; %>
+        <div class="teacher-care-card" aria-label="无锡天气关怀">
+          <div class="teacher-care-icon">☀️</div>
+          <div class="teacher-care-content">
+            <div class="teacher-care-title"><%= care.summary || '今天也辛苦啦，记得课间喝口水。' %></div>
+            <div class="teacher-care-meta">
+              <span>无锡</span>
+              <% if (care.temperature) { %><span><%= care.temperature %></span><% } %>
+              <% if (care.rainHint) { %><span><%= care.rainHint %></span><% } %>
+            </div>
+            <div class="teacher-care-detail"><%= care.detail || '愿今天也是轻松顺利的一天。' %></div>
+          </div>
+        </div>
       </div>
 
     </section>
@@ -381,6 +393,13 @@
 </div>
 
 <style>
+  .teacher-care-card{display:flex;gap:14px;align-items:flex-start;margin-top:14px;padding:16px 18px;border-radius:18px;background:linear-gradient(135deg,#f8fbff 0%,#eef7ff 100%);border:1px solid rgba(59,130,246,.12);box-shadow:0 10px 24px rgba(15,23,42,.05);}
+  .teacher-care-icon{flex:0 0 auto;width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;background:#fff;color:#f59e0b;box-shadow:0 6px 16px rgba(245,158,11,.15);}
+  .teacher-care-content{min-width:0;flex:1;}
+  .teacher-care-title{font-size:16px;font-weight:700;color:#0f172a;line-height:1.55;}
+  .teacher-care-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;color:#2563eb;font-size:12px;font-weight:600;}
+  .teacher-care-meta span{padding:4px 10px;border-radius:999px;background:rgba(37,99,235,.08);}
+  .teacher-care-detail{margin-top:8px;color:#64748b;font-size:13px;line-height:1.6;}
   .attention-modal-overlay{position:fixed;inset:0;z-index:1000;background:rgba(15,23,42,0.45);backdrop-filter:blur(2px);display:flex;align-items:center;justify-content:center;padding:20px;}
   .attention-modal{width:100%;max-width:460px;max-height:82vh;display:flex;flex-direction:column;background:#fff;border-radius:18px;box-shadow:0 24px 60px rgba(15,23,42,0.28);overflow:hidden;animation:attnPop .16s ease-out;}
   @keyframes attnPop{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}
