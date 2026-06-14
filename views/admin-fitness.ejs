@@ -1,15 +1,14 @@
 <%- include('partials/header', { pageClass: 'admin-page' + (typeof isReadonly !== 'undefined' && isReadonly ? ' readonly-mode' : '') }) %>
 
 <style>
-  /* P1-4: 冻结体测明细表前4列 */
-  .data-table th:nth-child(1), .data-table td:nth-child(1) { width: 80px; min-width: 80px; max-width: 80px; }
-  .data-table th:nth-child(2), .data-table td:nth-child(2) { width: 72px; min-width: 72px; max-width: 72px; }
-  .data-table th:nth-child(3), .data-table td:nth-child(3) { width: 48px; min-width: 48px; max-width: 48px; }
-  .data-table th:nth-child(4), .data-table td:nth-child(4) { width: 92px; min-width: 92px; max-width: 92px; }
-  .data-table th:nth-child(1), .data-table td:nth-child(1) { position: sticky; left: 0; }
-  .data-table th:nth-child(2), .data-table td:nth-child(2) { position: sticky; left: 80px; }
-  .data-table th:nth-child(3), .data-table td:nth-child(3) { position: sticky; left: 152px; }
-  .data-table th:nth-child(4), .data-table td:nth-child(4) { position: sticky; left: 200px; }
+  /* P1-4: 冻结体测明细表前4列（班级/姓名/性别/测试日期）
+     宽度与 sticky left 偏移必须严格累加一致，否则列会互相遮挡 */
+  .data-table th:nth-child(1), .data-table td:nth-child(1) { width: 76px; min-width: 76px; max-width: 76px; position: sticky; left: 0; z-index:2; background:inherit; }
+  .data-table th:nth-child(2), .data-table td:nth-child(2) { width: 76px; min-width: 76px; max-width: 76px; position: sticky; left: 76px; z-index:2; background:inherit; }
+  .data-table th:nth-child(3), .data-table td:nth-child(3) { width: 48px; min-width: 48px; max-width: 48px; position: sticky; left: 152px; z-index:2; background:inherit; }
+  .data-table th:nth-child(4), .data-table td:nth-child(4) { width: 96px; min-width: 96px; max-width: 96px; position: sticky; left: 200px; z-index:2; background:inherit; }
+  /* 第4列右侧加分隔阴影，明确冻结区边界 */
+  .data-table th:nth-child(4), .data-table td:nth-child(4) { box-shadow: 2px 0 0 0 rgba(15,23,42,0.06); }
   .data-table thead th:nth-child(1),
   .data-table thead th:nth-child(2),
   .data-table thead th:nth-child(3),
@@ -44,6 +43,32 @@
     .data-table tbody tr:hover td:nth-child(3),
     .data-table tbody tr:hover td:nth-child(4) { background: #334155; }
   }
+
+.pagination-ellipsis { display: inline-flex; align-items: center; justify-content: center; min-width: 34px; height: 34px; padding: 0 6px; font-size: 13px; color: #94a3b8; }
+
+/* 雷达图限制最大宽度 */
+.radar-card .radar-svg { max-width: 380px; margin: 0 auto; }
+
+/* 约束趋势图 SVG 最大宽度，避免在宽屏上过度拉伸 */
+.chart-card .wave-chart-wrap svg { max-width: 760px; width: 100%; height: auto; display: block; margin: 0 auto; }
+
+/* 趋势双栏：电脑端左右并排，手机端上下堆叠 */
+.fitness-trends-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+.fitness-trends-row .fitness-trend-col { margin-bottom: 0 !important; min-width: 0; }
+.fitness-trends-row .fitness-trend-col .wave-chart-wrap svg { max-width: 100%; }
+@media (max-width: 1024px) {
+  .fitness-trends-row { grid-template-columns: 1fr; }
+  .fitness-trends-row .fitness-trend-col { margin-bottom: 20px !important; }
+}
+
+@media (max-width: 640px) {
+  /* 手机端：只冻结 班级 + 姓名 两列，其余横向滚动 */
+  .data-table th:nth-child(3), .data-table td:nth-child(3),
+  .data-table th:nth-child(4), .data-table td:nth-child(4) { position: static !important; box-shadow: none !important; }
+  .data-table th:nth-child(1), .data-table td:nth-child(1) { position: sticky; left: 0; width:64px; min-width:64px; max-width:64px; z-index:2; }
+  .data-table th:nth-child(2), .data-table td:nth-child(2) { position: sticky; left: 64px; width:72px; min-width:72px; max-width:72px; z-index:2; box-shadow: 2px 0 0 0 rgba(15,23,42,0.06); }
+  .data-table { min-width: 900px !important; }
+}
 </style>
 
 
@@ -114,7 +139,6 @@
     <% if (typeof hasPerm === 'function' && hasPerm('data.fitness.view')) { %>
       <button type="button" class="btn primary" id="ai-fitness-report-btn" data-export-href="<%= exportHref %>">🤖 AI 智能分析报告</button>
     <% } %>
-    <% if (typeof hasPerm === 'function' && hasPerm('data.fitness.export') && !isReadonly) { %><a class="btn primary" href="<%= exportHref %>">导出当前筛选结果</a><% } %>
     <a class="btn" href="/admin">← 返回后台</a>
   </div>
 </section>
@@ -329,8 +353,8 @@
   <div class="alert error"><%= error %></div>
 <% } %>
 
-<div class="admin-layout">
-  <aside class="admin-sidebar card">
+<div class="admin-layout fitness-admin-layout">
+  <aside class="admin-sidebar card fitness-admin-sidebar">
     <div class="sidebar-brand">
       <div class="sidebar-title">体测导航</div>
     </div>
@@ -356,77 +380,81 @@
                return String(a.name || '').localeCompare(String(b.name || ''), 'zh-Hans-CN');
              });
            const gradeActive = (viewMode === 'grade' && gradeLevel === gl) || (viewMode === 'class' && gradeClasses.some(function(cls) { return String(cls.id) === String(classId); })); %>
-        <section class="fitness-nav-group <%= gradeActive ? 'open' : '' %>">
-          <a class="fitness-nav-grade-link <%= gradeActive ? 'active' : '' %>" href="/admin/fitness?view=grade&gradeLevel=<%= gl %>">
+        <section class="fitness-nav-group <%= gradeActive ? 'open' : '' %>" data-grade-group="<%= gl %>">
+          <button type="button" class="fitness-nav-grade-link <%= gradeActive ? 'active' : '' %>" data-grade-toggle="<%= gl %>" aria-expanded="<%= gradeActive ? 'true' : 'false' %>">
             <span class="fitness-nav-grade-title"><%= gradeLabel(gl) %>年级</span>
             <span class="fitness-nav-grade-meta">
-              <span class="fitness-nav-count"><%= gradeClasses.length %></span>
-              <span class="fitness-nav-chevron" aria-hidden="true"><%= gradeActive ? '▾' : '▸' %></span>
+              <span class="fitness-nav-chevron" aria-hidden="true">▸</span>
             </span>
-          </a>
-          <% if (gradeActive && gradeClasses.length) { %>
-            <div class="fitness-nav-classes" style="display:flex;flex-direction:column;gap:10px;">
-              <% gradeClasses.forEach(function(cls) { %>
-                <a class="fitness-nav-class <%= (viewMode === 'class' && String(classId) === String(cls.id)) ? 'active' : '' %>" style="display:block;width:100%;box-sizing:border-box;" href="/admin/fitness?view=class&classId=<%= cls.id %>"><%= cls.name %></a>
-              <% }) %>
-            </div>
-          <% } %>
+          </button>
+          <div class="fitness-nav-classes">
+            <a class="fitness-nav-class fitness-nav-class-all <%= (viewMode === 'grade' && gradeLevel === gl) ? 'active' : '' %>" href="/admin/fitness?view=grade&gradeLevel=<%= gl %>">全部<%= gradeLabel(gl) %>年级</a>
+            <% gradeClasses.forEach(function(cls) { %>
+              <a class="fitness-nav-class <%= (viewMode === 'class' && String(classId) === String(cls.id)) ? 'active' : '' %>" href="/admin/fitness?view=class&classId=<%= cls.id %>"><%= cls.name %></a>
+            <% }) %>
+            <% if (!gradeClasses.length) { %>
+              <div class="fitness-nav-empty">暂无班级</div>
+            <% } %>
+          </div>
         </section>
       <% }) %>
     </nav>
-    <div class="sidebar-footer muted" style="margin-top:16px;">
-      <div class="toolbar-links stacked-links">
-        <% if (typeof hasPerm === 'function' && hasPerm('data.fitness.export') && !isReadonly) { %><a class="btn small primary" href="<%= exportHref %>">导出当前筛选结果</a><% } %>
-        <% if (typeof hasPerm === 'function' && hasPerm('data.fitness.import') && !isReadonly) { %><a class="btn small" href="/admin/fitness/template">下载体测导入模板</a><% } %>
-      </div>
-      <% if (typeof hasPerm === 'function' && hasPerm('data.fitness.import') && !isReadonly) { %>
-      <form method="post" action="/admin/fitness/import" enctype="multipart/form-data" style="margin-top:10px;">
-        <input type="hidden" name="currentView" value="<%= viewMode %>" />
-        <input type="hidden" name="currentChildId" value="<%= childId || '' %>" />
-        <input type="hidden" name="currentClassId" value="<%= classId || '' %>" />
-        <input type="hidden" name="currentGradeLevel" value="<%= gradeLevel || '' %>" />
-        <input type="hidden" name="currentKeyword" value="<%= activeFilters.keyword || '' %>" />
-        <input type="hidden" name="currentRating" value="<%= activeFilters.rating || '' %>" />
-        <input type="hidden" name="currentDateFrom" value="<%= activeFilters.dateFrom || '' %>" />
-        <input type="hidden" name="currentDateTo" value="<%= activeFilters.dateTo || '' %>" />
-        <input type="file" name="file" accept=".xlsx,.xls,.csv" required style="font-size:13px;" />
-        <button class="btn small primary" type="submit" style="margin-top:6px;">批量导入体测数据</button>
-      </form>
-      <% } %>
-    </div>
   </aside>
 
-  <div class="admin-main" data-ajax-panel="admin-fitness-main">
+  <div class="admin-main fitness-admin-main" data-ajax-panel="admin-fitness-main">
     <!-- 统计卡片 -->
-    <section class="stats-grid overview-stats" style="margin-bottom:20px;">
-      <div class="card stat-card">
-        <div class="stat-label">所选批次记录条数</div>
-        <div class="stat-number"><%= allRecordsCount || 0 %></div>
-        <div class="muted" style="margin-top:6px;"><%= selectedDetailBatchDateValue || '-' %></div>
+    <!-- 批次概览：统一的统计面板 -->
+    <section class="card fitness-batch-overview">
+      <div class="section-head fitness-batch-overview-head">
+        <div><h3>批次概览</h3></div>
       </div>
-      <div class="card stat-card">
-        <div class="stat-label">最新批次分析平均综合得分</div>
-        <div class="stat-number"><%= avgScore || '-' %></div>
-        <form method="get" action="/admin/fitness" class="admin-analysis-batch-form" style="margin-top:8px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-          <% scopePairs.forEach(function(pair) { if (pair[1]) { %><input type="hidden" name="<%= pair[0] %>" value="<%= pair[1] %>" /><% } }) %>
-          <input type="hidden" name="detailBatchDate" value="<%= selectedDetailBatchDateValue || '' %>" />
-          <select name="batchDate" style="max-width:150px;">
-            <option value="">对比批次</option>
-            <% dateOptions.forEach(function(item) { %><option value="<%= item.label %>" <%= selectedAnalysisBatchDateValue === item.label ? 'selected' : '' %>><%= item.label %></option><% }) %>
-          </select>
-          <button class="btn small" type="submit">筛选批次</button>
-        </form>
-      </div>
-      <% (ratingSummary || []).forEach(function(item) { %>
-        <div class="card stat-card">
-          <div class="stat-label"><%= item.label %></div>
-          <div class="stat-number" style="color:<%= item.label === '优秀' ? '#34c759' : item.label === '良好' ? '#0071e3' : item.label === '合格' ? '#ff9f0a' : '#ff3b30' %>;"><%= item.count %></div>
-          <div class="muted" style="margin-top:6px;">占比 <%= item.percent %>%</div>
+      <div class="fitness-batch-overview-body">
+        <div class="fitness-batch-overview-item">
+          <div class="fitness-batch-overview-label">所选批次记录</div>
+          <div class="fitness-batch-overview-value-row">
+            <span class="fitness-batch-overview-value"><%= allRecordsCount || 0 %></span>
+            <span class="fitness-batch-overview-unit">条</span>
+          </div>
+          <div class="fitness-batch-overview-meta">批次日期：<%= selectedDetailBatchDateValue || '-' %></div>
         </div>
-      <% }) %>
+        <div class="fitness-batch-overview-divider" aria-hidden="true"></div>
+        <div class="fitness-batch-overview-item">
+          <div class="fitness-batch-overview-label">最新批次平均综合得分</div>
+          <div class="fitness-batch-overview-value-row">
+            <span class="fitness-batch-overview-value"><%= avgScore || '-' %></span>
+            <span class="fitness-batch-overview-unit">分</span>
+          </div>
+          <form method="get" action="/admin/fitness" class="admin-analysis-batch-form fitness-batch-overview-form">
+            <% scopePairs.forEach(function(pair) { if (pair[1]) { %><input type="hidden" name="<%= pair[0] %>" value="<%= pair[1] %>" /><% } }) %>
+            <input type="hidden" name="detailBatchDate" value="<%= selectedDetailBatchDateValue || '' %>" />
+            <select name="batchDate">
+              <option value="">对比批次</option>
+              <% dateOptions.forEach(function(item) { %><option value="<%= item.label %>" <%= selectedAnalysisBatchDateValue === item.label ? 'selected' : '' %>><%= item.label %></option><% }) %>
+            </select>
+            <button class="btn small" type="submit">筛选</button>
+          </form>
+        </div>
+        <div class="fitness-batch-overview-divider" aria-hidden="true"></div>
+        <div class="fitness-batch-overview-item">
+          <div class="fitness-batch-overview-label">评级分布</div>
+          <div class="fitness-batch-overview-ratings">
+            <% (ratingSummary || []).forEach(function(item) { %>
+              <div class="fitness-batch-overview-rating">
+                <div class="fitness-batch-overview-rating-number" style="color:<%= item.label === '优秀' ? '#16a34a' : item.label === '良好' ? '#2563eb' : item.label === '合格' ? '#d97706' : '#dc2626' %>;"><%= item.count %></div>
+                <div class="fitness-batch-overview-rating-label"><%= item.label %></div>
+                <div class="fitness-batch-overview-rating-meta"><%= item.percent %>%</div>
+              </div>
+            <% }) %>
+          </div>
+        </div>
+      </div>
     </section>
 
     <section class="card chart-card" style="margin-bottom:20px;">
+      <div class="collapse-trigger open" onclick="toggleCollapse(this)" style="margin-bottom:12px;">
+        <span class="collapse-arrow">▼</span> 体能结构雷达图
+      </div>
+      <div class="collapse-body open">
       <div class="section-head">
         <div>
           <h3>体能结构雷达图</h3>
@@ -543,10 +571,17 @@
           </div>
         </div>
       </div>
+      </div><!-- /collapse-body -->
     </section>
 
+    <!-- 趋势双栏：电脑端左右并排（左 生长趋势 / 右 体测趋势对比），手机端上下堆叠 -->
+    <div class="fitness-trends-row">
     <!-- 全园生长趋势（范围级身高/体重/BMI折线图） -->
-    <section class="card chart-card" style="margin-bottom:20px;">
+    <section class="card chart-card fitness-trend-col" style="margin-bottom:20px;">
+      <div class="collapse-trigger open" onclick="toggleCollapse(this)" style="margin-bottom:12px;">
+        <span class="collapse-arrow">▼</span> 全园生长趋势
+      </div>
+      <div class="collapse-body open">
       <div class="section-head">
         <div>
           <h3>全园生长趋势</h3>
@@ -557,11 +592,6 @@
                               <%
               var scopeItems = scopeTrendData || [];
             %>
-            <% if (scopeItems.length >= 2) { %>
-            <%
-
-                      %>
-
           <% if (scopeItems.length >= 2) { %>
           <%
 
@@ -652,22 +682,16 @@
             <span style="font-size:12px;">至少需要 2 次不同日期的测试记录才能生成趋势对比</span>
           </div>
           <% } %>
-
-            <% } else { %>
-          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:280px;color:#94a3b8;background:#f8fafc;border-radius:8px;border:2px dashed #e2e8f0;">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" style="margin-bottom:12px;">
-              <path d="M3 3v18h18"/>
-              <path d="M7 16l4-8 4 4 4-6"/>
-            </svg>
-            <span style="font-size:14px;font-weight:500;margin-bottom:4px;">暂无足够数据</span>
-            <span style="font-size:12px;">至少需要 2 次不同日期的测试记录才能生成趋势对比</span>
-          </div>
-            <% } %>
 </div>
+      </div><!-- /collapse-body -->
     </section>
 
     <!-- 全园体测趋势对比（范围级纵向折线图） -->
-    <section class="card chart-card" style="margin-bottom:20px;">
+    <section class="card chart-card fitness-trend-col" style="margin-bottom:20px;">
+      <div class="collapse-trigger open" onclick="toggleCollapse(this)" style="margin-bottom:12px;">
+        <span class="collapse-arrow">▼</span> 全园体测趋势对比
+      </div>
+      <div class="collapse-body open">
       <div class="section-head">
         <div>
           <h3>全园体测趋势对比</h3>
@@ -734,10 +758,16 @@
           <% }) %>
         </div>
       </div>
+      </div><!-- /collapse-body -->
     </section>
+    </div><!-- /fitness-trends-row -->
 
     <!-- 录入表单 -->
     <div class="card" style="margin-bottom:20px;">
+      <div class="collapse-trigger" onclick="toggleCollapse(this)" style="margin-bottom:12px;">
+        <span class="collapse-arrow">▼</span> 录入体测数据
+      </div>
+      <div class="collapse-body">
       <% if (typeof hasPerm === 'function' && hasPerm('data.fitness.create') && !isReadonly) { %>
       <div class="section-head"><h3>录入体测数据</h3></div>
       <form method="post" action="/admin/fitness/add" class="form-grid" style="grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));">
@@ -772,8 +802,29 @@
       </form>
       <div class="muted" style="margin-top:8px;">提交后系统会按标准表和测试当天月龄计算身高、BMI及各项得分；缺少任一指标时不计算综合得分。如果幼儿没有填写出生日期和性别，评分可能不准确。</div>
       <% } %>
+      <hr style="margin:14px 0 10px;">
+      <div class="toolbar-links" style="margin-bottom:4px;">
+        <% if (typeof hasPerm === 'function' && hasPerm('data.fitness.import') && !isReadonly) { %>
+        <a class="btn small" href="/admin/fitness/template" style="margin-right:8px;">下载体测导入模板</a>
+      <% } %>
+      </div>
+<% if (typeof hasPerm === 'function' && hasPerm('data.fitness.import') && !isReadonly) { %>
+      <form method="post" action="/admin/fitness/import" enctype="multipart/form-data" style="margin-top:10px;">
+        <input type="hidden" name="currentView" value="<%= viewMode %>" />
+        <input type="hidden" name="currentChildId" value="<%= childId || '' %>" />
+        <input type="hidden" name="currentClassId" value="<%= classId || '' %>" />
+        <input type="hidden" name="currentGradeLevel" value="<%= gradeLevel || '' %>" />
+        <input type="hidden" name="currentKeyword" value="<%= activeFilters.keyword || '' %>" />
+        <input type="hidden" name="currentRating" value="<%= activeFilters.rating || '' %>" />
+        <input type="hidden" name="currentDateFrom" value="<%= activeFilters.dateFrom || '' %>" />
+        <input type="hidden" name="currentDateTo" value="<%= activeFilters.dateTo || '' %>" />
+        <input type="file" name="file" accept=".xlsx,.xls,.csv" required style="font-size:13px;" />
+        <button class="btn small primary" type="submit" style="margin-top:6px;">批量导入体测数据</button>
+      </form>
+      <% } %>
+      
+      </div><!-- /collapse-body -->
     </div>
-
     <% if (editRecord && typeof hasPerm === 'function' && hasPerm('data.fitness.edit') && !isReadonly) { %>
       <div class="card" style="margin-bottom:20px;border:1px solid #f59e0b;">
         <div class="section-head">
@@ -812,7 +863,11 @@
 
     <!-- 数据表 -->
     <div class="card" data-ajax-panel="fitness-records">
-      <div class="section-head" style="margin-bottom:12px;">
+      <div class="collapse-trigger" onclick="toggleCollapse(this)" style="margin-top:0;margin-bottom:12px;">
+      <span class="collapse-arrow">▶</span> 筛选 / 查询 / 排序
+    </div>
+    <div class="collapse-body">
+    <div class="section-head" style="margin-bottom:12px;">
         <div>
           <h3>筛选 / 快速定位 / 导出</h3>
           <div class="muted no-margin"><%= currentScopeLabel %></div>
@@ -887,7 +942,7 @@
         <div class="empty-state">暂无体测记录。请通过上方表单录入，或下载模板后批量导入。</div>
       <% } else { %>
         <div class="table-wrap">
-          <table class="data-table admin-table" style="min-width:1400px;">
+          <table class="data-table admin-table" style="min-width:1200px;">
             <thead>
               <tr>
                 <th>班级</th>
@@ -979,13 +1034,23 @@
         <% if (fitnessPaginationData.totalPages > 1) { %>
           <div class="pagination-bar">
             <% if (fitnessPaginationData.hasPrev) { %><a class="pagination-link pagination-nav" href="/admin/fitness?<%= buildQuery(scopePairs.concat(filterPairs)) %>&page=<%= fitnessPaginationData.prevPage %>">上一页</a><% } %>
-            <% for (let pageNo = 1; pageNo <= fitnessPaginationData.totalPages; pageNo++) { %>
-              <a class="pagination-link <%= fitnessPaginationData.currentPage === pageNo ? 'active' : '' %>" href="/admin/fitness?<%= buildQuery(scopePairs.concat(filterPairs)) %>&page=<%= pageNo %>"><%= pageNo %></a>
-            <% } %>
+            <%
+              var cp = fitnessPaginationData.currentPage || 1;
+              var tp = fitnessPaginationData.totalPages || 1;
+              var startP = Math.max(1, cp - 3);
+              var endP = Math.min(tp, cp + 3);
+              if (startP > 1) { %><span class="pagination-ellipsis">…</span><% }
+              for (var pageNo = startP; pageNo <= endP; pageNo++) {
+            %>
+              <a class="pagination-link <%= cp === pageNo ? 'active' : '' %>" href="/admin/fitness?<%= buildQuery(scopePairs.concat(filterPairs)) %>&page=<%= pageNo %>"><%= pageNo %></a>
+            <% }
+              if (endP < tp) { %><span class="pagination-ellipsis">…</span><% }
+            %>
             <% if (fitnessPaginationData.hasNext) { %><a class="pagination-link pagination-nav" href="/admin/fitness?<%= buildQuery(scopePairs.concat(filterPairs)) %>&page=<%= fitnessPaginationData.nextPage %>">下一页</a><% } %>
           </div>
         <% } %>
       <% } %>
+    </div><!-- /collapse-body -->
     </div>
   </div>
 </div>
@@ -1010,11 +1075,22 @@
     });
   }
   function replacePanelFromHtml(html, selector) {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-    const incoming = doc.querySelector(selector);
-    const current = document.querySelector(selector);
-    if (incoming && current) current.outerHTML = incoming.outerHTML;
+    var panel = document.querySelector(selector);
+    var wasOpen = panel && panel.querySelector('.collapse-body.open') !== null;
+    var parser = new DOMParser();
+    var doc = parser.parseFromString(html, 'text/html');
+    var incoming = doc.querySelector(selector);
+    var current = document.querySelector(selector);
+    if (incoming && current) {
+      current.outerHTML = incoming.outerHTML;
+      // restore collapse open state
+      if (wasOpen) {
+        var b = document.querySelector(selector + ' .collapse-body');
+        var t = document.querySelector(selector + ' .collapse-trigger');
+        if (b) b.classList.add('open');
+        if (t) t.classList.add('open');
+      }
+    }
   }
   async function loadFitnessRecords(url, push) {
     const res = await fetch(url, { headers: { 'X-Requested-With': 'fetch' }, credentials: 'same-origin' });
@@ -1056,7 +1132,7 @@
       link.dataset.ajaxBound = '1';
       link.addEventListener('click', function (event) {
         event.preventDefault();
-        loadFitnessRecords(event.currentTarget.href, true).then(scrollToFitnessPanel).catch(function () { window.location.href = event.currentTarget.href; });
+        loadFitnessRecords(event.currentTarget.href, true).catch(function () { window.location.href = event.currentTarget.href; });
       });
     });
     document.querySelectorAll('[data-ajax-panel="fitness-records"] form.fitness-filter-form').forEach(function (form) {
@@ -1070,7 +1146,7 @@
         formData.forEach(function (value, key) {
           if (value !== null && String(value) !== '') url.searchParams.set(key, String(value));
         });
-        loadFitnessRecords(url.toString(), true).then(scrollToFitnessPanel).catch(function () { window.location.href = url.toString(); });
+        loadFitnessRecords(url.toString(), true).catch(function () { window.location.href = url.toString(); });
       });
     });
     bindRadarToggles(document.querySelector('[data-ajax-panel="admin-fitness-main"]') || document.querySelector('[data-ajax-panel="fitness-records"]'));
@@ -1082,6 +1158,20 @@
   bindRadarToggles(document);
   bindFitnessPagination();
 })();
+
+window.toggleCollapse = function(el) { el.classList.toggle("open"); var b = el.nextElementSibling; if (b && b.classList.contains("collapse-body")) b.classList.toggle("open"); };
+
+// 体测导航：年级标题点击 = 下拉展开/收起（纯前端，不刷新页面）
+document.addEventListener("click", function(e) {
+  var btn = e.target.closest("[data-grade-toggle]");
+  if (!btn) return;
+  e.preventDefault();
+  var group = btn.closest(".fitness-nav-group");
+  if (!group) return;
+  var willOpen = !group.classList.contains("open");
+  group.classList.toggle("open", willOpen);
+  btn.setAttribute("aria-expanded", willOpen ? "true" : "false");
+});
 
 function openChildFitnessModal(data) {
   var overlay = document.getElementById('childFitnessOverlay');

@@ -941,6 +941,136 @@ input:focus, textarea:focus, select:focus {
   margin-bottom: 20px;
 }
 
+
+/* === Admin mobile layout fixes === */
+@media (max-width: 860px) {
+  .admin-layout {
+    flex-direction: column;
+    gap: 0;
+  }
+  .admin-sidebar {
+    width: 100% !important;
+    max-width: none !important;
+    position: relative;
+    border-radius: 16px 16px 0 0;
+    padding: 16px;
+    margin-bottom: 0;
+  }
+  .admin-main, .admin-main.shell-main {
+    padding: 12px;
+    width: 100%;
+    max-width: none;
+  }
+  .fitness-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .fitness-nav-group {
+    flex: 1 1 auto;
+    min-width: 100px;
+  }
+  .fitness-nav-root {
+    font-size: 13px;
+    padding: 6px 10px;
+    width: auto;
+  }
+  .fitness-nav-grade-link {
+    font-size: 12px;
+  }
+  .fitness-nav-grade-title {
+    font-size: 12px;
+  }
+  /* admin 体测导航：手机端保持纵向下拉，不退回横向换行 */
+  .fitness-admin-sidebar .fitness-nav {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: 2px;
+  }
+  .fitness-admin-sidebar .fitness-nav-group {
+    flex: none;
+    min-width: 0;
+    display: block;
+  }
+  .fitness-admin-sidebar .fitness-nav-root,
+  .fitness-admin-sidebar .fitness-nav-grade-link {
+    width: 100%;
+    font-size: 14px;
+    padding: 9px 12px;
+    min-height: 40px;
+  }
+  .fitness-admin-sidebar .fitness-nav-grade-title { font-size: 14px; }
+  .fitness-admin-sidebar .fitness-nav-grade-meta { display: inline-flex; }
+  .fitness-admin-sidebar .fitness-nav-chevron { display: inline-block; }
+  .fitness-admin-sidebar .fitness-nav-class { min-height: 38px; font-size: 13.5px; padding: 9px 11px; }
+  .chart-card .visual-grid {
+    flex-direction: column;
+  }
+  .radar-card {
+    min-width: auto;
+    width: 100%;
+  }
+  .trend-card {
+    width: 100%;
+  }
+  .wave-chart-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .wave-chart-wrap svg {
+    max-width: 100%;
+    height: auto;
+  }
+  .admin-hero {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .admin-hero-actions {
+    width: 100%;
+  }
+  .data-table {
+    font-size: 11px;
+  }
+  .data-table th, .data-table td {
+    padding: 6px 8px;
+  }
+  .form-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .stats-grid.overview-stats {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .pagination-bar {
+    flex-wrap: wrap;
+    gap: 4px;
+    justify-content: center;
+  }
+  .pagination-link {
+    min-width: 28px;
+    height: 28px;
+    font-size: 12px;
+    padding: 0 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .stats-grid.overview-stats {
+    grid-template-columns: 1fr;
+  }
+  .admin-hero h1 {
+    font-size: 18px;
+  }
+  .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .collapse-trigger {
+    font-size: 13px;
+    padding: 8px 12px;
+  }
+}
+
 @media (max-width: 1280px) {
   .admin-layout {
     grid-template-columns: 200px 1fr;
@@ -3291,24 +3421,30 @@ body.modal-open {
   .user-fitness-nav-title { display:block; font-size:14px; line-height:1.2; }
   .user-fitness-nav-desc { display:block; margin-top:6px; font-size:12px; color:#86868b; font-weight:600; }
   .user-fitness-main .card { max-width:none; }
-  .user-fitness-main .table-wrap { overflow-x:visible; }
-  .user-fitness-main .data-table { min-width:0 !important; width:100%; table-layout:fixed; }
+  /* 体测明细表 — 紧凑 + 横向滚动（22列太多，不挤压） */
+  .user-fitness-main .table-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .user-fitness-main .data-table { min-width:1200px !important; width:max-content; table-layout:auto; white-space:nowrap; }
   .user-fitness-main .data-table th,
-  .user-fitness-main .data-table td { padding:10px 8px; font-size:13px; word-break:break-word; }
-  .user-fitness-main .data-table th:nth-child(1), .user-fitness-main .data-table td:nth-child(1) { width:72px; }
-  .user-fitness-main .data-table th:nth-child(2), .user-fitness-main .data-table td:nth-child(2) { width:52px; }
-  .user-fitness-main .data-table th:nth-child(3), .user-fitness-main .data-table td:nth-child(3) { width:92px; }
+  .user-fitness-main .data-table td { padding:7px 9px; font-size:12.5px; line-height:1.35; }
+  /* 只有姓名列允许换行 */
+  .user-fitness-main .data-table td:first-child { white-space:normal; max-width:80px; }
+  /* 冻结前三列 — 同原来逻辑 */
+  .user-fitness-main .data-table th:nth-child(1), .user-fitness-main .data-table td:nth-child(1) { width:80px; min-width:80px; }
+  .user-fitness-main .data-table th:nth-child(2), .user-fitness-main .data-table td:nth-child(2) { width:48px; min-width:48px; }
+  .user-fitness-main .data-table th:nth-child(3), .user-fitness-main .data-table td:nth-child(3) { width:92px; min-width:92px; }
+  /* 得分数值列紧凑 */
+  .user-fitness-main .data-table td { color:#374151; }
   .user-fitness-main .stats-grid.overview-stats { grid-template-columns: repeat(6, minmax(0,1fr)); }
   @media (max-width: 1400px) {
     .user-fitness-main .stats-grid.overview-stats { grid-template-columns: repeat(3, minmax(0,1fr)); }
-    .user-fitness-main .data-table th, .user-fitness-main .data-table td { font-size:12px; padding:9px 6px; }
+    .user-fitness-main .data-table th, .user-fitness-main .data-table td { font-size:12px; padding:7px 8px; }
   }
   @media (max-width: 960px) {
     body:not(.admin-page) .container { width:min(100vw - 12px, 100%); padding:16px 6px 24px; }
     .user-fitness-layout { grid-template-columns: 1fr; }
     .user-fitness-sidebar { position: static; }
-    .user-fitness-main .table-wrap { overflow-x:auto; }
-    .user-fitness-main .data-table { min-width:980px !important; table-layout:auto; }
+    .user-fitness-main .table-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+    .user-fitness-main .data-table { min-width:1100px !important; table-layout:auto; white-space:nowrap; }
     .user-fitness-main .stats-grid.overview-stats { grid-template-columns: repeat(2, minmax(0,1fr)); }
   }
 
@@ -3914,3 +4050,590 @@ body.modal-open {
 .compare-fitness-chart svg {
   display: block; width: 100%;
 }
+
+
+/* ================================================================
+   Mobile Pill Tab + Modern Card/Badge Upgrade 2026-06-13
+   ================================================================ */
+
+/* ---------- Pill Tab ---------- */
+.user-pill-tab-nav { display: none; }
+
+@media (max-width: 960px) {
+  .user-fitness-sidebar { display: none !important; }
+
+  .user-pill-tab-nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 10px 12px 12px;
+    margin: 0 0 14px;
+    position: sticky;
+    top: 58px;
+    z-index: 20;
+    background: rgba(245,245,247,0.94);
+    backdrop-filter: saturate(180%) blur(16px);
+    -webkit-backdrop-filter: saturate(180%) blur(16px);
+    border-bottom: 1px solid rgba(0,0,0,0.07);
+  }
+  .user-pill-tab-nav::-webkit-scrollbar { display: none; }
+
+  .user-pill-tab {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 8px 16px;
+    border-radius: 980px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #3c3c43;
+    text-decoration: none;
+    background: rgba(120,120,128,0.12);
+    transition: background 0.18s, color 0.18s, transform 0.12s;
+    white-space: nowrap;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .user-pill-tab:active { transform: scale(0.95); }
+  .user-pill-tab.active {
+    background: #0071e3;
+    color: #fff;
+    box-shadow: 0 2px 10px rgba(0,113,227,0.28);
+  }
+  .pill-icon { font-size: 15px; line-height: 1; }
+  .pill-label { line-height: 1; }
+
+  .user-fitness-layout { grid-template-columns: 1fr !important; }
+
+  .user-fitness-main .card {
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+
+  #fitnessEntryForm,
+  .user-fitness-main form.form-grid {
+    grid-template-columns: 1fr !important;
+  }
+  #fitnessEntryForm label input,
+  #fitnessEntryForm label select,
+  .user-fitness-main form.form-grid label input,
+  .user-fitness-main form.form-grid label select {
+    font-size: 16px;
+    padding: 12px 14px;
+    border-radius: 10px;
+  }
+  #fitnessEntrySubmitButton {
+    width: 100%;
+    padding: 14px;
+    font-size: 16px;
+    border-radius: 12px;
+  }
+
+  .dashboard-head { padding: 16px !important; }
+  .dashboard-head h1 { font-size: 20px !important; }
+  .dashboard-head > div:last-child { flex-wrap: wrap; margin-top: 10px; }
+}
+
+/* ---------- Rating badges ---------- */
+.rating-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 9px;
+  border-radius: 980px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  line-height: 1.5;
+}
+.rating-badge.excellent { background: #dcfce7; color: #15803d; }
+.rating-badge.good      { background: #dbeafe; color: #1d4ed8; }
+.rating-badge.pass      { background: #fef9c3; color: #854d0e; }
+.rating-badge.fail      { background: #fee2e2; color: #b91c1c; }
+.score-hi { color: #15803d; font-weight: 600; }
+.score-lo { color: #b91c1c; font-weight: 600; }
+
+/* ---------- Desktop sidebar upgrade ---------- */
+@media (min-width: 961px) {
+  .user-fitness-sidebar { border-radius: 16px !important; padding: 20px 16px !important; }
+  .user-fitness-nav-link { border-radius: 12px; transition: background 0.16s, color 0.16s, box-shadow 0.16s; }
+  .user-fitness-nav-link.active {
+    background: #0071e3;
+    color: #fff !important;
+    box-shadow: 0 4px 14px rgba(0,113,227,0.22);
+  }
+  .user-fitness-nav-link.active .user-fitness-nav-desc { color: rgba(255,255,255,0.72); }
+  .user-fitness-nav-link.active:hover { background: #0058b0; color: #fff !important; }
+}
+
+/* ---------- Table row hover ---------- */
+.data-table tbody tr { transition: background 0.12s; }
+/* ── Collapse / 折叠组件 ── */
+.collapse-trigger { cursor:pointer; user-select:none; display:flex; align-items:center; gap:6px; padding:10px 14px; border-radius:8px; background:#f8fafc; font-weight:600; font-size:14px; color:#334155; transition:background 0.15s; }
+.collapse-trigger:hover { background:#eef2ff; }
+.collapse-trigger .collapse-arrow { display:inline-block; transition:transform 0.2s; font-size:12px; width:16px; text-align:center; }
+.collapse-trigger.open .collapse-arrow { transform:rotate(90deg); }
+.collapse-body { display:none; }
+.collapse-body.open { display:block; }
+
+.data-table tbody tr:hover { background: rgba(0,113,227,0.05) !important; }
+
+/* ---------- Empty state ---------- */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+  color: #86868b;
+  font-size: 14px;
+  text-align: center;
+  gap: 8px;
+}
+.empty-state::before { content: attr(data-emoji); font-size: 36px; line-height: 1; }
+
+/* ================================================================ */
+
+
+/* ========== admin fitness page polish ========== */
+.fitness-admin-layout {
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+.fitness-admin-main { min-width: 0; }
+.fitness-admin-sidebar {
+  position: sticky;
+  top: 72px;
+  padding: 18px 16px;
+  background: rgba(255,255,255,0.82);
+  border: 1px solid rgba(226,232,240,0.92);
+  box-shadow: 0 10px 30px rgba(15,23,42,0.06);
+  backdrop-filter: blur(12px);
+}
+.fitness-admin-sidebar .sidebar-brand { margin-bottom: 16px; }
+.fitness-admin-sidebar .sidebar-title {
+  margin-bottom: 0;
+  font-size: 12px;
+  color: #94a3b8;
+  letter-spacing: 0.08em;
+}
+.fitness-admin-sidebar .fitness-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.fitness-admin-sidebar .fitness-nav-group { gap: 0; display: block; }
+.fitness-admin-sidebar .fitness-nav-root,
+.fitness-admin-sidebar .fitness-nav-grade-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 34px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: transparent;
+  color: #334155 !important;
+  border: none;
+  box-shadow: none;
+  font-size: 13.5px;
+  font-weight: 600;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.fitness-admin-sidebar .fitness-nav-grade-link { margin-bottom: 0; }
+.fitness-admin-sidebar .fitness-nav-root:hover,
+.fitness-admin-sidebar .fitness-nav-grade-link:hover {
+  background: #f1f5f9;
+  color: #2563eb !important;
+}
+.fitness-admin-sidebar .fitness-nav-root.active,
+.fitness-admin-sidebar .fitness-nav-grade-link.active {
+  background: #eff6ff;
+  color: #1d4ed8 !important;
+  border-left: none;
+  padding-left: 10px;
+}
+.fitness-admin-sidebar .fitness-nav-grade-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.fitness-admin-sidebar .fitness-nav-chevron {
+  font-size: 11px;
+  opacity: 0.7;
+  display: inline-block;
+  transition: transform 0.18s ease;
+}
+.fitness-admin-sidebar .fitness-nav-group.open .fitness-nav-chevron {
+  transform: rotate(90deg);
+}
+/* 班级列表：默认折叠，展开靠 .fitness-nav-group.open */
+.fitness-admin-sidebar .fitness-nav-classes {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 0 2px 12px;
+  margin-left: 4px;
+  border-left: 1px solid #e8edf3;
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: max-height 0.22s ease, opacity 0.18s ease, padding 0.18s ease;
+}
+.fitness-admin-sidebar .fitness-nav-group.open .fitness-nav-classes {
+  max-height: 600px;
+  opacity: 1;
+  padding-top: 2px;
+  padding-bottom: 4px;
+}
+.fitness-admin-sidebar .fitness-nav-class {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 30px;
+  padding: 6px 10px;
+  border-radius: 7px;
+  background: transparent;
+  color: #64748b !important;
+  border: none;
+  font-size: 12.5px;
+  font-weight: 500;
+  box-shadow: none;
+}
+.fitness-admin-sidebar .fitness-nav-class-all {
+  background: transparent;
+  color: #475569 !important;
+  font-weight: 600;
+}
+.fitness-admin-sidebar .fitness-nav-class:hover {
+  background: #f1f5f9;
+  color: #1e293b !important;
+}
+.fitness-admin-sidebar .fitness-nav-class.active {
+  background: #e0f2fe;
+  color: #0369a1 !important;
+  font-weight: 600;
+  border-left: none;
+  padding-left: 10px;
+  box-shadow: none;
+}
+.fitness-admin-sidebar .fitness-nav-empty {
+  padding: 6px 11px;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.fitness-batch-overview {
+  margin-bottom: 20px;
+  padding: 20px 22px;
+  border: 1px solid rgba(226,232,240,0.92);
+  box-shadow: 0 10px 30px rgba(15,23,42,0.05);
+}
+.fitness-batch-overview-head {
+  margin-bottom: 12px !important;
+  padding-bottom: 0 !important;
+}
+.fitness-batch-overview-head h3 {
+  margin: 0;
+  font-size: 16px;
+}
+.fitness-batch-overview-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 16px;
+}
+.fitness-batch-overview-item {
+  flex: 1 1 220px;
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.fitness-batch-overview-divider {
+  width: 1px;
+  flex: 0 0 1px;
+  align-self: stretch;
+  background: #e2e8f0;
+}
+.fitness-batch-overview-label {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.fitness-batch-overview-value-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.fitness-batch-overview-value {
+  font-size: 30px;
+  line-height: 1;
+  font-weight: 700;
+  color: #0f172a;
+}
+.fitness-batch-overview-unit {
+  margin-bottom: 4px;
+  font-size: 13px;
+  color: #64748b;
+}
+.fitness-batch-overview-meta {
+  font-size: 12px;
+  color: #94a3b8;
+}
+.fitness-batch-overview-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 4px;
+}
+.fitness-batch-overview-form select {
+  max-width: 150px;
+  font-size: 12px;
+  padding: 10px 12px;
+}
+.fitness-batch-overview-ratings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.fitness-batch-overview-rating {
+  min-width: 92px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+.fitness-batch-overview-rating-number {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+}
+.fitness-batch-overview-rating-label {
+  margin-top: 6px;
+  font-size: 13px;
+  color: #475569;
+  font-weight: 600;
+}
+.fitness-batch-overview-rating-meta {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+@media (max-width: 860px) {
+  .fitness-admin-layout {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .fitness-admin-sidebar {
+    position: static;
+    padding: 16px;
+  }
+  .fitness-admin-sidebar .fitness-nav {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: 6px;
+  }
+  .fitness-admin-sidebar .fitness-nav-group {
+    flex: none;
+    min-width: 0;
+    width: 100%;
+  }
+  .fitness-admin-sidebar .fitness-nav-root,
+  .fitness-admin-sidebar .fitness-nav-grade-link {
+    min-height: 40px;
+    padding: 9px 12px;
+  }
+  .fitness-admin-sidebar .fitness-nav-grade-title {
+    font-size: 13px;
+  }
+  .fitness-admin-sidebar .fitness-nav-classes {
+    padding-left: 10px;
+  }
+  .fitness-batch-overview {
+    padding: 18px 16px;
+  }
+  .fitness-batch-overview-body {
+    gap: 12px;
+  }
+  .fitness-batch-overview-divider {
+    display: none;
+  }
+  .fitness-batch-overview-item {
+    min-width: 100%;
+  }
+  .fitness-batch-overview-rating {
+    flex: 1 1 calc(50% - 12px);
+    min-width: calc(50% - 12px);
+  }
+}
+
+@media (max-width: 480px) {
+  .fitness-admin-sidebar .fitness-nav {
+    flex-direction: column;
+  }
+  .fitness-admin-sidebar .fitness-nav-group {
+    min-width: 100%;
+  }
+  .fitness-batch-overview-rating {
+    flex: 1 1 100%;
+    min-width: 100%;
+  }
+}
+
+/* ===== 趋势数据洞察面板 ===== */
+.trend-insight {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px dashed #e2e8f0;
+}
+.trend-insight-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 12px;
+}
+.trend-insight-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+.trend-insight-card {
+  background: #f8fafc;
+  border: 1px solid #eef2f7;
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.trend-insight-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.trend-insight-metric {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.trend-insight-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.trend-insight-now {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+}
+.trend-insight-delta {
+  margin-top: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.trend-insight-delta.up { color: #16a34a; }
+.trend-insight-delta.down { color: #dc2626; }
+.trend-insight-delta.flat { color: #94a3b8; }
+.trend-insight-grade {
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.trend-insight-grade.up { color: #16a34a; }
+.trend-insight-grade.down { color: #dc2626; }
+.trend-insight-grade.flat { color: #94a3b8; }
+.trend-insight-cmp {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #64748b;
+}
+.trend-insight-cmp strong { color: #334155; }
+.trend-insight-decline {
+  margin-top: 10px;
+}
+.trend-insight-decline > summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: #dc2626;
+  font-weight: 600;
+  list-style: none;
+  user-select: none;
+}
+.trend-insight-decline > summary::-webkit-details-marker { display: none; }
+.trend-insight-decline > summary::before {
+  content: "\25B8";
+  display: inline-block;
+  margin-right: 4px;
+  transition: transform 0.15s ease;
+}
+.trend-insight-decline[open] > summary::before { transform: rotate(90deg); }
+.trend-insight-names {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.trend-decline-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: none;
+}
+.trend-decline-chip:hover { background: #fee2e2; }
+.trend-decline-diff {
+  font-weight: 700;
+  font-size: 11px;
+  opacity: 0.85;
+}
+.trend-insight-decline-none {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #94a3b8;
+}
+@media (max-width: 480px) {
+  .trend-insight-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+
+/* ===== 生长趋势 全班/男/女 切换按钮（方案3） ===== */
+.growth-gender-switch { display:inline-flex; gap:4px; margin-top:8px; padding:3px; background:#f1f5f9; border-radius:9px; }
+.growth-gender-switch .ggs-btn {
+  border:none; background:transparent; color:#64748b; font-size:13px; font-weight:600;
+  padding:5px 14px; border-radius:7px; cursor:pointer; transition:all .15s ease; line-height:1.2;
+}
+.growth-gender-switch .ggs-btn:hover { color:#334155; }
+.growth-gender-switch .ggs-btn.active { background:#ffffff; color:#2563eb; box-shadow:0 1px 3px rgba(15,23,42,.12); }
+/* 洞察面板范围标签 */
+.trend-insight-scope-tag {
+  display:inline-block; margin-left:8px; padding:1px 9px; font-size:11px; font-weight:600;
+  color:#2563eb; background:#eff6ff; border-radius:10px; vertical-align:middle;
+}
+/* 年级对比：标签 + 男/女值，按当前切换显隐 */
+.trend-insight-cmp .cmp-label { margin-right:8px; }
+.trend-insight-cmp .cmp-male { margin-right:12px; }
+.trend-insight-cmp .cmp-male, .trend-insight-cmp .cmp-female { display:inline; }

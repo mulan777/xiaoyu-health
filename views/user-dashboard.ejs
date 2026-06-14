@@ -273,43 +273,33 @@
 <% } %>
 
 <style>
-  /* P1-4: 冻结体测明细表前3列 — 固定宽度确保偏移精准 */
+  /* 冻结体测明细表前2列（姓名+性别）— 测试日期不再冻结 */
   .data-table th:nth-child(1), .data-table td:nth-child(1) { width: 72px; min-width: 72px; max-width: 72px; }
   .data-table th:nth-child(2), .data-table td:nth-child(2) { width: 52px; min-width: 52px; max-width: 52px; }
-  .data-table th:nth-child(3), .data-table td:nth-child(3) { width: 92px; min-width: 92px; max-width: 92px; }
   .data-table th:nth-child(1), .data-table td:nth-child(1) { position: sticky; left: 0; }
   .data-table th:nth-child(2), .data-table td:nth-child(2) { position: sticky; left: 72px; }
-  .data-table th:nth-child(3), .data-table td:nth-child(3) { position: sticky; left: 124px; }
   /* 表头始终在最上层 */
   .data-table thead th:nth-child(1),
-  .data-table thead th:nth-child(2),
-  .data-table thead th:nth-child(3) { z-index: 4; background: #f9fafb; }
+  .data-table thead th:nth-child(2) { z-index: 4; background: #f9fafb; }
   /* 数据单元格默认背景，覆盖滚动穿透 */
   .data-table tbody td:nth-child(1),
-  .data-table tbody td:nth-child(2),
-  .data-table tbody td:nth-child(3) { z-index: 1; background: #ffffff; }
+  .data-table tbody td:nth-child(2) { z-index: 1; background: #ffffff; }
   /* 斑马行背景同步 */
   .data-table tbody tr:nth-child(even) td:nth-child(1),
-  .data-table tbody tr:nth-child(even) td:nth-child(2),
-  .data-table tbody tr:nth-child(even) td:nth-child(3) { background: #f9fafb; }
+  .data-table tbody tr:nth-child(even) td:nth-child(2) { background: #f9fafb; }
   /* 悬停行背景同步 */
   .data-table tbody tr:hover td:nth-child(1),
-  .data-table tbody tr:hover td:nth-child(2),
-  .data-table tbody tr:hover td:nth-child(3) { background: #f3f4f6; }
+  .data-table tbody tr:hover td:nth-child(2) { background: #f3f4f6; }
   /* dark theme */
   @media (prefers-color-scheme: dark) {
     .data-table thead th:nth-child(1),
-    .data-table thead th:nth-child(2),
-    .data-table thead th:nth-child(3) { background: #0f172a; }
+    .data-table thead th:nth-child(2) { background: #0f172a; }
     .data-table tbody td:nth-child(1),
-    .data-table tbody td:nth-child(2),
-    .data-table tbody td:nth-child(3) { background: #1e293b; }
+    .data-table tbody td:nth-child(2) { background: #1e293b; }
     .data-table tbody tr:nth-child(even) td:nth-child(1),
-    .data-table tbody tr:nth-child(even) td:nth-child(2),
-    .data-table tbody tr:nth-child(even) td:nth-child(3) { background: #1a2332; }
+    .data-table tbody tr:nth-child(even) td:nth-child(2) { background: #1a2332; }
     .data-table tbody tr:hover td:nth-child(1),
-    .data-table tbody tr:hover td:nth-child(2),
-    .data-table tbody tr:hover td:nth-child(3) { background: #334155; }
+    .data-table tbody tr:hover td:nth-child(2) { background: #334155; }
   }
 </style>
 
@@ -317,15 +307,15 @@
   <aside class="card user-fitness-sidebar">
     <div class="sidebar-brand"><div class="sidebar-title">教师体测导航</div></div>
     <nav class="user-fitness-nav">
-      <a class="user-fitness-nav-link <%= userView === 'records' ? 'active' : '' %>" href="/user?view=records">
+      <a class="user-fitness-nav-link <%= userView === 'records' ? 'active' : '' %>" href="/user?view=records" data-tab-nav="records">
         <span class="user-fitness-nav-title">本班体测记录</span>
         <span class="user-fitness-nav-desc">查看分页后的体测结果与分析</span>
       </a>
-      <a class="user-fitness-nav-link <%= userView === 'entry' ? 'active' : '' %>" href="/user?view=entry">
+      <a class="user-fitness-nav-link <%= userView === 'entry' ? 'active' : '' %>" href="/user?view=entry" data-tab-nav="entry">
         <span class="user-fitness-nav-title">体测数据录入</span>
         <span class="user-fitness-nav-desc">仅用于新增、导入、导出体测数据</span>
       </a>
-      <a class="user-fitness-nav-link <%= userView === 'attention' ? 'active' : '' %>" href="/user?view=attention">
+      <a class="user-fitness-nav-link <%= userView === 'attention' ? 'active' : '' %>" href="/user?view=attention" data-tab-nav="attention">
         <span class="user-fitness-nav-title">二次晨检维护</span>
         <span class="user-fitness-nav-desc">维护本班重点关注幼儿，活动前快速复核</span>
       </a>
@@ -342,11 +332,99 @@
         <h1>你好，<%= currentUser.name %></h1>
         <p>教师端工作台，支持查看本班体测记录、录入体测数据与场地预约。</p>
       </div>
-      <div style="display:flex;gap:8px;">
-        <a class="btn primary" href="/user/venues">场地预约 →</a>
-        <a class="btn secondary" href="/logout">退出登录</a>
-      </div>
+
     </section>
+
+<div class="stats-row" id="v2-stats">
+  <div class="stat-card"><div class="stat-icon blue"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-7 8-7s8 3 8 7"/></svg></div><div class="stat-info"><div class="stat-number"><%= childCollection.length %></div><div class="stat-label">班级幼儿</div></div></div>
+  <div class="stat-card"><div class="stat-icon green"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div><div class="stat-info"><div class="stat-number"><%= typeof totalFitnessRecordsCount !== "undefined" ? totalFitnessRecordsCount : (typeof allFitnessRecords !== "undefined" ? allFitnessRecords.length : 0) %></div><div class="stat-label">体测记录</div></div></div>
+  <div class="stat-card" onclick="openAttentionModal()" style="cursor:pointer;" title="点击查看重点关注名单"><div class="stat-icon amber"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div><div class="stat-info"><div class="stat-number"><%= activeAttentionChildren.length %></div><div class="stat-label">待关注</div></div></div>
+</div>
+
+<!-- 待关注名单弹窗：点击"待关注"卡片弹出，显示姓名/马甲类型/关注原因 -->
+<div class="attention-modal-overlay" id="attentionModal" style="display:none;" onclick="if(event.target===this)closeAttentionModal()">
+  <div class="attention-modal" role="dialog" aria-modal="true" aria-label="本班重点关注名单">
+    <div class="attention-modal-head">
+      <div>
+        <div class="attention-modal-title">本班重点关注名单</div>
+        <div class="attention-modal-sub"><%= activeAttentionChildren.length ? ('共 ' + activeAttentionChildren.length + ' 名幼儿需关注') : '当前本班暂无重点关注幼儿' %></div>
+      </div>
+      <button type="button" class="attention-modal-close" onclick="closeAttentionModal()" aria-label="关闭">✕</button>
+    </div>
+    <div class="attention-modal-body">
+      <% if (activeAttentionChildren.length) { %>
+        <% activeAttentionChildren.forEach(function(child) { %>
+          <div class="attention-modal-item">
+            <div class="attention-modal-item-head">
+              <span class="attention-modal-name"><%= child.name %><% if (child.gender) { %><span class="attention-modal-gender"><%= child.gender %></span><% } %></span>
+              <span class="vest-badge <%= attentionVestKey(child) %>"><%= attentionVestLabel(child) %></span>
+            </div>
+            <div class="attention-modal-reason"><%= child.attention_reason || '已标记为重点关注，请在活动前再次确认。' %></div>
+            <% const mTags = parseAttentionTags(child.attention_tags); %>
+            <% if (mTags.length) { %>
+              <div class="tag-list compact-tag-list">
+                <% mTags.forEach(function(tag) { %><span class="tag-pill"><%= tag %></span><% }) %>
+              </div>
+            <% } %>
+            <div class="attention-modal-period"><%= formatAttentionPeriod(child.attention_start_date, child.attention_end_date) %></div>
+          </div>
+        <% }) %>
+      <% } else { %>
+        <div class="attention-modal-empty">当前本班还没有设置重点关注幼儿。点击下方按钮去维护。</div>
+      <% } %>
+    </div>
+    <div class="attention-modal-foot">
+      <button type="button" class="btn" onclick="closeAttentionModal()">关闭</button>
+      <button type="button" class="btn primary" onclick="closeAttentionModal();switchTab('attention')">去维护重点关注</button>
+    </div>
+  </div>
+</div>
+
+<style>
+  .attention-modal-overlay{position:fixed;inset:0;z-index:1000;background:rgba(15,23,42,0.45);backdrop-filter:blur(2px);display:flex;align-items:center;justify-content:center;padding:20px;}
+  .attention-modal{width:100%;max-width:460px;max-height:82vh;display:flex;flex-direction:column;background:#fff;border-radius:18px;box-shadow:0 24px 60px rgba(15,23,42,0.28);overflow:hidden;animation:attnPop .16s ease-out;}
+  @keyframes attnPop{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}
+  .attention-modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:18px 20px 14px;border-bottom:1px solid #f1f5f9;}
+  .attention-modal-title{font-size:17px;font-weight:700;color:#0f172a;}
+  .attention-modal-sub{margin-top:4px;font-size:12px;color:#94a3b8;}
+  .attention-modal-close{flex:0 0 auto;border:none;background:#f1f5f9;width:30px;height:30px;border-radius:9px;cursor:pointer;color:#475569;font-size:14px;}
+  .attention-modal-close:hover{background:#e2e8f0;}
+  .attention-modal-body{padding:14px 20px;overflow-y:auto;display:flex;flex-direction:column;gap:12px;}
+  .attention-modal-item{padding:14px;border:1px solid #e2e8f0;border-radius:14px;background:#f8fafc;}
+  .attention-modal-item-head{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+  .attention-modal-name{font-size:15px;font-weight:700;color:#0f172a;display:flex;align-items:center;gap:8px;}
+  .attention-modal-gender{font-size:12px;font-weight:500;color:#64748b;background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:1px 7px;}
+  .attention-modal-reason{margin-top:8px;font-size:13px;line-height:1.5;color:#475569;}
+  .attention-modal-period{margin-top:8px;font-size:12px;color:#94a3b8;}
+  .attention-modal-empty{padding:30px 10px;text-align:center;color:#94a3b8;font-size:14px;}
+  .attention-modal-foot{display:flex;gap:10px;justify-content:flex-end;padding:14px 20px;border-top:1px solid #f1f5f9;}
+  .vest-badge{display:inline-flex;align-items:center;font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px;}
+  .vest-badge.red{background:#fef2f2;color:#dc2626;border:1px solid #fecaca;}
+  .vest-badge.green{background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;}
+  .vest-badge.yellow{background:#fffbeb;color:#d97706;border:1px solid #fde68a;}
+  @media (prefers-color-scheme: dark){
+    .attention-modal{background:#1e293b;}
+    .attention-modal-title{color:#f1f5f9;}
+    .attention-modal-head,.attention-modal-foot{border-color:#334155;}
+    .attention-modal-item{background:#0f172a;border-color:#334155;}
+    .attention-modal-name{color:#f1f5f9;}
+    .attention-modal-reason{color:#cbd5e1;}
+    .attention-modal-gender{background:#1e293b;border-color:#334155;color:#94a3b8;}
+    .attention-modal-close{background:#334155;color:#cbd5e1;}
+  }
+</style>
+<script>
+  function openAttentionModal(){var m=document.getElementById('attentionModal');if(m){m.style.display='flex';document.body.style.overflow='hidden';}}
+  function closeAttentionModal(){var m=document.getElementById('attentionModal');if(m){m.style.display='none';document.body.style.overflow='';}}
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')closeAttentionModal();});
+</script>
+
+<div class="tab-bar" id="v2-tabbar">
+  <button class="tab-btn active" onclick="switchTab(&#39;records&#39;)">体测记录</button>
+  <button class="tab-btn" onclick="switchTab(&#39;attention&#39;)">重点关注</button>
+  <button class="tab-btn" onclick="switchTab(&#39;entry&#39;)">录入体测</button>
+  <button class="tab-btn" onclick="switchTab(&#39;venue&#39;)">场地预约</button>
+</div>
 
     <% if (message) { %>
       <div class="alert success"><%= message %></div>
@@ -354,7 +432,9 @@
     <% if (editError) { %>
       <div class="alert error"><%= editError %></div>
     <% } %>
-    <% if (userView === 'attention') { %>
+
+<div class="tab-panel" id="tab-attention" style="display:none;">
+    <% if (userView === 'attention' || true) { %>
 
 <section class="card venue-attention-manage-card" id="attention-manage">
   <div class="section-head">
@@ -472,8 +552,11 @@
     <div class="empty-state">当前账号还没有绑定幼儿数据，暂时无法维护本班重点关注。</div>
   <% } %>
 </section>
+    <% } %>
+</div>
 
-    <% } else if (userView === 'records') { %>
+<div class="tab-panel active" id="tab-records">
+    <% if (userView === 'records' || !userView) { %>
 <!-- 本班体测数据 -->
 <section class="card" id="fitness-records" data-ajax-panel="user-records">
   <h2>本班体测记录</h2>
@@ -524,9 +607,12 @@
       <% }) %>
     </div>
 
+
+    <!-- 班级体能结构雷达图 -->
     <div class="card chart-card" style="margin-bottom:16px;">
-      <h3 style="margin-top:0;">班级体能结构雷达图</h3>
-      <div class="visual-grid">
+      <div class="collapse-trigger open" onclick="toggleCollapse(this)"><span class="collapse-arrow">▶</span> 班级体能结构雷达图</div>
+      <div class="collapse-body open">
+        <div class="visual-grid">
         <div class="radar-card" data-radar-root>
           <%
             const radarData = radarChartData || {
@@ -612,40 +698,25 @@
             <% }) %>
           </svg>
         </div>
-        <div class="trend-card">
-          <h4>班级训练建议</h4>
-          <div class="narrative-list">
-            <% (metricNeedTrainingSummary || []).forEach(function(item) { %>
-              <details class="narrative-item fitness-detail-card">
-                <summary>
-                  <strong><%= item.label %></strong>
-                  <span class="muted" style="margin-left:8px;"><%= item.count %> / <%= item.total %> 人需持续跟进</span>
-                </summary>
-                <div><%= item.narrative %></div>
-                <div class="muted" style="margin-top:6px;">对应人员：
-                  <% if (item.nameLinks && item.nameLinks.length) { %>
-                    <% item.nameLinks.forEach(function(link) { const quick = (childQuickLookup && childQuickLookup[link.name]) || null; %>
-                      <a class="child-compare-link" data-child-id="<%= quick && quick.childId ? quick.childId : '' %>" data-child-name="<%= link.name %>" role="button" tabindex="0" style="margin:4px 6px 0 0;display:inline-block;color:#2563eb;cursor:pointer;font-size:13px;"><%= link.name %></a>
-                    <% }) %>
-                  <% } else { %>
-                    暂无
-                  <% } %>
-                </div>
-              </details>
-            <% }) %>
-          </div>
         </div>
       </div>
     </div>
 
-    <!-- 班级生长趋势（范围级身高/体重/BMI折线图） -->
-    <section class="card chart-card" style="margin-bottom:16px;">
-      <div class="section-head">
-        <div>
+
+    <!-- 班级生长趋势 -->
+    <div class="card chart-card" style="margin-bottom:16px;">
+      <div class="collapse-trigger" onclick="toggleCollapse(this)"><span class="collapse-arrow">▶</span> 班级生长趋势</div>
+      <div class="collapse-body">
+        <div class="section-head"><div>
           <h3>班级生长趋势</h3>
           <div class="muted no-margin">按测试日期展示本班幼儿身高/体重/BMI均值趋势</div>
         </div>
-      </div>
+        <div class="growth-gender-switch" role="tablist" aria-label="按性别查看生长趋势">
+          <button type="button" class="ggs-btn active" data-series="all" onclick="switchGrowthSeries(this,'all')">全班</button>
+          <button type="button" class="ggs-btn" data-series="M" onclick="switchGrowthSeries(this,'M')">男生</button>
+          <button type="button" class="ggs-btn" data-series="F" onclick="switchGrowthSeries(this,'F')">女生</button>
+        </div>
+        </div>
       <div class="wave-chart-wrap">
                   <%
             var scopeItems = scopeTrendData || [];
@@ -655,9 +726,13 @@
 
           var GW = 760, GH = 280, gPadL = 52, gPadR = 48, gPadT = 20, gPadB = 40;
           var gIW = GW - gPadL - gPadR, gIH = GH - gPadT - gPadB;
-          var hVals = scopeItems.map(function(r) { return r.heightAvg; }).filter(function(v) { return v != null; });
-          var wVals = scopeItems.map(function(r) { return r.weightAvg; }).filter(function(v) { return v != null; });
-          var bVals = scopeItems.map(function(r) { return r.bmiAvg; }).filter(function(v) { return v != null; });
+          // 三套口径都参与坐标轴范围计算，保证切换男/女时刻度不跳变
+          var hVals = [], wVals = [], bVals = [];
+          scopeItems.forEach(function(r) {
+            ['heightAvg','heightAvgM','heightAvgF'].forEach(function(k){ if (r[k] != null) hVals.push(r[k]); });
+            ['weightAvg','weightAvgM','weightAvgF'].forEach(function(k){ if (r[k] != null) wVals.push(r[k]); });
+            ['bmiAvg','bmiAvgM','bmiAvgF'].forEach(function(k){ if (r[k] != null) bVals.push(r[k]); });
+          });
           var hMin = Math.min.apply(null, hVals.length ? hVals : [0]) || 0;
           var hMax = Math.max.apply(null, hVals.length ? hVals : [0]) || 100;
           var hRange = hMax - hMin || 20;
@@ -714,9 +789,21 @@
               return svg;
             }
           %>
+          <g class="growth-series" data-series="all">
           <%- makeGrowthLine(scopeItems, 'heightAvg', '#f97316', 2.5, null, false) %>
           <%- makeGrowthLine(scopeItems, 'weightAvg', '#8b5cf6', 2.5, null, true) %>
           <%- makeGrowthLine(scopeItems, 'bmiAvg', '#ec4899', 2, '5,4', true) %>
+          </g>
+          <g class="growth-series" data-series="M" style="display:none;">
+          <%- makeGrowthLine(scopeItems, 'heightAvgM', '#f97316', 2.5, null, false) %>
+          <%- makeGrowthLine(scopeItems, 'weightAvgM', '#8b5cf6', 2.5, null, true) %>
+          <%- makeGrowthLine(scopeItems, 'bmiAvgM', '#ec4899', 2, '5,4', true) %>
+          </g>
+          <g class="growth-series" data-series="F" style="display:none;">
+          <%- makeGrowthLine(scopeItems, 'heightAvgF', '#f97316', 2.5, null, false) %>
+          <%- makeGrowthLine(scopeItems, 'weightAvgF', '#8b5cf6', 2.5, null, true) %>
+          <%- makeGrowthLine(scopeItems, 'bmiAvgF', '#ec4899', 2, '5,4', true) %>
+          </g>
 
 </svg>
         <div style="display:flex;flex-wrap:wrap;gap:10px 18px;justify-content:center;margin-top:10px;">
@@ -732,7 +819,106 @@
 
 
         </div>
-      
+
+        <%
+          // 生长趋势数据洞察：环比上次 + 年级男女平均对比 + BMI 下降名单
+          var gLast = scopeItems[scopeItems.length - 1] || {};
+          var gPrev = scopeItems[scopeItems.length - 2] || {};
+          function gDeltaOf(key) {
+            var cur = gLast[key], prv = gPrev[key];
+            if (cur == null || prv == null || prv == 0) return null;
+            return Number(((cur - prv) / Math.abs(prv) * 100).toFixed(1));
+          }
+          function deltaText(d) {
+            if (d == null) return '较上次 —';
+            if (d > 0) return '较上次 ↑ ' + Math.abs(d) + '%';
+            if (d < 0) return '较上次 ↓ ' + Math.abs(d) + '%';
+            return '较上次 持平';
+          }
+          function deltaCls(d) { return d == null ? 'flat' : (d > 0 ? 'up' : (d < 0 ? 'down' : 'flat')); }
+          // 本班当前值 vs 年级组同口径平均：返回 {text, cls}
+          function gradeCmp(cur, grade) {
+            if (cur == null || grade == null) return { text: '较年级 —', cls: 'flat' };
+            var diff = Number((cur - grade).toFixed(1));
+            var pct = grade != 0 ? Number(((cur - grade) / Math.abs(grade) * 100).toFixed(1)) : null;
+            var arrow = diff > 0 ? '高于' : (diff < 0 ? '低于' : '持平');
+            if (diff === 0) return { text: '较年级 持平', cls: 'flat' };
+            var absDiff = Math.abs(diff);
+            var pctStr = pct != null ? ('（' + Math.abs(pct) + '%）') : '';
+            return { text: '较年级 ' + arrow + ' ' + absDiff + pctStr, cls: diff > 0 ? 'up' : 'down' };
+          }
+          var growthInsightRows = [
+            { key: 'heightAvg', label: '身高', unit: 'cm', gKey: 'height' },
+            { key: 'weightAvg', label: '体重', unit: 'kg', gKey: 'weight' },
+            { key: 'bmiAvg', label: 'BMI', unit: '', gKey: 'bmi' }
+          ];
+        %>
+        <div class="trend-insight" data-growth-insight>
+          <div class="trend-insight-title">数据洞察 · 较上次 <%= gPrev.testDate ? ('（' + gPrev.testDate + ' → ' + gLast.testDate + '）') : '' %><span class="trend-insight-scope-tag" data-scope-tag>全班</span></div>
+          <div class="trend-insight-grid">
+            <% growthInsightRows.forEach(function(row) {
+                 var unitSuffix = row.unit ? (' ' + row.unit) : '';
+                 // 三套口径的当前值
+                 var curAll = gLast[row.key];
+                 var curM = gLast[row.key + 'M'];
+                 var curF = gLast[row.key + 'F'];
+                 var nowAll = curAll != null ? (curAll + unitSuffix) : '—';
+                 var nowM = curM != null ? (curM + unitSuffix) : '—';
+                 var nowF = curF != null ? (curF + unitSuffix) : '—';
+                 // 三套口径的环比
+                 var dAll = gDeltaOf(row.key);
+                 var dM = gDeltaOf(row.key + 'M');
+                 var dF = gDeltaOf(row.key + 'F');
+                 var male = growthGradeGender && growthGradeGender.male ? growthGradeGender.male[row.gKey] : null;
+                 var female = growthGradeGender && growthGradeGender.female ? growthGradeGender.female[row.gKey] : null;
+                 var gradeAll = growthGradeGender && growthGradeGender.all ? growthGradeGender.all[row.gKey] : null;
+                 // 三套口径"较年级组"对比：本班当前值 vs 年级同口径平均
+                 var gcAll = gradeCmp(curAll, gradeAll);
+                 var gcM = gradeCmp(curM, male);
+                 var gcF = gradeCmp(curF, female);
+                 var declineList = (row.key === 'bmiAvg' && growthDeclineChildren && growthDeclineChildren.bmi) ? growthDeclineChildren.bmi : [];
+            %>
+            <div class="trend-insight-card"
+                 data-now-all="<%= nowAll %>" data-now-m="<%= nowM %>" data-now-f="<%= nowF %>"
+                 data-delta-all-text="<%= deltaText(dAll) %>" data-delta-all-cls="<%= deltaCls(dAll) %>"
+                 data-delta-m-text="<%= deltaText(dM) %>" data-delta-m-cls="<%= deltaCls(dM) %>"
+                 data-delta-f-text="<%= deltaText(dF) %>" data-delta-f-cls="<%= deltaCls(dF) %>"
+                 data-grade-all-text="<%= gcAll.text %>" data-grade-all-cls="<%= gcAll.cls %>"
+                 data-grade-m-text="<%= gcM.text %>" data-grade-m-cls="<%= gcM.cls %>"
+                 data-grade-f-text="<%= gcF.text %>" data-grade-f-cls="<%= gcF.cls %>">
+              <div class="trend-insight-head">
+                <span class="trend-insight-metric"><%= row.label %></span>
+                <span class="trend-insight-now"><%= nowAll %></span>
+              </div>
+              <div class="trend-insight-delta <%= deltaCls(dAll) %>">
+                <%= deltaText(dAll) %>
+              </div>
+              <% if (male != null || female != null || gradeAll != null) { %>
+              <div class="trend-insight-grade <%= gcAll.cls %>">
+                <%= gcAll.text %>
+              </div>
+              <% } %>
+              <% if (male != null || female != null) { %>
+              <div class="trend-insight-cmp">
+                <span class="cmp-label">年级组均值</span><span class="cmp-male">男 <strong><%= male != null ? male : '—' %></strong></span><span class="cmp-female">女 <strong><%= female != null ? female : '—' %></strong></span>
+              </div>
+              <% } %>
+              <% if (row.key === 'bmiAvg') { %>
+                <details class="trend-insight-decline" data-decline-block<%= declineList.length ? '' : ' style="display:none;"' %>>
+                  <summary><span class="decline-count"><%= declineList.length %></span> 名<span class="decline-scope">幼儿</span> BMI 较上次下降（点击查看）</summary>
+                  <div class="trend-insight-names">
+                    <% declineList.forEach(function(c) { %>
+                      <a class="child-compare-link trend-decline-chip" data-gender="<%= c.gender %>" data-child-id="<%= c.childId %>" data-child-name="<%= c.name %>" role="button" tabindex="0" title="点击查看 <%= c.name %> 的个人趋势"><%= c.name %> <span class="trend-decline-diff"><%= c.diff %></span></a>
+                    <% }) %>
+                  </div>
+                </details>
+                <div class="trend-insight-decline-none" data-decline-none<%= declineList.length ? ' style="display:none;"' : '' %>>本班 BMI 无下降幼儿</div>
+              <% } %>
+            </div>
+            <% }) %>
+          </div>
+        </div>
+
           <% } else { %>
           <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:280px;color:#94a3b8;background:#f8fafc;border-radius:8px;border:2px dashed #e2e8f0;">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" style="margin-bottom:12px;">
@@ -744,16 +930,17 @@
           </div>
           <% } %>
 </div>
-    </section>
+      </div>
+    </div>
 
-    <!-- 班级体测趋势对比（范围级纵向折线图） -->
-    <section class="card chart-card" style="margin-bottom:16px;">
-      <div class="section-head">
-        <div>
+    <!-- 班级体测趋势对比 -->
+    <div class="card chart-card" style="margin-bottom:16px;">
+      <div class="collapse-trigger" onclick="toggleCollapse(this)"><span class="collapse-arrow">▶</span> 班级体测趋势对比</div>
+      <div class="collapse-body">
+        <div class="section-head"><div>
           <h3>班级体测趋势对比</h3>
           <div class="muted no-margin">按测试日期展示本班各体测项目的均分趋势（班级级纵向对比）</div>
-        </div>
-      </div>
+        </div></div>
       <div class="wave-chart-wrap">
                   <%
             var scopeItems2 = scopeTrendData || [];
@@ -819,7 +1006,53 @@
             </span>
           <% }) %>
         </div>
-      
+
+        <%
+          // 体测趋势数据洞察：每项环比上次 + 下降名单（点击查看个人）
+          var fLast = scopeItems2[scopeItems2.length - 1] || {};
+          var fPrev = scopeItems2[scopeItems2.length - 2] || {};
+          var fitnessInsightRows = [
+            { key: 'gripAvg', label: '握力', dKey: 'grip', color: '#ef4444' },
+            { key: 'jumpAvg', label: '跳远', dKey: 'jump', color: '#f97316' },
+            { key: 'sitAvg', label: '体前屈', dKey: 'sit', color: '#eab308' },
+            { key: 'djumpAvg', label: '双脚跳', dKey: 'djump', color: '#22c55e' },
+            { key: 'obstacleAvg', label: '障碍跑', dKey: 'obstacle', color: '#06b6d4' },
+            { key: 'balanceAvg', label: '平衡木', dKey: 'balance', color: '#8b5cf6' }
+          ];
+        %>
+        <div class="trend-insight">
+          <div class="trend-insight-title">数据洞察 · 较上次 <%= fPrev.testDate ? ('（' + fPrev.testDate + ' → ' + fLast.testDate + '）') : '' %></div>
+          <div class="trend-insight-grid">
+            <% fitnessInsightRows.forEach(function(row) {
+                 var cur = fLast[row.key], prv = fPrev[row.key];
+                 var d = (cur != null && prv != null && prv != 0) ? Number(((cur - prv) / Math.abs(prv) * 100).toFixed(1)) : null;
+                 var declineList = (fitnessDeclineChildren && fitnessDeclineChildren[row.dKey]) ? fitnessDeclineChildren[row.dKey] : [];
+            %>
+            <div class="trend-insight-card">
+              <div class="trend-insight-head">
+                <span class="trend-insight-metric"><span class="trend-insight-dot" style="background:<%= row.color %>;"></span><%= row.label %></span>
+                <span class="trend-insight-now"><%= cur != null ? cur + ' 分' : '—' %></span>
+              </div>
+              <div class="trend-insight-delta <%= d == null ? 'flat' : (d > 0 ? 'up' : (d < 0 ? 'down' : 'flat')) %>">
+                <% if (d == null) { %>较上次 —<% } else if (d > 0) { %>较上次 ↑ <%= Math.abs(d) %>%<% } else if (d < 0) { %>较上次 ↓ <%= Math.abs(d) %>%<% } else { %>较上次 持平<% } %>
+              </div>
+              <% if (declineList.length) { %>
+              <details class="trend-insight-decline">
+                <summary><%= declineList.length %> 名幼儿下降（点击查看）</summary>
+                <div class="trend-insight-names">
+                  <% declineList.forEach(function(c) { %>
+                    <a class="child-compare-link trend-decline-chip" data-child-id="<%= c.childId %>" data-child-name="<%= c.name %>" role="button" tabindex="0" title="点击查看 <%= c.name %> 的个人趋势"><%= c.name %> <span class="trend-decline-diff"><%= c.diff %></span></a>
+                  <% }) %>
+                </div>
+              </details>
+              <% } else { %>
+              <div class="trend-insight-decline-none">本班无下降幼儿</div>
+              <% } %>
+            </div>
+            <% }) %>
+          </div>
+        </div>
+
           <% } else { %>
           <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:280px;color:#94a3b8;background:#f8fafc;border-radius:8px;border:2px dashed #e2e8f0;">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" style="margin-bottom:12px;">
@@ -831,9 +1064,43 @@
           </div>
           <% } %>
 </div>
-    </section>
+      </div>
+    </div>
 
-    <div id="user-record-filter-anchor" class="toolbar" style="margin:16px 0 12px; align-items:flex-start; gap:10px;">
+    <!-- 班级训练建议（独立卡片，置于体测趋势对比之后） -->
+    <div class="card chart-card" style="margin-bottom:16px;">
+      <div class="collapse-trigger" onclick="toggleCollapse(this)"><span class="collapse-arrow">▶</span> 班级训练建议</div>
+      <div class="collapse-body">
+          <h4>班级训练建议</h4>
+          <div class="narrative-list">
+            <% (metricNeedTrainingSummary || []).forEach(function(item) { %>
+              <details class="narrative-item fitness-detail-card">
+                <summary>
+                  <strong><%= item.label %></strong>
+                  <span class="muted" style="margin-left:8px;"><%= item.count %> / <%= item.total %> 人需持续跟进</span>
+                </summary>
+                <div><%= item.narrative %></div>
+                <div class="muted" style="margin-top:6px;">对应人员：
+                  <% if (item.nameLinks && item.nameLinks.length) { %>
+                    <% item.nameLinks.forEach(function(link) { const quick = (childQuickLookup && childQuickLookup[link.name]) || null; %>
+                      <a class="child-compare-link" data-child-id="<%= quick && quick.childId ? quick.childId : '' %>" data-child-name="<%= link.name %>" role="button" tabindex="0" style="margin:4px 6px 0 0;display:inline-block;color:#2563eb;cursor:pointer;font-size:13px;"><%= link.name %></a>
+                    <% }) %>
+                  <% } else { %>
+                    暂无
+                  <% } %>
+                </div>
+              </details>
+            <% }) %>
+          </div>
+      </div>
+    </div>
+
+
+
+
+<div class="collapse-trigger" data-filter-trigger="1" onclick="toggleCollapse(this)" style="margin-top:16px;"><span class="collapse-arrow">▶</span> 筛选 / 查询 / 排序</div>
+<div class="collapse-body">
+<div id="user-record-filter-anchor" class="toolbar" style="margin:16px 0 12px; align-items:flex-start; gap:10px;">
       <div>
         <strong>筛选 / 查询 / 排序</strong>
         <div class="muted"></div>
@@ -959,7 +1226,13 @@
       </div>
     <% } %>
   <% } %>
-    <% } else { %>
+    <% } %>
+    </div><!-- /collapse-body -->
+</section>
+</div>
+
+<div class="tab-panel" id="tab-entry" style="display:none;">
+    <% if (userView === 'entry' || userView === 'records' || userView === 'attention' || !userView) { %>
 
 <!-- 体测录入 -->
 <section class="card" id="fitness-entry">
@@ -1111,6 +1384,8 @@
   <div class="muted" style="margin-top:8px;">模板字段：幼儿姓名、测试日期、身高(CM)、体重(KG)、握力(KG)、立定跳远(CM)、坐位体前屈(CM)、双脚连续跳(秒)、15米绕障碍跑(秒)、走平衡木(秒)</div>
 </section>
     <% } %>
+</div>
+<!-- /tab-entry -->
 
 </section>
   </div>
@@ -1598,13 +1873,14 @@ function openUserChildFitnessModal(data) {
   if (!overlay) return;
   var birthText = data && data.birthDate ? String(data.birthDate).slice(0, 10) : '-';
   title.textContent = (data && data.childName) || '幼儿体测详情';
-  meta.innerHTML = '班级：' + ((data && data.className) || '-')
+  meta.textContent = '班级：' + ((data && data.className) || '-')
     + '　|　性别：' + ((data && data.gender) || '-')
     + '　|　出生日期：' + birthText
-    + '<br>最近体测：' + ((data && data.testDate) || '-')
+    + '　|　最近体测：' + ((data && data.testDate) || '-')
     + '　|　综合得分：' + ((data && data.totalScore) || '-')
     + '　|　评级：' + ((data && data.rating) || '-');
-  scores.innerHTML = [
+  scores.textContent = '';
+  [
     '身高：' + ((data && data.heightCm) || '-') + ' cm',
     '体重：' + ((data && data.weightKg) || '-') + ' kg',
     'BMI：' + ((data && data.bmi) || '-'),
@@ -1614,7 +1890,12 @@ function openUserChildFitnessModal(data) {
     '双脚连续跳：' + ((data && data.doubleJumpSec) || '-') + ' 秒（' + ((data && data.djumpScore) || '-') + '分）',
     '15米绕障碍跑：' + ((data && data.obstacleRunSec) || '-') + ' 秒（' + ((data && data.obstacleScore) || '-') + '分）',
     '走平衡木：' + ((data && data.balanceBeamSec) || '-') + ' 秒（' + ((data && data.balanceScore) || '-') + '分）'
-  ].map(function (line) { return '<div style="margin:6px 0;">' + line + '</div>'; }).join('');
+  ].forEach(function (line) {
+    var div = document.createElement('div');
+    div.style.margin = '6px 0';
+    div.textContent = line;
+    scores.appendChild(div);
+  });
   train.textContent = data && data.needTraining && data.needTraining.length ? '建议重点加强：' + data.needTraining.join('、') : '当前暂无明显薄弱项';
   if (viewBtn) viewBtn.href = '/user?view=records&keyword=' + encodeURIComponent((data && data.childName) || '') + '#fitness-records';
   overlay.style.display = 'flex';
@@ -1934,6 +2215,157 @@ function closeUserChildFitnessModal() {
     if (e.key === 'Escape' && overlay && overlay.classList.contains('is-open')) {
       closeChildComparePanel();
     }
+  });
+})();
+</script>
+
+<script>
+(function(){
+  window.switchTab=function(name){
+    if(name==="venue"){window.location.href="/user/venues";return;}
+    document.querySelectorAll("#v2-tabbar .tab-btn").forEach(function(b){
+      var t=b.textContent;
+      b.classList.toggle("active",
+        (name==="records"&&t.includes("体测记录"))||
+        (name==="attention"&&t.includes("重点关注"))||
+        (name==="entry"&&t.includes("录入体测"))||
+        (name==="venue"&&t.includes("场地预约")));
+    });
+    document.querySelectorAll(".tab-panel").forEach(function(p){p.style.display="none";});
+    var el=document.getElementById("tab-"+name);
+    if(el) el.style.display="block";
+    // 同步左侧导航 active 状态
+    document.querySelectorAll(".user-fitness-nav-link[data-tab-nav]").forEach(function(a){
+      a.classList.toggle("active", a.getAttribute("data-tab-nav")===name);
+    });
+    // 录入体测 / 重点关注 不需要筛选折叠；仅体测记录保留
+    var ft=document.querySelector('[data-filter-trigger]');
+    if(ft){
+      if(name==="records"){ft.style.display="";var b=ft.nextElementSibling;if(b)b.style.display="";}
+      else {ft.style.display="none";var b=ft.nextElementSibling;if(b)b.style.display="none";}
+    }
+    try{localStorage.setItem("xiaoyu-tab",name);}catch(e){}
+  };
+  window.toggleCollapse=function(el){el.classList.toggle("open");var b=el.nextElementSibling;if(b&&b.classList.contains("collapse-body"))b.classList.toggle("open");};
+  // 生长趋势"全班/男/女"切换：切折线图的 <g> 显隐 + 洞察面板数字/环比/年级对比高亮
+  window.switchGrowthSeries=function(btn,series){
+    var card=btn.closest(".chart-card");if(!card)return;
+    // 按钮 active 态
+    card.querySelectorAll(".ggs-btn").forEach(function(b){b.classList.toggle("active",b.getAttribute("data-series")===series);});
+    // 折线图 <g> 显隐
+    card.querySelectorAll(".growth-series").forEach(function(g){g.style.display=(g.getAttribute("data-series")===series)?"":"none";});
+    // 洞察面板：切当前值 + 环比文案 + 年级对比男女高亮 + 范围标签
+    var panel=card.querySelector("[data-growth-insight]");if(!panel)return;
+    var key=series==="M"?"m":(series==="F"?"f":"all");
+    var tag=panel.querySelector("[data-scope-tag]");
+    if(tag)tag.textContent=series==="M"?"男生":(series==="F"?"女生":"全班");
+    panel.querySelectorAll(".trend-insight-card").forEach(function(c){
+      var now=c.getAttribute("data-now-"+key);
+      var dt=c.getAttribute("data-delta-"+key+"-text");
+      var dc=c.getAttribute("data-delta-"+key+"-cls");
+      var nowEl=c.querySelector(".trend-insight-now");if(nowEl&&now!=null)nowEl.textContent=now;
+      var dEl=c.querySelector(".trend-insight-delta");
+      if(dEl){if(dt!=null)dEl.textContent=dt;dEl.classList.remove("up","down","flat");if(dc)dEl.classList.add(dc);}
+      // 较年级组：按口径切文案+颜色
+      var gt=c.getAttribute("data-grade-"+key+"-text");
+      var gc=c.getAttribute("data-grade-"+key+"-cls");
+      var gEl=c.querySelector(".trend-insight-grade");
+      if(gEl){if(gt!=null)gEl.textContent=gt;gEl.classList.remove("up","down","flat");if(gc)gEl.classList.add(gc);}
+      // 年级对比：全班=男女都显示，男=只显示男，女=只显示女
+      var cmp=c.querySelector(".trend-insight-cmp");
+      if(cmp){var m=cmp.querySelector(".cmp-male"),f=cmp.querySelector(".cmp-female");
+        if(m)m.style.display=(series==="F")?"none":"";
+        if(f)f.style.display=(series==="M")?"none":"";}
+      // BMI 下降名单：按当前性别过滤 chip + 更新计数 + 空态切换
+      var declineBlock=c.querySelector("[data-decline-block]");
+      var declineNone=c.querySelector("[data-decline-none]");
+      if(declineBlock){
+        var wantGender=series==="M"?"男":(series==="F"?"女":null);
+        var shown=0;
+        declineBlock.querySelectorAll(".trend-decline-chip").forEach(function(chip){
+          var hit=(wantGender===null)||(chip.getAttribute("data-gender")===wantGender);
+          chip.style.display=hit?"":"none";
+          if(hit)shown++;
+        });
+        var cntEl=declineBlock.querySelector(".decline-count");if(cntEl)cntEl.textContent=shown;
+        var scopeEl=declineBlock.querySelector(".decline-scope");
+        if(scopeEl)scopeEl.textContent=series==="M"?"男生":(series==="F"?"女生":"幼儿");
+        if(shown>0){declineBlock.style.display="";if(declineNone)declineNone.style.display="none";}
+        else{declineBlock.style.display="none";if(declineNone){declineNone.style.display="";declineNone.textContent="本班"+(series==="M"?"男生":(series==="F"?"女生":""))+" BMI 无下降幼儿";}}
+      }
+    });
+  };
+  // 初始化 tab：URL ?view= 优先 → localStorage → 默认 records
+  try{
+    var _vm=(window.location.search.match(/[?&]view=([^&]+)/)||[])[1];
+    var _view=_vm?decodeURIComponent(_vm):"";
+    var _valid={records:1,attention:1,entry:1};
+    if(_view&&_valid[_view]){
+      switchTab(_view);
+    }else{
+      var s=localStorage.getItem("xiaoyu-tab");
+      if(s&&_valid[s]&&s!=="records"){switchTab(s);}
+      else{var ft=document.querySelector('[data-filter-trigger]');if(ft){ft.style.display="";var b=ft.nextElementSibling;if(b)b.style.display="";}}
+    }
+  }catch(e){}
+  // 左侧导航无刷新切换：拦截 records/entry/attention，场地预约仍整页跳转
+  document.addEventListener("click", function(e){
+    var a=e.target.closest(".user-fitness-nav-link[data-tab-nav]");
+    if(!a) return;
+    var tab=a.getAttribute("data-tab-nav");
+    if(!tab) return;
+    e.preventDefault();
+    switchTab(tab);
+    try{history.replaceState(null,"","/user?view="+tab);}catch(err){}
+    var main=document.querySelector(".user-fitness-main");
+    if(main&&main.scrollIntoView){main.scrollIntoView({behavior:"smooth",block:"start"});}
+  });
+  // AJAX 分页：拦截翻页点击，无刷新加载
+  document.addEventListener("click", function(e){
+    var link = e.target.closest(".pagination-link");
+    if (!link) return;
+    var tabRec = document.getElementById("tab-records");
+    if (!tabRec || tabRec.style.display === "none") return;
+    e.preventDefault();
+    var href = link.getAttribute("href");
+    if (!href) return;
+    var url = href.replace("/user?view=records", "/user/records-partial");
+    url = url.replace("&", "?"); // fix: first & should be ?
+    var tbody = document.querySelector("#tab-records tbody, .user-fitness-main tbody");
+    var pagBar = document.querySelector("#tab-records .pagination-bar, .user-fitness-main .pagination-bar");
+    var infoEl = document.querySelector("#tab-records .muted, .user-fitness-main .muted");
+    if (!tbody) return;
+    tbody.style.opacity = "0.5";
+    fetch(url).then(function(r){return r.json();}).then(function(data){
+      if (!data.ok) { tbody.style.opacity = "1"; return; }
+      tbody.innerHTML = data.html;
+      tbody.style.opacity = "1";
+      if (pagBar) {
+        if (data.pagination_html) {
+          pagBar.outerHTML = data.pagination_html;
+        } else {
+          pagBar.style.display = "none";
+        }
+      } else if (data.pagination_html) {
+        var tableWrap = document.querySelector("#tab-records .table-wrap, .user-fitness-main .table-wrap, #tab-records .table-responsive, .user-fitness-main .table-responsive, #tab-records table, .user-fitness-main table");
+        if (tableWrap && tableWrap.parentNode) {
+          var div = document.createElement("div");
+          div.innerHTML = data.pagination_html;
+          tableWrap.parentNode.insertBefore(div.firstElementChild, tableWrap.nextSibling);
+        }
+      }
+      if (infoEl) infoEl.innerHTML = data.info;
+      var newUrl = "/user?view=records&recordPage=" + data.page;
+      var params = new URLSearchParams(window.location.search);
+      if (params.get("keyword")) newUrl += "&keyword=" + encodeURIComponent(params.get("keyword"));
+      if (params.get("rating")) newUrl += "&rating=" + encodeURIComponent(params.get("rating"));
+      if (params.get("detailBatchDate")) newUrl += "&detailBatchDate=" + encodeURIComponent(params.get("detailBatchDate"));
+      if (params.get("sortField")) newUrl += "&sortField=" + encodeURIComponent(params.get("sortField"));
+      if (params.get("sortOrder")) newUrl += "&sortOrder=" + encodeURIComponent(params.get("sortOrder"));
+      window.history.pushState({}, "", newUrl);
+    }).catch(function(){
+      tbody.style.opacity = "1";
+    });
   });
 })();
 </script>

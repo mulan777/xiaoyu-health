@@ -112,6 +112,19 @@ function buildUserFitnessQueryString(query = {}, extras = {}) {
   return params.toString();
 }
 
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function safeCell(value) {
+  return escapeHtml(value === null || value === undefined || value === '' ? '-' : value);
+}
+
 function pickLatestFitnessRecordsByChild(records) {
   const latestByChild = new Map();
   for (const item of Array.isArray(records) ? records : []) {
@@ -701,6 +714,7 @@ async function bootstrap() {
     const allChildren = dashboard.children || [];
     const entryBatchDate = normalizeDateInput(req.query.entryBatchDate);
     const userFitnessFilters = buildUserFitnessQuery(req.query);
+    const exportBatchDate = userFitnessFilters.detailBatchDate || userFitnessFilters.batchDate;
     const userSortFieldMap = {
       test_date: 'fr.test_date',
       child_name: 'ch.name',
@@ -866,20 +880,27 @@ async function bootstrap() {
         trendDateMap[day] = {
           testDate: day,
           heightSum: 0, heightCnt: 0, weightSum: 0, weightCnt: 0, bmiSum: 0, bmiCnt: 0,
+          // 按性别拆分的生长指标累加器（M=男 F=女）
+          heightMSum: 0, heightMCnt: 0, weightMSum: 0, weightMCnt: 0, bmiMSum: 0, bmiMCnt: 0,
+          heightFSum: 0, heightFCnt: 0, weightFSum: 0, weightFCnt: 0, bmiFSum: 0, bmiFCnt: 0,
           gripSum: 0, gripCnt: 0, jumpSum: 0, jumpCnt: 0,
           sitSum: 0, sitCnt: 0, djumpSum: 0, djumpCnt: 0,
           obstacleSum: 0, obstacleCnt: 0, balanceSum: 0, balanceCnt: 0
         };
       }
       var bucket = trendDateMap[day];
+      var sg = String(item.gender) === '男' ? 'M' : (String(item.gender) === '女' ? 'F' : null);
       if (item.grip_score != null) { bucket.gripSum += Number(item.grip_score); bucket.gripCnt++; }
       if (item.jump_score != null) { bucket.jumpSum += Number(item.jump_score); bucket.jumpCnt++; }
       if (item.sit_score != null) { bucket.sitSum += Number(item.sit_score); bucket.sitCnt++; }
       if (item.djump_score != null) { bucket.djumpSum += Number(item.djump_score); bucket.djumpCnt++; }
       if (item.obstacle_score != null) { bucket.obstacleSum += Number(item.obstacle_score); bucket.obstacleCnt++; }
-      if (item.height_cm != null) { bucket.heightSum += Number(item.height_cm); bucket.heightCnt++; }
-      if (item.weight_kg != null) { bucket.weightSum += Number(item.weight_kg); bucket.weightCnt++; }
-      if (item.bmi != null) { bucket.bmiSum += Number(item.bmi); bucket.bmiCnt++; }
+      if (item.height_cm != null) { bucket.heightSum += Number(item.height_cm); bucket.heightCnt++;
+        if (sg) { bucket['height' + sg + 'Sum'] += Number(item.height_cm); bucket['height' + sg + 'Cnt']++; } }
+      if (item.weight_kg != null) { bucket.weightSum += Number(item.weight_kg); bucket.weightCnt++;
+        if (sg) { bucket['weight' + sg + 'Sum'] += Number(item.weight_kg); bucket['weight' + sg + 'Cnt']++; } }
+      if (item.bmi != null) { bucket.bmiSum += Number(item.bmi); bucket.bmiCnt++;
+        if (sg) { bucket['bmi' + sg + 'Sum'] += Number(item.bmi); bucket['bmi' + sg + 'Cnt']++; } }
       if (item.balance_score != null) { bucket.balanceSum += Number(item.balance_score); bucket.balanceCnt++; }
     }
     scopeTrendData = Object.values(trendDateMap).sort(function(a, b) {
@@ -890,6 +911,14 @@ async function bootstrap() {
         heightAvg: bucket.heightCnt ? Number((bucket.heightSum / bucket.heightCnt).toFixed(1)) : null,
         weightAvg: bucket.weightCnt ? Number((bucket.weightSum / bucket.weightCnt).toFixed(1)) : null,
         bmiAvg: bucket.bmiCnt ? Number((bucket.bmiSum / bucket.bmiCnt).toFixed(1)) : null,
+        // 本班男生生长指标
+        heightAvgM: bucket.heightMCnt ? Number((bucket.heightMSum / bucket.heightMCnt).toFixed(1)) : null,
+        weightAvgM: bucket.weightMCnt ? Number((bucket.weightMSum / bucket.weightMCnt).toFixed(1)) : null,
+        bmiAvgM: bucket.bmiMCnt ? Number((bucket.bmiMSum / bucket.bmiMCnt).toFixed(1)) : null,
+        // 本班女生生长指标
+        heightAvgF: bucket.heightFCnt ? Number((bucket.heightFSum / bucket.heightFCnt).toFixed(1)) : null,
+        weightAvgF: bucket.weightFCnt ? Number((bucket.weightFSum / bucket.weightFCnt).toFixed(1)) : null,
+        bmiAvgF: bucket.bmiFCnt ? Number((bucket.bmiFSum / bucket.bmiFCnt).toFixed(1)) : null,
         gripAvg: bucket.gripCnt ? Number((bucket.gripSum / bucket.gripCnt).toFixed(1)) : null,
         jumpAvg: bucket.jumpCnt ? Number((bucket.jumpSum / bucket.jumpCnt).toFixed(1)) : null,
         sitAvg: bucket.sitCnt ? Number((bucket.sitSum / bucket.sitCnt).toFixed(1)) : null,
@@ -903,7 +932,7 @@ async function bootstrap() {
     var gradeTrendData = [];
     if (classId && dashboard.assignedClass && dashboard.assignedClass.grade_level) {
       var gradeAllRecords = await dbQuery(`
-        SELECT fr.*, DATE_FORMAT(fr.test_date, "%Y-%m-%d") AS test_day
+        SELECT fr.*, ch.gender, DATE_FORMAT(fr.test_date, "%Y-%m-%d") AS test_day
         FROM fitness_records fr
         JOIN children ch ON ch.id = fr.child_id
         LEFT JOIN classes c ON c.id = ch.class_id
@@ -951,6 +980,69 @@ async function bootstrap() {
         };
       });
     }
+
+    // ===== 趋势洞察：年级男女平均（生长指标）+ 本班下降名单（生长/体测） =====
+    // 年级最新批次按性别聚合身高/体重/BMI（只出平均数，不含任何别班姓名）
+    var growthGradeGender = null;
+    if (classId && dashboard.assignedClass && dashboard.assignedClass.grade_level && typeof gradeAllRecords !== 'undefined' && gradeAllRecords.length) {
+      var gradeLatestDay = '';
+      for (var gli = 0; gli < gradeAllRecords.length; gli++) {
+        var gd = gradeAllRecords[gli].test_day || formatDateOnly(gradeAllRecords[gli].test_date);
+        if (gd && gd > gradeLatestDay) gradeLatestDay = gd;
+      }
+      function avgBy(records, gender, key) {
+        var sum = 0, cnt = 0;
+        for (var i = 0; i < records.length; i++) {
+          var r = records[i];
+          var rd = r.test_day || formatDateOnly(r.test_date);
+          if (rd !== gradeLatestDay) continue;
+          if (gender && String(r.gender) !== gender) continue;
+          if (r[key] != null) { sum += Number(r[key]); cnt++; }
+        }
+        return cnt ? Number((sum / cnt).toFixed(1)) : null;
+      }
+      growthGradeGender = {
+        testDate: gradeLatestDay,
+        all: { height: avgBy(gradeAllRecords, null, 'height_cm'), weight: avgBy(gradeAllRecords, null, 'weight_kg'), bmi: avgBy(gradeAllRecords, null, 'bmi') },
+        male: { height: avgBy(gradeAllRecords, '男', 'height_cm'), weight: avgBy(gradeAllRecords, '男', 'weight_kg'), bmi: avgBy(gradeAllRecords, '男', 'bmi') },
+        female: { height: avgBy(gradeAllRecords, '女', 'height_cm'), weight: avgBy(gradeAllRecords, '女', 'weight_kg'), bmi: avgBy(gradeAllRecords, '女', 'bmi') }
+      };
+    }
+
+    // 本班逐童前后两批对比，找出某指标下降的孩子（环比上一次测试）
+    function buildDeclineList(metricKey) {
+      var byChild = {};
+      for (var i = 0; i < allFitnessRecords.length; i++) {
+        var r = allFitnessRecords[i];
+        if (r[metricKey] == null) continue;
+        var cid = r.child_id;
+        if (!byChild[cid]) byChild[cid] = { childId: cid, name: r.child_name, gender: r.gender || '-', points: [] };
+        byChild[cid].points.push({ date: formatDateOnly(r.test_date), value: Number(r[metricKey]) });
+      }
+      var out = [];
+      Object.keys(byChild).forEach(function(cid) {
+        var c = byChild[cid];
+        // allFitnessRecords 已按 test_date DESC 排，points[0]=最新，points[1]=上一次
+        if (c.points.length < 2) return;
+        var latest = c.points[0].value, prev = c.points[1].value;
+        if (latest < prev) {
+          var diff = Number((latest - prev).toFixed(1));
+          var pct = prev !== 0 ? Number(((latest - prev) / Math.abs(prev) * 100).toFixed(1)) : null;
+          out.push({ childId: c.childId, name: c.name, gender: c.gender, latest: latest, prev: prev, diff: diff, pct: pct, latestDate: c.points[0].date, prevDate: c.points[1].date });
+        }
+      });
+      out.sort(function(a, b) { return a.diff - b.diff; }); // 降幅大的在前
+      return out;
+    }
+    var growthDeclineChildren = { bmi: buildDeclineList('bmi') };
+    var fitnessDeclineChildren = {
+      grip: buildDeclineList('grip_score'),
+      jump: buildDeclineList('jump_score'),
+      sit: buildDeclineList('sit_score'),
+      djump: buildDeclineList('djump_score'),
+      obstacle: buildDeclineList('obstacle_score'),
+      balance: buildDeclineList('balance_score')
+    };
 
     const childPageData = paginateItems(allChildren, childPage, 10);
     const childQuickLookup = {};
@@ -1093,6 +1185,9 @@ async function bootstrap() {
       avgScore, ratingCounts, ratingSummary, metricNeedTrainingSummary, metricHealthSummary, radarChartData, trendSummary,
       scopeTrendData,
       gradeTrendData,
+      growthGradeGender,
+      growthDeclineChildren,
+      fitnessDeclineChildren,
       teacherBirthday, todayBirthdayChildren,
       userView,
       entryBatchDate,
@@ -1106,6 +1201,119 @@ async function bootstrap() {
       message: normalizeText(req.query.message),
       editError: normalizeText(req.query.error),
       editRecord
+    });
+  }));
+
+
+  // AJAX 分页：返回体测记录 HTML 片段
+  app.get('/user/records-partial', requireRole('user'), asyncHandler(async (req, res) => {
+    const classId = Number(req.session.user.classId || 0);
+    const recordPage = Math.max(1, parseInt(req.query.recordPage) || 1);
+    const keyword = req.query.keyword || '';
+    const rating = req.query.rating || '';
+    const detailBatchDate = req.query.detailBatchDate || '';
+    const sortField = req.query.sortField || 'test_date';
+    const sortOrder = req.query.sortOrder || 'desc';
+    const pageSize = 10;
+
+    if (!classId) return res.json({ ok: false, error: 'no class' });
+
+    const userSortFieldMap = {
+      test_date: 'fr.test_date', child_name: 'ch.name',
+      height_score: 'fr.height_score', bmi_score: 'fr.bmi_score',
+      grip_score: 'fr.grip_score', jump_score: 'fr.jump_score',
+      sit_score: 'fr.sit_score', djump_score: 'fr.djump_score',
+      obstacle_score: 'fr.obstacle_score', balance_score: 'fr.balance_score',
+      total_score: 'fr.total_score'
+    };
+
+    let batchDate = detailBatchDate;
+    if (!batchDate) {
+      const latestRows = await dbQuery(
+        'SELECT DATE_FORMAT(fr.test_date, "%Y-%m-%d") AS d FROM fitness_records fr JOIN children ch ON ch.id = fr.child_id WHERE ch.class_id = ? ORDER BY fr.test_date DESC LIMIT 1',
+        [classId]
+      );
+      batchDate = latestRows[0] ? latestRows[0].d : '';
+    }
+
+    const conditions = ['ch.class_id = ?', 'fr.test_date = ?'];
+    const params = [classId, batchDate];
+    if (keyword) {
+      conditions.push('(ch.name LIKE ? OR ch.gender LIKE ?)');
+      params.push('%' + keyword + '%', '%' + keyword + '%');
+    }
+    if (rating) { conditions.push('fr.rating = ?'); params.push(rating); }
+
+    const orderExpr = userSortFieldMap[sortField] || 'fr.test_date';
+    const orderDir = sortOrder === 'asc' ? 'ASC' : 'DESC';
+
+    const rows = await dbQuery(
+      'SELECT fr.*, ch.name AS child_name, ch.gender, ch.birth_date, c.name AS class_name FROM fitness_records fr JOIN children ch ON ch.id = fr.child_id LEFT JOIN classes c ON c.id = ch.class_id WHERE ' + conditions.join(' AND ') + ' ORDER BY ' + orderExpr + ' ' + orderDir + ', fr.test_date DESC, ch.name',
+      params
+    );
+
+    const total = rows.length;
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    const start = (recordPage - 1) * pageSize;
+    const paged = rows.slice(start, start + pageSize);
+    const endIdx = Math.min(start + pageSize, total);
+
+    let tbodyHtml = '';
+    for (const r of paged) {
+      const d = r.test_date ? new Date(r.test_date).toISOString().slice(0, 10) : '-';
+      const childId = Number(r.child_id || 0);
+      const childName = safeCell(r.child_name);
+      let ratingHtml = '-';
+      if (r.rating === '优秀') ratingHtml = '<span class="status-badge ok">优秀</span>';
+      else if (r.rating === '良好') ratingHtml = '<span class="status-badge" style="background:#e8f1fd;color:#0071e3;">良好</span>';
+      else if (r.rating === '合格') ratingHtml = '<span class="status-badge" style="background:#fff8e1;color:#f09300;">合格</span>';
+      else if (r.rating === '不合格') ratingHtml = '<span class="status-badge" style="background:#fce8e8;color:#ff3b30;">不合格</span>';
+      tbodyHtml += '<tr>' +
+        '<td><strong><a class="child-compare-link" data-child-id="' + childId + '" data-child-name="' + childName + '" role="button" tabindex="0">' + childName + '</a></strong></td>' +
+        '<td>' + safeCell(r.gender) + '</td><td>' + safeCell(d) + '</td>' +
+        '<td>' + safeCell(r.height_cm) + '</td><td>' + safeCell(r.height_score) + '</td>' +
+        '<td>' + safeCell(r.weight_kg) + '</td><td>' + safeCell(r.bmi) + '</td><td>' + safeCell(r.bmi_score) + '</td>' +
+        '<td>' + safeCell(r.grip_kg) + '</td><td>' + safeCell(r.grip_score) + '</td>' +
+        '<td>' + safeCell(r.long_jump_cm) + '</td><td>' + safeCell(r.jump_score) + '</td>' +
+        '<td>' + safeCell(r.sit_reach_cm) + '</td><td>' + safeCell(r.sit_score) + '</td>' +
+        '<td>' + safeCell(r.double_jump_sec) + '</td><td>' + safeCell(r.djump_score) + '</td>' +
+        '<td>' + safeCell(r.obstacle_run_sec) + '</td><td>' + safeCell(r.obstacle_score) + '</td>' +
+        '<td>' + safeCell(r.balance_beam_sec) + '</td><td>' + safeCell(r.balance_score) + '</td>' +
+        '<td><strong>' + safeCell(r.total_score) + '</strong></td><td>' + ratingHtml + '</td></tr>';
+    }
+
+    let pagHtml = '';
+    if (totalPages > 1) {
+      pagHtml += '<div class="pagination-bar">';
+      const qsParts = [];
+      if (keyword) qsParts.push('keyword=' + encodeURIComponent(keyword));
+      if (rating) qsParts.push('rating=' + encodeURIComponent(rating));
+      if (detailBatchDate) qsParts.push('detailBatchDate=' + encodeURIComponent(detailBatchDate));
+      if (sortField !== 'test_date') qsParts.push('sortField=' + sortField);
+      if (sortOrder !== 'desc') qsParts.push('sortOrder=' + sortOrder);
+      const qs = qsParts.length ? '&' + qsParts.join('&') : '';
+
+      if (recordPage > 1) {
+        pagHtml += '<a class="pagination-link pagination-nav" href="/user?view=records&recordPage=' + (recordPage - 1) + qs + '" data-page="' + (recordPage - 1) + '">上一页</a>';
+      }
+      for (let p = 1; p <= totalPages; p++) {
+        const activeCls = p === recordPage ? ' active' : '';
+        pagHtml += '<a class="pagination-link' + activeCls + '" href="/user?view=records&recordPage=' + p + qs + '" data-page="' + p + '">' + p + '</a>';
+      }
+      if (recordPage < totalPages) {
+        pagHtml += '<a class="pagination-link pagination-nav" href="/user?view=records&recordPage=' + (recordPage + 1) + qs + '" data-page="' + (recordPage + 1) + '">下一页</a>';
+      }
+      pagHtml += '</div>';
+    }
+
+    res.json({
+      ok: true,
+      html: tbodyHtml,
+      pagination_html: pagHtml,
+      info: '当前显示第 <strong>' + (total ? start + 1 : 0) + '</strong> - <strong>' + endIdx + '</strong> 条体测记录',
+      total: total,
+      page: recordPage,
+      totalPages: totalPages
     });
   }));
 
@@ -1526,7 +1734,11 @@ async function bootstrap() {
       const cr = await dbQuery('SELECT id, name, gender, birth_date FROM children WHERE class_id = ? AND name = ? LIMIT 1', [classId, childName]);
       if (!cr.length) { skipped++; skippedNames.push(childName); continue; }
       const child = cr[0];
+      const childGender = normalizeChildGender(child.gender);
+      if (!childGender) { skipped++; skippedNames.push(`${childName}：缺少有效性别`); continue; }
+      if (!child.birth_date) { skipped++; skippedNames.push(`${childName}：缺少出生日期`); continue; }
       const monthAge = calculateMonthAge(child.birth_date, testDate);
+      if (monthAge == null) { skipped++; skippedNames.push(`${childName}：出生日期与测试日期无法计算有效月龄`); continue; }
       const data = {
         heightCm: Number(pickValue(row, ['身高(CM)', '身高', 'height'])) || null,
         weightKg: Number(pickValue(row, ['体重(KG)', '体重', 'weight'])) || null,
@@ -1537,7 +1749,15 @@ async function bootstrap() {
         obstacleRunSec: Number(pickValue(row, ['15米绕障碍跑(秒)', '15米绕障碍跑', 'obstacle'])) || null,
         balanceBeamSec: Number(pickValue(row, ['走平衡木(秒)', '走平衡木', 'balance'])) || null
       };
-      const result = computeFitnessResult(data, child.gender, monthAge);
+      const missingLabels = getMissingFitnessFieldLabels(data);
+      if (missingLabels.length) { skipped++; skippedNames.push(`${childName}：缺少${missingLabels.join('、')}`); continue; }
+      const result = computeFitnessResult(data, childGender, monthAge);
+      const missingScoreLabels = getMissingFitnessScoreLabels(result);
+      if (missingScoreLabels.length || result.totalScore == null || !result.rating) {
+        skipped++;
+        skippedNames.push(`${childName}：无法计算完整评分(${(missingScoreLabels.length ? missingScoreLabels : ['综合评分']).join('、')})`);
+        continue;
+      }
       const existingRows = await dbQuery('SELECT id FROM fitness_records WHERE child_id = ? AND test_date = ? ORDER BY id DESC LIMIT 1', [child.id, testDate]);
       if (existingRows.length) {
         await dbQuery(`
@@ -1623,9 +1843,9 @@ async function bootstrap() {
       conditions.push('fr.rating = ?');
       params.push(userFitnessFilters.rating);
     }
-    if (userFitnessFilters.batchDate) {
+    if (exportBatchDate) {
       conditions.push('fr.test_date = ?');
-      params.push(userFitnessFilters.batchDate);
+      params.push(exportBatchDate);
     } else {
       const latestRows = await dbQuery(`
         SELECT MAX(fr.test_date) AS latest_date
