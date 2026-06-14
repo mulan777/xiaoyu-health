@@ -4697,3 +4697,58 @@ body.modal-open {
 .admin-analytics-legend i.blue { background:#0071e3; } .admin-analytics-legend i.orange { background:#ff9f0a; } .admin-analytics-legend i.purple { background:#8b5cf6; }
 @media (max-width: 980px) { .data-hero-grid, .modern-auth-wrapper, .admin-analytics-card { grid-template-columns: 1fr; } .home-visual-grid { grid-template-columns: 1fr; } .auth-visual-panel { min-height: 360px; } }
 @media (max-width: 640px) { .data-hero { padding-top: 32px; } .hero-chart-card, .home-visual-card, .modern-auth-card, .admin-analytics-card { border-radius: 24px; padding: 22px; } .modern-auth-wrapper { padding: 22px 0; } .auth-visual-panel { display: none; } }
+
+/* ========== Lanlan clean homepage tune ========== */
+.clean-home-hero { padding-top: 44px; padding-bottom: 36px; }
+.clean-hero-copy .apple-hero-desc { display: none; }
+.clean-chart-card { background: linear-gradient(145deg, rgba(255,255,255,.96), rgba(240,247,255,.92)); border-color: rgba(59,130,246,.12); box-shadow: 0 32px 90px rgba(37,99,235,.13); }
+.clean-chart-card::before { background: radial-gradient(circle, rgba(14,165,233,.18), transparent 64%); }
+.clean-chart-card .hero-line-blue { stroke: #3b82f6; }
+.clean-chart-card .hero-line-orange { stroke: #06b6d4; }
+.clean-chart-card .hero-line-pink { stroke: #8b5cf6; stroke-dasharray: 9 9; }
+.clean-chart-card .hero-chart-dots circle { fill: #3b82f6; }
+.hero-chart-legend i.legend-blue { background:#3b82f6; }
+.hero-chart-legend i.legend-cyan { background:#06b6d4; }
+.hero-chart-legend i.legend-violet { background:#8b5cf6; }
+.clean-stat-strip { margin-bottom: 8px; }
+.clean-visual-section { padding-top: 30px; }
+.clean-visual-grid { grid-template-columns: 1.15fr .9fr .9fr; }
+.clean-dark-card { background: linear-gradient(145deg, #0f172a, #172554 54%, #0e7490); }
+.clean-light-card { background: linear-gradient(145deg, #ffffff, #f8fbff); }
+.clean-visual-grid .home-visual-card { min-height: 220px; }
+.clean-visual-grid .home-visual-card p { display: none; }
+.clean-visual-grid .mini-sparkline path { stroke: #3b82f6; }
+.clean-visual-grid .mini-rings span { background: conic-gradient(#3b82f6 var(--p), #e0f2fe 0); color: #0f172a; }
+.compact-capability-section { padding-top: 28px; }
+.compact-feature-grid .apple-feature-card { padding: 24px; min-height: auto; }
+.compact-feature-grid .apple-feature-card p { display: none; }
+@media (max-width: 980px) { .clean-visual-grid { grid-template-columns: 1fr; } }
+
+/* ========== Lanlan homepage light palette hotfix ========== */
+.clean-dark-card,
+.home-visual-card-large,
+.clean-visual-grid .home-visual-card-large {
+  background: linear-gradient(145deg, #ffffff 0%, #f0f7ff 54%, #ecfeff 100%) !important;
+  color: #0f172a !important;
+  border: 1px solid rgba(59,130,246,.12) !important;
+  box-shadow: 0 18px 48px rgba(37,99,235,.10) !important;
+}
+.clean-dark-card .home-visual-head span,
+.home-visual-card-large .home-visual-head span,
+.clean-visual-grid .home-visual-card-large .home-visual-head span {
+  color: #64748b !important;
+}
+.clean-dark-card p,
+.home-visual-card-large p,
+.clean-visual-grid .home-visual-card-large p {
+  color: #64748b !important;
+}
+.clean-visual-grid .mini-bars i {
+  background: linear-gradient(180deg, var(--c), rgba(255,255,255,.88)) !important;
+  box-shadow: 0 12px 26px rgba(37,99,235,.12) !important;
+}
+.clean-chart-card,
+.clean-light-card,
+.hero-chart-card {
+  background: linear-gradient(145deg, #ffffff, #f8fbff 62%, #f0fdfa) !important;
+}
