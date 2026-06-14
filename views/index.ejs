@@ -1,48 +1,53 @@
 <%- include('partials/header') %>
 
-<section class="minimal-home">
-  <div class="minimal-home-copy">
-    <div class="minimal-kicker"><%= settings.subtitle || '教研管理平台' %></div>
+<section class="premium-home">
+  <div class="premium-hero">
+    <div class="premium-kicker"><%= settings.subtitle || '幼儿园体适能教研平台' %></div>
     <h1><%= settings.heroTitle || settings.siteName %></h1>
-    <div class="minimal-actions">
-      <a class="apple-btn apple-btn-primary" href="/login">进入平台</a>
-      <a class="apple-btn apple-btn-secondary" href="/login">查看趋势</a>
+    <p>体测、生长、预约与 AI 分析，一站式完成。</p>
+    <div class="premium-actions">
+      <a class="premium-btn primary" href="/login">进入平台</a>
+      <a class="premium-btn ghost" href="#capabilities">查看能力</a>
+    </div>
+    <div class="premium-mini-pills" aria-label="平台功能入口">
+      <a href="/login">体测</a>
+      <a href="/login">成长</a>
+      <a href="/login">预约</a>
+      <a href="/login">AI</a>
     </div>
   </div>
 
-  <div class="minimal-chart-card" aria-label="生长与体测趋势预览">
-    <div class="minimal-chart-head">
-      <span>Growth / Fitness</span>
-      <strong>趋势看板</strong>
-    </div>
-    <svg viewBox="0 0 720 360" role="img" aria-label="趋势示意图">
-      <defs>
-        <linearGradient id="minimalBlue" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#60a5fa" stop-opacity=".20"/><stop offset="1" stop-color="#60a5fa" stop-opacity="0"/></linearGradient>
-        <linearGradient id="minimalCyan" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#22d3ee" stop-opacity=".14"/><stop offset="1" stop-color="#22d3ee" stop-opacity="0"/></linearGradient>
-      </defs>
-      <g class="minimal-grid">
-        <line x1="54" y1="64" x2="666" y2="64"/><line x1="54" y1="126" x2="666" y2="126"/><line x1="54" y1="188" x2="666" y2="188"/><line x1="54" y1="250" x2="666" y2="250"/><line x1="54" y1="312" x2="666" y2="312"/>
-      </g>
-      <path d="M54 270 C128 232 170 238 234 198 C304 154 354 174 420 126 C498 70 560 100 666 58 L666 312 L54 312 Z" fill="url(#minimalBlue)"/>
-      <path d="M54 286 C132 256 178 260 246 224 C318 186 372 208 444 164 C510 122 576 136 666 104 L666 312 L54 312 Z" fill="url(#minimalCyan)"/>
-      <path d="M54 270 C128 232 170 238 234 198 C304 154 354 174 420 126 C498 70 560 100 666 58" fill="none" stroke="#3b82f6" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M54 286 C132 256 178 260 246 224 C318 186 372 208 444 164 C510 122 576 136 666 104" fill="none" stroke="#06b6d4" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M54 238 C126 220 184 230 254 178 C326 126 390 150 456 116 C524 84 588 92 666 76" fill="none" stroke="#8b5cf6" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="10 10"/>
-      <g class="minimal-dots"><circle cx="234" cy="198" r="6" fill="#3b82f6" stroke="#fff" stroke-width="4"/><circle cx="420" cy="126" r="6" fill="#3b82f6" stroke="#fff" stroke-width="4"/><circle cx="666" cy="58" r="6" fill="#3b82f6" stroke="#fff" stroke-width="4"/></g>
-    </svg>
-    <div class="minimal-legend integrated-legend">
-      <span><i class="a"></i><strong>综合</strong><em>总分趋势</em></span>
-      <span><i class="b"></i><strong>生长</strong><em>身高 / 体重 / BMI</em></span>
-      <span><i class="c"></i><strong>对比</strong><em>个人 / 班级</em></span>
+  <div class="premium-visual" aria-label="平台能力视觉预览">
+    <div class="premium-orb orb-a"></div>
+    <div class="premium-orb orb-b"></div>
+    <div class="premium-orb orb-c"></div>
+    <div class="premium-glass-panel">
+      <div class="premium-panel-top">
+        <span>Health Intelligence</span>
+        <i></i>
+      </div>
+      <svg viewBox="0 0 760 360" role="img" aria-label="平台趋势视觉">
+        <defs>
+          <linearGradient id="premiumBlue" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#60a5fa"/><stop offset="1" stop-color="#22d3ee"/></linearGradient>
+          <linearGradient id="premiumPurple" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#a78bfa"/><stop offset="1" stop-color="#60a5fa"/></linearGradient>
+          <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        </defs>
+        <g opacity=".34" stroke="#94a3b8" stroke-width="1">
+          <line x1="64" y1="72" x2="700" y2="72"/><line x1="64" y1="144" x2="700" y2="144"/><line x1="64" y1="216" x2="700" y2="216"/><line x1="64" y1="288" x2="700" y2="288"/>
+        </g>
+        <path d="M66 276 C142 224 190 244 258 194 C334 138 392 160 466 108 C548 50 612 80 700 44" fill="none" stroke="url(#premiumBlue)" stroke-width="8" stroke-linecap="round" filter="url(#softGlow)"/>
+        <path d="M66 292 C150 260 202 258 274 226 C348 192 414 210 492 162 C572 112 632 126 700 92" fill="none" stroke="url(#premiumPurple)" stroke-width="6" stroke-linecap="round" stroke-dasharray="14 14" opacity=".9"/>
+        <g fill="#fff" stroke="#3b82f6" stroke-width="5">
+          <circle cx="258" cy="194" r="8"/><circle cx="466" cy="108" r="8"/><circle cx="700" cy="44" r="8"/>
+        </g>
+      </svg>
+      <div class="premium-panel-metrics">
+        <div><strong>8</strong><span>评分维度</span></div>
+        <div><strong>AI</strong><span>智能报告</span></div>
+        <div><strong>实时</strong><span>趋势分析</span></div>
+      </div>
     </div>
   </div>
-</section>
-
-<section class="home-capability-strip" aria-label="平台核心能力">
-  <a href="/login"><strong>体测数据</strong><span>录入、导入、评分、导出</span></a>
-  <a href="/login"><strong>成长档案</strong><span>幼儿资料与重点关注</span></a>
-  <a href="/login"><strong>场地预约</strong><span>班级预约与开放时间</span></a>
-  <a href="/login"><strong>AI 报告</strong><span>智能体质分析建议</span></a>
 </section>
 
 <%- include('partials/footer') %>
