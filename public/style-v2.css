@@ -40,12 +40,25 @@
   --sp-3xl:32px;
   --sp-4xl:40px;
 
-  /* Radius */
-  --r-sm: 8px;
-  --r-md: 12px;
-  --r-lg: 16px;
-  --r-xl: 20px;
-  --r-pill: 999px;
+  /* Radius — 统一圆角档位(收编 style.css 里 20+ 种散值)
+     --r-pill 保留原命名(v2 已在用), 新增 --r-xs 补最小档 */
+  --r-xs:   8px;   /* 小元素: 输入框/小标签/badge/scrollbar */
+  --r-sm:   8px;   /* 兼容原值: 按钮/小卡片 */
+  --r-md:   12px;  /* 兼容原值: 卡片/主容器 */
+  --r-lg:   16px;  /* 兼容原值: 大卡片/面板 */
+  --r-xl:   20px;  /* 兼容原值: hero/大容器 */
+  --r-2xl:  28px;  /* 新增: 更大容器/登录卡 */
+  --r-pill: 999px; /* 胶囊按钮/圆标签/头像(保留原命名) */
+  /* style.css 里 14/18/22/24/26/30/32/34 等零散值应归并到最近档 */
+
+  /* Breakpoints — 统一断点档位(收编 style.css 里 18 种散值)
+     注意: CSS 变量不能用在 @media 查询条件里, 这些 token 仅作设计参考。
+     实际媒体查询应只取这 4 档数值, 别再新增 900/860/920/800 等散断点 */
+  --bp-sm:  480px; /* 小手机 */
+  --bp-md:  640px; /* 大手机/小平板 */
+  --bp-lg:  720px; /* 平板(最常用) */
+  --bp-xl:  980px; /* 桌面分界 */
+  /* style.css 里 900/860/920/800/1024/1080/1280/1400 归并到最近档 */
 
   /* Shadows */
   --sh-sm: 0 1px 2px rgba(0,0,0,0.04);
@@ -77,7 +90,7 @@ img{max-width:100%;height:auto}
 /* ── Scrollbar ── */
 ::-webkit-scrollbar{width:6px;height:6px}
 ::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
+::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:var(--r-xs)}
 ::-webkit-scrollbar-thumb:hover{background:#94a3b8}
 
 /* ================================================================
@@ -705,7 +718,7 @@ label{
 .ai-body-loading{padding:20px!important}
 .ai-skeleton{display:flex;flex-direction:column;gap:10px}
 .ai-skel-line{
-  height:14px;border-radius:6px;
+  height:14px;border-radius:var(--r-xs);
   background:linear-gradient(90deg,#eef2ff 25%,#e0e7ff 37%,#eef2ff 63%);
   background-size:400% 100%;
   animation:ai-skel-shimmer 1.4s ease-in-out infinite;
