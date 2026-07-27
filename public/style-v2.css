@@ -719,3 +719,38 @@ label{
   .ajax-spinner,.ai-skel-line{animation:none}
   .ai-skel-line{background:#eef2ff}
 }
+
+/* ================================================================
+   RECORD ACTIONS — 体测记录操作列(横排紧凑, 不再撑高行)
+   ================================================================ */
+.record-actions{
+  display:inline-flex;
+  align-items:center;
+  flex-wrap:nowrap;
+  gap:6px;
+  white-space:nowrap;
+}
+.record-actions .btn.small{
+  padding:4px 10px;
+  font-size:12px;
+  line-height:1.4;
+  white-space:nowrap;
+}
+.record-actions form{
+  margin:0;
+  display:inline-flex;
+}
+.data-table th.col-actions,
+.data-table td:nth-last-child(1){
+  min-width:150px;
+  white-space:nowrap;
+}
+@media (max-width:640px){
+  /* 手机端操作列仍允许横排但不固定宽度, 跟随内容 */
+  .data-table th.col-actions,
+  .data-table td:nth-last-child(1){
+    min-width:auto;
+  }
+  .record-actions{gap:4px}
+  .record-actions .btn.small{padding:4px 8px;font-size:11px}
+}

@@ -975,7 +975,7 @@
                 <th>平衡木分</th>
                 <th>综合得分</th>
                 <th>评级</th>
-                <th>操作</th>
+                <th class="col-actions">操作</th>
               </tr>
             </thead>
             <tbody>
@@ -1011,11 +1011,11 @@
                     <% } else { %>-<% } %>
                   </td>
                   <td>
-                    <div class="toolbar-links stacked-links">
-                      <a class="btn small" href="/admin/fitness?view=child&childId=<%= r.child_id %>">查看</a>
-                      <button class="btn small primary" type="button" onclick="openFitnessEditModal({id:<%= r.id %>,className:'<%= (r.class_name || '').replace(/'/g,"\\'") %>',childName:'<%= (r.child_name || '').replace(/'/g,"\\'") %>',testDate:'<%= r.test_date ? new Date(r.test_date).toISOString().slice(0,10) : '' %>',heightCm:<%= r.height_cm ?? 'null' %>,weightKg:<%= r.weight_kg ?? 'null' %>,gripKg:<%= r.grip_kg ?? 'null' %>,longJumpCm:<%= r.long_jump_cm ?? 'null' %>,sitReachCm:<%= r.sit_reach_cm ?? 'null' %>,doubleJumpSec:<%= r.double_jump_sec ?? 'null' %>,obstacleRunSec:<%= r.obstacle_run_sec ?? 'null' %>,balanceBeamSec:<%= r.balance_beam_sec ?? 'null' %>})">修正</button>
+                    <div class="record-actions">
+                      <a class="btn small" href="/admin/fitness?view=child&childId=<%= r.child_id %>" title="查看该幼儿所有体测记录">查看</a>
+                      <button class="btn small primary" type="button" title="修正这条记录" onclick="openFitnessEditModal({id:<%= r.id %>,className:'<%= (r.class_name || '').replace(/'/g,"\\'") %>',childName:'<%= (r.child_name || '').replace(/'/g,"\\'") %>',testDate:'<%= r.test_date ? new Date(r.test_date).toISOString().slice(0,10) : '' %>',heightCm:<%= r.height_cm ?? 'null' %>,weightKg:<%= r.weight_kg ?? 'null' %>,gripKg:<%= r.grip_kg ?? 'null' %>,longJumpCm:<%= r.long_jump_cm ?? 'null' %>,sitReachCm:<%= r.sit_reach_cm ?? 'null' %>,doubleJumpSec:<%= r.double_jump_sec ?? 'null' %>,obstacleRunSec:<%= r.obstacle_run_sec ?? 'null' %>,balanceBeamSec:<%= r.balance_beam_sec ?? 'null' %>})">修正</button>
                       <% if (typeof hasPerm === 'function' && hasPerm('data.fitness.delete') && !isReadonly) { %>
-                        <form method="post" action="/admin/fitness/<%= r.id %>/delete" onsubmit="return confirm('确定删除 <%= r.child_name %> 在 <%= r.test_date ? new Date(r.test_date).toISOString().slice(0,10) : '-' %> 的体测记录吗？删除后不可恢复。');" style="margin:0;">
+                        <form method="post" action="/admin/fitness/<%= r.id %>/delete" onsubmit="return confirm('确定删除 <%= r.child_name %> 在 <%= r.test_date ? new Date(r.test_date).toISOString().slice(0,10) : '-' %> 的体测记录吗？删除后不可恢复。');" style="margin:0;display:inline-flex;">
                           <input type="hidden" name="currentView" value="<%= viewMode %>" />
                           <input type="hidden" name="currentChildId" value="<%= childId || '' %>" />
                           <input type="hidden" name="currentClassId" value="<%= classId || '' %>" />
@@ -1027,7 +1027,7 @@
                           <input type="hidden" name="currentSortField" value="<%= activeFilters.sortField || 'test_date' %>" />
                           <input type="hidden" name="currentSortOrder" value="<%= activeFilters.sortOrder || 'desc' %>" />
                           <input type="hidden" name="currentPage" value="<%= fitnessPaginationData.currentPage || 1 %>" />
-                          <button class="btn small danger" type="submit">删除</button>
+                          <button class="btn small danger" type="submit" title="删除这条记录">删除</button>
                         </form>
                       <% } %>
                     </div>
