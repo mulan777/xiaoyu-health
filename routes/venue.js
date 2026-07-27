@@ -1,6 +1,6 @@
 const path = require('path');
 const fs = require('fs');
-const { normalizeText, normalizeFlexibleDate, toNullableInt, normalizeAttentionVest, asyncHandler, gradeLabel, requireRole, requireWritable, chinaNowText } = require('../lib/helpers');
+const { normalizeText, normalizeFlexibleDate, toNullableInt, normalizeAttentionVest, asyncHandler, gradeLabel, requireRole, requireWritable, requirePermission, chinaNowText } = require('../lib/helpers');
 const { getPool, dbQuery, buildUserDashboard, getSettings, saveSettings } = require('../lib/db');
 const { audit, buildAuditChanges, buildAuditSnapshot } = require('../lib/logger');
 
@@ -1307,7 +1307,7 @@ module.exports = function mountVenueRoutes(app, upload) {
     });
   }));
 
-  app.post('/admin/venues/recommendation/toggle', adminOnly, requireWritable(), asyncHandler(async (req, res) => {
+  app.post('/admin/venues/recommendation/toggle', adminOnly, requirePermission('booking.venues.edit'), requireWritable(), asyncHandler(async (req, res) => {
     const enabled = req.body.venueRecommendationEnabled === '1' ? '1' : '0';
     await saveSettings({ venueRecommendationEnabled: enabled });
     audit('venue_recommendation_setting_updated', {
@@ -1320,7 +1320,7 @@ module.exports = function mountVenueRoutes(app, upload) {
     res.redirect('/admin/venues?message=' + encodeURIComponent(enabled === '1' ? '教师端智能推荐已开启' : '教师端智能推荐已关闭'));
   }));
 
-  app.post('/admin/venues/add', adminOnly, requireWritable(), upload.fields([{name:'image',maxCount:1},{name:'detailImage',maxCount:1},{name:'playImagesSmall',maxCount:10},{name:'playImagesMl',maxCount:10},{name:'loopGuideImage',maxCount:12},{name:'loopGuideStationImage',maxCount:12},{name:'loopGuideVideo',maxCount:8}]), asyncHandler(async (req, res) => {
+  app.post('/admin/venues/add', adminOnly, requirePermission('booking.venues.create'), requireWritable(), upload.fields([{name:'image',maxCount:1},{name:'detailImage',maxCount:1},{name:'playImagesSmall',maxCount:10},{name:'playImagesMl',maxCount:10},{name:'loopGuideImage',maxCount:12},{name:'loopGuideStationImage',maxCount:12},{name:'loopGuideVideo',maxCount:8}]), asyncHandler(async (req, res) => {
     const name = normalizeText(req.body.name);
     if (!name) {
       return res.redirect('/admin/venues?message=' + encodeURIComponent('请输入场地名称'));
@@ -1412,7 +1412,7 @@ module.exports = function mountVenueRoutes(app, upload) {
     res.redirect('/admin/venues?message=' + encodeURIComponent(`场地「${name}」添加成功`));
   }));
 
-  app.post('/admin/venues/:id/edit', adminOnly, requireWritable(), upload.fields([{name:'image',maxCount:1},{name:'detailImage',maxCount:1},{name:'playImagesSmall',maxCount:10},{name:'playImagesMl',maxCount:10},{name:'loopGuideImage',maxCount:12},{name:'loopGuideStationImage',maxCount:12},{name:'loopGuideVideo',maxCount:8}]), asyncHandler(async (req, res) => {
+  app.post('/admin/venues/:id/edit', adminOnly, requirePermission('booking.venues.edit'), requireWritable(), upload.fields([{name:'image',maxCount:1},{name:'detailImage',maxCount:1},{name:'playImagesSmall',maxCount:10},{name:'playImagesMl',maxCount:10},{name:'loopGuideImage',maxCount:12},{name:'loopGuideStationImage',maxCount:12},{name:'loopGuideVideo',maxCount:8}]), asyncHandler(async (req, res) => {
     const venueId = Number(req.params.id);
     await ensureVenueResourceSchema();
     const name = normalizeText(req.body.name);
@@ -1542,7 +1542,7 @@ module.exports = function mountVenueRoutes(app, upload) {
     res.redirect('/admin/venues?message=' + encodeURIComponent('场地已更新'));
   }));
 
-  app.post('/admin/venues/:id/hotspot', adminOnly, requireWritable(), asyncHandler(async (req, res) => {
+  app.post('/admin/venues/:id/hotspot', adminOnly, requirePermission('booking.venues.edit'), requireWritable(), asyncHandler(async (req, res) => {
     const venueId = Number(req.params.id);
     await ensureVenueWriteColumns();
     const rows = await dbQuery('SELECT name FROM venues WHERE id = ? LIMIT 1', [venueId]);
@@ -1600,7 +1600,7 @@ module.exports = function mountVenueRoutes(app, upload) {
     });
   }));
 
-  app.post('/admin/venues/layout', adminOnly, requireWritable(), asyncHandler(async (req, res) => {
+  app.post('/admin/venues/layout', adminOnly, requirePermission('booking.venues.edit'), requireWritable(), asyncHandler(async (req, res) => {
     const raw = normalizeText(req.body.layoutJson);
     let items = [];
 
@@ -1650,7 +1650,7 @@ module.exports = function mountVenueRoutes(app, upload) {
     res.redirect('/admin/venues?message=' + encodeURIComponent('场地布局已保存'));
   }));
 
-  app.post('/admin/venues/backgrounds/add', adminOnly, requireWritable(), upload.fields([{ name: 'image', maxCount: 1 }]), asyncHandler(async (req, res) => {
+  app.post('/admin/venues/backgrounds/add', adminOnly, requirePermission('booking.venues.create'), requireWritable(), upload.fields([{ name: 'image', maxCount: 1 }]), asyncHandler(async (req, res) => {
     const name = normalizeText(req.body.name) || '背景层';
     await dbQuery(
       `INSERT INTO venue_backgrounds (
@@ -1672,7 +1672,7 @@ module.exports = function mountVenueRoutes(app, upload) {
     res.redirect('/admin/venues?message=' + encodeURIComponent('背景层已添加'));
   }));
 
-  app.post('/admin/venues/backgrounds/:id/edit', adminOnly, requireWritable(), upload.fields([{ name: 'image', maxCount: 1 }]), asyncHandler(async (req, res) => {
+  app.post('/admin/venues/backgrounds/:id/edit', adminOnly, requirePermission('booking.venues.edit'), requireWritable(), upload.fields([{ name: 'image', maxCount: 1 }]), asyncHandler(async (req, res) => {
     const backgroundId = Number(req.params.id);
     const imagePath = saveUploadedFile(firstFile(req.files, 'image'), 'venue_bg');
     const updates = [
@@ -1701,7 +1701,7 @@ module.exports = function mountVenueRoutes(app, upload) {
     res.redirect('/admin/venues?message=' + encodeURIComponent('背景层已更新'));
   }));
 
-  app.post('/admin/venues/backgrounds/:id/delete', adminOnly, requireWritable(), asyncHandler(async (req, res) => {
+  app.post('/admin/venues/backgrounds/:id/delete', adminOnly, requirePermission('booking.venues.delete'), requireWritable(), asyncHandler(async (req, res) => {
     const backgroundId = Number(req.params.id);
     const rows = await dbQuery('SELECT image_path FROM venue_backgrounds WHERE id = ?', [backgroundId]);
     if (rows[0] && rows[0].image_path) deleteUploadedFile(rows[0].image_path);
@@ -1709,13 +1709,13 @@ module.exports = function mountVenueRoutes(app, upload) {
     res.redirect('/admin/venues?message=' + encodeURIComponent('背景层已删除'));
   }));
 
-  app.post('/admin/venues/:id/delete', adminOnly, requireWritable(), asyncHandler(async (req, res) => {
+  app.post('/admin/venues/:id/delete', adminOnly, requirePermission('booking.venues.delete'), requireWritable(), asyncHandler(async (req, res) => {
     await dbQuery('DELETE FROM venues WHERE id = ?', [Number(req.params.id)]);
     audit('venue_deleted', { actor: req.session.user, venueId: Number(req.params.id), ip: req.ip });
     res.redirect('/admin/venues?message=' + encodeURIComponent('场地已删除'));
   }));
 
-  app.post('/admin/venues/:id/toggle', adminOnly, requireWritable(), asyncHandler(async (req, res) => {
+  app.post('/admin/venues/:id/toggle', adminOnly, requirePermission('booking.venues.edit'), requireWritable(), asyncHandler(async (req, res) => {
     const rows = await dbQuery('SELECT enabled FROM venues WHERE id = ? LIMIT 1', [Number(req.params.id)]);
     if (rows.length) {
       await dbQuery('UPDATE venues SET enabled = ? WHERE id = ?', [rows[0].enabled ? 0 : 1, Number(req.params.id)]);
@@ -1910,7 +1910,7 @@ module.exports = function mountVenueRoutes(app, upload) {
     })
   );
 
-  app.post('/admin/venues/skill-guides/:id/delete', adminOnly, requireWritable(), asyncHandler(async (req, res) => {
+  app.post('/admin/venues/skill-guides/:id/delete', adminOnly, requirePermission('booking.venues.delete'), requireWritable(), asyncHandler(async (req, res) => {
     const guideId = Number(req.params.id);
     await ensureVenueResourceSchema();
     const rows = await dbQuery('SELECT title, basic_image_path, basic_image_paths, basic_video_path, basic_video_paths, advanced_image_path, advanced_image_paths, advanced_video_path, advanced_video_paths, extra_image_path, extra_image_paths, extra_video_path, extra_video_paths FROM venue_skill_guides WHERE id = ? LIMIT 1', [guideId]);
@@ -2028,12 +2028,12 @@ module.exports = function mountVenueRoutes(app, upload) {
     })
   );
 
-  app.post('/admin/venues/elements/:id/delete', adminOnly, requireWritable(), asyncHandler(async (req, res) => {
+  app.post('/admin/venues/elements/:id/delete', adminOnly, requirePermission('booking.venues.delete'), requireWritable(), asyncHandler(async (req, res) => {
     await dbQuery('DELETE FROM venue_elements WHERE id = ?', [Number(req.params.id)]);
     res.redirect('/admin/venues?message=' + encodeURIComponent('标记已删除'));
   }));
 
-  app.post('/admin/venues/round/add', adminOnly, requireWritable(), asyncHandler(async (req, res) => {
+  app.post('/admin/venues/round/add', adminOnly, requirePermission('booking.venues.create'), requireWritable(), asyncHandler(async (req, res) => {
     const roundDate = normalizeText(req.body.roundDate);
     const openTime = normalizeText(req.body.openTime);
     const closeTime = normalizeText(req.body.closeTime) || null;
@@ -2058,7 +2058,7 @@ module.exports = function mountVenueRoutes(app, upload) {
     res.redirect('/admin/venues?message=' + encodeURIComponent(`${roundDate} 预约轮次已创建`));
   }));
 
-  app.post('/admin/venues/round/:id/update', adminOnly, requireWritable(), asyncHandler(async (req, res) => {
+  app.post('/admin/venues/round/:id/update', adminOnly, requirePermission('booking.venues.edit'), requireWritable(), asyncHandler(async (req, res) => {
     const roundId = Number(req.params.id);
     const roundDate = normalizeText(req.body.roundDate);
     const openTime = normalizeText(req.body.openTime);
@@ -2110,7 +2110,7 @@ module.exports = function mountVenueRoutes(app, upload) {
     res.redirect('/admin/venues?message=' + encodeURIComponent(`${roundDate} 轮次时间已更新`));
   }));
 
-  app.post('/admin/venues/round/:id/status', adminOnly, requireWritable(), asyncHandler(async (req, res) => {
+  app.post('/admin/venues/round/:id/status', adminOnly, requirePermission('booking.venues.edit'), requireWritable(), asyncHandler(async (req, res) => {
     const status = normalizeText(req.body.status);
     if (!['pending', 'open', 'closed'].includes(status)) {
       return res.redirect('/admin/venues?message=' + encodeURIComponent('无效状态'));
@@ -2120,7 +2120,7 @@ module.exports = function mountVenueRoutes(app, upload) {
     res.redirect('/admin/venues?message=' + encodeURIComponent('轮次状态已更新'));
   }));
 
-  app.post('/admin/venues/round/:id/delete', adminOnly, requireWritable(), asyncHandler(async (req, res) => {
+  app.post('/admin/venues/round/:id/delete', adminOnly, requirePermission('booking.venues.delete'), requireWritable(), asyncHandler(async (req, res) => {
     await dbQuery('DELETE FROM venue_round WHERE id = ?', [Number(req.params.id)]);
     res.redirect('/admin/venues?message=' + encodeURIComponent('轮次已删除'));
   }));
@@ -2207,7 +2207,7 @@ module.exports = function mountVenueRoutes(app, upload) {
     });
   }));
 
-  app.post('/admin/venues/bookings/:id/cancel', adminOnly, requireWritable(), asyncHandler(async (req, res) => {
+  app.post('/admin/venues/bookings/:id/cancel', adminOnly, requirePermission('booking.venues.edit'), requireWritable(), asyncHandler(async (req, res) => {
     const roundId = normalizeText(req.query.roundId) || '';
     await dbQuery(`UPDATE venue_bookings SET status = 'cancelled' WHERE id = ?`, [Number(req.params.id)]);
     res.redirect(`/admin/venues/bookings?roundId=${roundId}&message=` + encodeURIComponent('已取消'));
