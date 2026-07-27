@@ -1189,7 +1189,7 @@ module.exports = function mountAdminRoutes(app, upload) {
     return res.redirect(buildPanelUrl('未识别的批量操作', 'children', redirectExtras));
   }));
 
-  app.post('/admin/children/attention/save', adminOnly, requireWritable(), asyncHandler(async (req, res) => {
+  app.post('/admin/children/attention/save', adminOnly, requirePermission('booking.attention.edit'), requireWritable(), asyncHandler(async (req, res) => {
     await handleChildAttentionSave(req, res, toNullableInt(req.body.childId));
   }));
 
@@ -1197,7 +1197,7 @@ module.exports = function mountAdminRoutes(app, upload) {
     await handleChildAttentionSave(req, res, Number(req.params.id));
   }));
 
-  app.post('/admin/children/attention/clear', adminOnly, requireWritable(), asyncHandler(async (req, res) => {
+  app.post('/admin/children/attention/clear', adminOnly, requirePermission('booking.attention.delete'), requireWritable(), asyncHandler(async (req, res) => {
     await handleChildAttentionClear(req, res, toNullableInt(req.body.childId));
   }));
 
@@ -1487,7 +1487,7 @@ module.exports = function mountAdminRoutes(app, upload) {
   }));
 
 
-  app.post('/admin/fitness/:id/update', adminOnly, requireWritable(), asyncHandler(async (req, res) => {
+  app.post('/admin/fitness/:id/update', adminOnly, requirePermission('data.fitness.create'), requireWritable(), asyncHandler(async (req, res) => {
     const recordId = toNullableInt(req.params.id);
     const redirectExtras = buildFitnessQueryExtras(req.body);
     if (!recordId) return res.redirect(buildFitnessUrl('', { ...redirectExtras, error: '体测修正失败：记录不存在' }));

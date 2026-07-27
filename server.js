@@ -1971,19 +1971,22 @@ async function bootstrap() {
   }));
 
   // ========== 错误处理 ==========
-  app.use((req, res) => { res.status(404).render('error', { message: '页面不存在' }); });
+  app.use((req, res) => {
+    if (!res.locals.settings) res.locals.settings = { siteName: '小鱼健康平台', subtitle: '' };
+    if (!res.locals.currentUser) res.locals.currentUser = req.session && req.session.user ? req.session.user : null;
+    if (!res.locals.cssVersion) res.locals.cssVersion = APP_START_TIME;
+    res.status(404).render('error', { message: '页面不存在' });
+  });
   app.use((error, req, res, next) => {
     console.error('Application error:', error);
-    errorLog(error, req);
+    const errId = 'ERR-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    errorLog(error, req, errId);
     if (res.headersSent) return next(error);
-    const detail = [
-      error && error.name ? `错误类型：${error.name}` : '',
-      error && error.message ? `错误信息：${error.message}` : '',
-      error && error.code ? `错误代码：${error.code}` : '',
-      error && error.sqlMessage ? `SQL错误：${error.sqlMessage}` : '',
-      error && error.stack ? `堆栈：\n${error.stack}` : ''
-    ].filter(Boolean).join('\n\n');
-    res.status(500).render('error', { message: detail || String(error || '未知错误') });
+    // 确保 error.ejs 的 header 能渲染（locals 中间件可能未跑完）
+    if (!res.locals.settings) res.locals.settings = { siteName: '小鱼健康平台', subtitle: '' };
+    if (!res.locals.currentUser) res.locals.currentUser = req.session && req.session.user ? req.session.user : null;
+    if (!res.locals.cssVersion) res.locals.cssVersion = APP_START_TIME;
+    res.status(500).render('error', { message: '服务暂时不可用，请稍后再试', errorId: errId });
   });
 
   app.listen(PORT, '0.0.0.0', () => { console.log(`Server listening on http://0.0.0.0:${PORT}`); });

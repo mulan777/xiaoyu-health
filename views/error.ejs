@@ -3,6 +3,7 @@
 <section class="card error-card">
   <h1>提示</h1>
   <p><%= message %></p>
+  <% if (typeof errorId !== 'undefined' && errorId) { %><p class="error-id" style="margin-top:8px;color:#94a3b8;font-size:13px;">编号：<%= errorId %>（反馈时请提供此编号）</p><% } %>
   <a class="btn" href="/">返回首页</a>
 </section>
 
