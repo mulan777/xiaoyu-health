@@ -204,6 +204,8 @@
     reasoningCollected = '';
     streamFinished = false;
     bodyEl.textContent = '';
+    bodyEl.classList.add('ai-body-loading');
+    bodyEl.innerHTML = '<div class="ai-skeleton"><div class="ai-skel-line" style="width:90%"></div><div class="ai-skel-line" style="width:78%"></div><div class="ai-skel-line" style="width:85%"></div><div class="ai-skel-line" style="width:60%"></div><div class="ai-skel-gap"></div><div class="ai-skel-line" style="width:95%"></div><div class="ai-skel-line" style="width:72%"></div></div>';
     reasoningEl.textContent = '';
     reasoningWrap.style.display = 'none';
     reasoningWrap.open = true;
@@ -298,8 +300,13 @@
       try {
         var data = JSON.parse(e.data);
         if (data && data.content) {
-          if (!collected && reasoningCollected) {
-            statusEl.textContent = '✅ 思考完成，正在输出报告……';
+          if (!collected) {
+            // 首次收到正文：清掉 skeleton 占位
+            bodyEl.classList.remove('ai-body-loading');
+            bodyEl.innerHTML = '';
+            if (reasoningCollected) {
+              statusEl.textContent = '✅ 思考完成，正在输出报告……';
+            }
           }
           collected += data.content;
           bodyEl.textContent = collected;
@@ -1092,21 +1099,53 @@
       }
     }
   }
+  function showPanelLoading(selector) {
+    var panel = document.querySelector(selector);
+    if (!panel) return;
+    if (panel.querySelector('.ajax-loading-overlay')) return;
+    var ov = document.createElement('div');
+    ov.className = 'ajax-loading-overlay';
+    ov.innerHTML = '<div class="ajax-spinner"></div><div class="ajax-loading-text">加载中…</div>';
+    // panel 需相对定位才能承载遮罩
+    var cs = getComputedStyle(panel);
+    if (cs.position === 'static') panel.style.position = 'relative';
+    panel.appendChild(ov);
+  }
+  function hidePanelLoading(selector) {
+    var panel = document.querySelector(selector);
+    if (!panel) return;
+    var ov = panel.querySelector('.ajax-loading-overlay');
+    if (ov) ov.parentNode.removeChild(ov);
+  }
   async function loadFitnessRecords(url, push) {
-    const res = await fetch(url, { headers: { 'X-Requested-With': 'fetch' }, credentials: 'same-origin' });
-    if (!res.ok) { window.location.href = url; return; }
-    const html = await res.text();
-    replacePanelFromHtml(html, '[data-ajax-panel="fitness-records"]');
-    if (push) window.history.pushState({ kind: 'fitness-records', url: url }, '', url);
-    bindFitnessPagination();
+    showPanelLoading('[data-ajax-panel="fitness-records"]');
+    try {
+      const res = await fetch(url, { headers: { 'X-Requested-With': 'fetch' }, credentials: 'same-origin' });
+      if (!res.ok) { window.location.href = url; return; }
+      const html = await res.text();
+      replacePanelFromHtml(html, '[data-ajax-panel="fitness-records"]');
+      if (push) window.history.pushState({ kind: 'fitness-records', url: url }, '', url);
+      bindFitnessPagination();
+    } catch (err) {
+      window.location.href = url;
+    } finally {
+      hidePanelLoading('[data-ajax-panel="fitness-records"]');
+    }
   }
   async function loadAdminFitnessMain(url, push) {
-    const res = await fetch(url, { headers: { 'X-Requested-With': 'fetch' }, credentials: 'same-origin' });
-    if (!res.ok) { window.location.href = url; return; }
-    const html = await res.text();
-    replacePanelFromHtml(html, '[data-ajax-panel="admin-fitness-main"]');
-    if (push) window.history.pushState({ kind: 'admin-fitness-main', url: url }, '', url);
-    bindFitnessPagination();
+    showPanelLoading('[data-ajax-panel="admin-fitness-main"]');
+    try {
+      const res = await fetch(url, { headers: { 'X-Requested-With': 'fetch' }, credentials: 'same-origin' });
+      if (!res.ok) { window.location.href = url; return; }
+      const html = await res.text();
+      replacePanelFromHtml(html, '[data-ajax-panel="admin-fitness-main"]');
+      if (push) window.history.pushState({ kind: 'admin-fitness-main', url: url }, '', url);
+      bindFitnessPagination();
+    } catch (err) {
+      window.location.href = url;
+    } finally {
+      hidePanelLoading('[data-ajax-panel="admin-fitness-main"]');
+    }
   }
   function scrollToFitnessPanel() {
     const panel = document.querySelector('[data-ajax-panel="fitness-records"]');

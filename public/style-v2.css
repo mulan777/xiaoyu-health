@@ -677,3 +677,45 @@ label{
   .card{box-shadow:none;border:1px solid #ddd;break-inside:avoid}
   .data-table{font-size:11px}
 }
+
+/* ================================================================
+   AJAX LOADING OVERLAY — 翻页/筛选时面板加载遮罩
+   ================================================================ */
+.ajax-loading-overlay{
+  position:absolute;inset:0;z-index:50;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
+  background:rgba(255,255,255,0.6);
+  backdrop-filter:blur(2px);
+  border-radius:inherit;
+  animation:ajax-fade-in .15s ease-out;
+}
+@keyframes ajax-fade-in{from{opacity:0}to{opacity:1}}
+.ajax-spinner{
+  width:32px;height:32px;border-radius:50%;
+  border:3px solid var(--primary-s,#eef2ff);
+  border-top-color:var(--primary,#6366f1);
+  animation:ajax-spin .8s linear infinite;
+}
+@keyframes ajax-spin{to{transform:rotate(360deg)}}
+.ajax-loading-text{font-size:13px;color:#64748b;letter-spacing:.02em}
+
+/* ================================================================
+   AI REPORT SKELETON — 报告生成前的骨架占位
+   ================================================================ */
+.ai-body-loading{padding:20px!important}
+.ai-skeleton{display:flex;flex-direction:column;gap:10px}
+.ai-skel-line{
+  height:14px;border-radius:6px;
+  background:linear-gradient(90deg,#eef2ff 25%,#e0e7ff 37%,#eef2ff 63%);
+  background-size:400% 100%;
+  animation:ai-skel-shimmer 1.4s ease-in-out infinite;
+}
+.ai-skel-gap{height:14px}
+@keyframes ai-skel-shimmer{
+  0%{background-position:100% 50%}
+  100%{background-position:-100% 50%}
+}
+@media (prefers-reduced-motion:reduce){
+  .ajax-spinner,.ai-skel-line{animation:none}
+  .ai-skel-line{background:#eef2ff}
+}
