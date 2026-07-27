@@ -5,7 +5,8 @@ module.exports = {
       script: 'server.js',
       cwd: '/opt/kindergarten-fitness-platform',
       env: {
-        PORT: 3070
+        PORT: 3070,
+        NODE_ENV: 'production'
       }
     }
   ]

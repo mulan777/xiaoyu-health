@@ -41,14 +41,14 @@ const mountVenueRoutes = require('./routes/venue');
 
 const app = express();
 const ALLOWED_MIMETYPES = new Set([
-  'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
+  'image/jpeg', 'image/png', 'image/gif', 'image/webp',
   'video/mp4', 'video/webm', 'video/ogg', 'video/quicktime', 'video/x-m4v',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   'application/vnd.ms-excel',
   'application/pdf'
 ]);
 const ALLOWED_UPLOAD_EXTENSIONS = new Set([
-  '.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg',
+  '.jpg', '.jpeg', '.png', '.gif', '.webp',
   '.mp4', '.webm', '.ogg', '.mov', '.m4v',
   '.xlsx', '.xls', '.pdf'
 ]);
@@ -540,7 +540,8 @@ async function saveFitnessRecord({ childId, testDate, data, result, userId }) {
   const insertedRows = await dbQuery('SELECT id FROM fitness_records WHERE child_id = ? AND test_date = ? ORDER BY id DESC LIMIT 1', [childId, testDate]);
   return { updated: false, changed: true, id: insertedRows[0] ? insertedRows[0].id : null, existingRecord: null };
 }
-const SESSION_SECRET = process.env.SESSION_SECRET || 'kindergarten-fitness-platform-secret';
+const SESSION_SECRET = process.env.SESSION_SECRET;
+if (!SESSION_SECRET) { console.error('SESSION_SECRET 未配置, 拒绝启动'); process.exit(1); }
 const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
 
 let redisClient;
@@ -638,8 +639,13 @@ async function bootstrap() {
     etag: true,
     lastModified: true,
     immutable: true,
-    setHeaders(res) {
+    setHeaders(res, filePath) {
       res.setHeader('Cache-Control', 'public, max-age=31536000, immutable, stale-while-revalidate=86400');
+      // 防御: 即使有历史残留svg, 也强制下载不当页面渲染(防svg内嵌script的XSS)
+      if (filePath && filePath.toLowerCase().endsWith('.svg')) {
+        res.setHeader('Content-Type', 'text/plain');
+        res.setHeader('Content-Disposition', 'attachment');
+      }
     }
   }));
 
