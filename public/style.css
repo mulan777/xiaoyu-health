@@ -416,7 +416,7 @@ input:focus, textarea:focus, select:focus {
 }
 .checkbox-cell {
   width: 52px;
-  text-align: center !important;
+  text-align: center;
 }
 .checkbox-cell input {
   width: 18px;
@@ -665,15 +665,6 @@ input:focus, textarea:focus, select:focus {
   grid-template-columns: 240px 1fr;
   gap: 0;
   align-items: start;
-}
-.admin-sidebar {
-  position: sticky;
-  top: 72px;
-  padding: 12px 16px;
-  margin-right: 0;
-  border: none;
-  box-shadow: none;
-  background: transparent;
 }
 .sidebar-brand {
   margin-bottom: 14px;
@@ -1297,7 +1288,7 @@ input:focus, textarea:focus, select:focus {
   flex-wrap: wrap;
 }
 .venue-view-panel[hidden] {
-  display: none !important;
+  display: none;
 }
 .venue-board-scroll,
 .layout-editor-scroll {
@@ -2220,7 +2211,7 @@ input:focus, textarea:focus, select:focus {
 .venue-resource-level-panel[hidden],
 .venue-resource-panel[hidden],
 .venue-scene-surface[hidden] {
-  display: none !important;
+  display: none;
 }
 .venue-resource-level-btn,
 .venue-resource-nav-btn {
@@ -3121,7 +3112,7 @@ body.modal-open {
   display: none !important;
 }
 .readonly-mode .data-table .checkbox-cell {
-  display: none !important;
+  display: none;
 }
 
 /* ========== RBAC Role Cards ========== */
@@ -3382,12 +3373,12 @@ body.modal-open {
 }
 /* Actually readonly should block everything including export */
 .readonly-mode form[method="post"] { display: none !important; }
-.readonly-mode .import-box { display: none !important; }
-.readonly-mode .batch-bar { display: none !important; }
-.readonly-mode .inline-editor-card { display: none !important; }
+.readonly-mode .import-box { display: none; }
+.readonly-mode .batch-bar { display: none; }
+.readonly-mode .inline-editor-card { display: none; }
 /* Block export links in readonly mode */
 .readonly-mode a[href*="/export"] { display: none !important; }
-.readonly-mode a[href*="/template"] { display: none !important; }
+.readonly-mode a[href*="/template"] { display: none; }
 
 /* ========== Inline editor refinements ========== */
 .inline-editor-card > summary {
@@ -3415,8 +3406,8 @@ body.modal-open {
   .user-fitness-sidebar { position:sticky; top:72px; align-self:start; display:block !important; }
   .user-fitness-main { min-width:0; width:100%; }
   .user-fitness-nav { display:flex; flex-direction:column; gap:12px; }
-  .user-fitness-nav-link { display:block; width:100%; box-sizing:border-box; min-height:42px; padding:14px 16px; border-radius:12px; background:transparent; color:#1d1d1f !important; text-decoration:none; font-weight:500;  }
-  .user-fitness-nav-link:hover { color:#0071e3 !important; background:rgba(0,113,227,0.06); }
+  .user-fitness-nav-link { display:block; width:100%; box-sizing:border-box; min-height:42px; padding:14px 16px; border-radius:12px; background:transparent; color:#1d1d1f; text-decoration:none; font-weight:500;  }
+  .user-fitness-nav-link:hover { color:#0071e3; background:rgba(0,113,227,0.06); }
   .user-fitness-nav-link.active { background:rgba(0,113,227,0.1); color:#0071e3 !important; }
   .user-fitness-nav-title { display:block; font-size:14px; line-height:1.2; }
   .user-fitness-nav-desc { display:block; margin-top:6px; font-size:12px; color:#86868b; font-weight:600; }
@@ -4239,7 +4230,7 @@ body.modal-open {
   padding: 7px 10px;
   border-radius: 8px;
   background: transparent;
-  color: #334155 !important;
+  color: #334155;
   border: none;
   box-shadow: none;
   font-size: 13.5px;
@@ -4253,12 +4244,12 @@ body.modal-open {
 .fitness-admin-sidebar .fitness-nav-root:hover,
 .fitness-admin-sidebar .fitness-nav-grade-link:hover {
   background: #f1f5f9;
-  color: #2563eb !important;
+  color: #2563eb;
 }
 .fitness-admin-sidebar .fitness-nav-root.active,
 .fitness-admin-sidebar .fitness-nav-grade-link.active {
   background: #eff6ff;
-  color: #1d4ed8 !important;
+  color: #1d4ed8;
   border-left: none;
   padding-left: 10px;
 }
@@ -4303,7 +4294,7 @@ body.modal-open {
   padding: 6px 10px;
   border-radius: 7px;
   background: transparent;
-  color: #64748b !important;
+  color: #64748b;
   border: none;
   font-size: 12.5px;
   font-weight: 500;
@@ -4311,16 +4302,16 @@ body.modal-open {
 }
 .fitness-admin-sidebar .fitness-nav-class-all {
   background: transparent;
-  color: #475569 !important;
+  color: #475569;
   font-weight: 600;
 }
 .fitness-admin-sidebar .fitness-nav-class:hover {
   background: #f1f5f9;
-  color: #1e293b !important;
+  color: #1e293b;
 }
 .fitness-admin-sidebar .fitness-nav-class.active {
   background: #e0f2fe;
-  color: #0369a1 !important;
+  color: #0369a1;
   font-weight: 600;
   border-left: none;
   padding-left: 10px;
@@ -4339,8 +4330,8 @@ body.modal-open {
   box-shadow: 0 10px 30px rgba(15,23,42,0.05);
 }
 .fitness-batch-overview-head {
-  margin-bottom: 12px !important;
-  padding-bottom: 0 !important;
+  margin-bottom: 12px;
+  padding-bottom: 0;
 }
 .fitness-batch-overview-head h3 {
   margin: 0;
@@ -4736,16 +4727,16 @@ body.modal-open {
 .clean-dark-card .home-visual-head span,
 .home-visual-card-large .home-visual-head span,
 .clean-visual-grid .home-visual-card-large .home-visual-head span {
-  color: #64748b !important;
+  color: #64748b;
 }
 .clean-dark-card p,
 .home-visual-card-large p,
 .clean-visual-grid .home-visual-card-large p {
-  color: #64748b !important;
+  color: #64748b;
 }
 .clean-visual-grid .mini-bars i {
-  background: linear-gradient(180deg, var(--c), rgba(255,255,255,.88)) !important;
-  box-shadow: 0 12px 26px rgba(37,99,235,.12) !important;
+  background: linear-gradient(180deg, var(--c), rgba(255,255,255,.88));
+  box-shadow: 0 12px 26px rgba(37,99,235,.12);
 }
 .clean-chart-card,
 .clean-light-card,
@@ -4837,7 +4828,7 @@ body.modal-open {
 
 /* ========== Hide legacy homepage metric text ========== */
 .premium-panel-metrics { display: none !important; }
-.premium-glass-panel svg { margin-bottom: 0 !important; }
+.premium-glass-panel svg { margin-bottom: 0; }
 
 /* ========== Luxe redesign: homepage + login ========== */
 :root {
@@ -5790,7 +5781,6 @@ html { --lux-scroll: 0; }
     background: rgba(255,255,255,.62) !important;
   }
   .lux-dashboard-grid strong { font-size: 20px !important; }
-  .lux-dashboard-grid span { font-size: 10px !important; }
   .lux-hero-card svg {
     height: 190px !important;
     max-height: 190px !important;
@@ -5906,7 +5896,6 @@ html { --lux-scroll: 0; }
 }
 
 @media (max-width: 720px) {
-  .lux-auth-shell { padding-top: clamp(44px, 13vh, 82px) !important; }
   .lux-login-card {
     max-width: none !important;
     padding: 24px 20px 22px !important;
@@ -5918,7 +5907,6 @@ html { --lux-scroll: 0; }
   }
   .lux-form { gap: 10px !important; }
   .lux-form input { min-height: 43px !important; border-radius: 14px !important; }
-  .lux-submit { min-height: 44px !important; }
   .lux-auth-stats {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 6px;
@@ -6115,11 +6103,6 @@ html { --lux-scroll: 0; }
   }
   .nav a {
     padding: 5px 8px !important;
-  }
-  .nav a[href="/login"] {
-    color: #2563eb !important;
-    background: rgba(37,99,235,.08) !important;
-    box-shadow: none !important;
   }
 
   .container:not(.admin-container) {
