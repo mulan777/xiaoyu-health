@@ -459,17 +459,6 @@ async function findOrCreateClassChild(classId, childName, options = {}) {
     reactivated: false,
     profileUpdatedFields: [gender ? 'gender' : null, birthDate ? 'birth_date' : null].filter(Boolean)
   };
-
-  const insertResult = await dbQuery(
-    `INSERT INTO children (name, gender, birth_date, class_id, guardian_name, guardian_phone, notes, enabled)
-     VALUES (?, ?, NULL, ?, '', '', ?, 1)`,
-    [childName, '其他', classId, '教师体测录入时快捷创建']
-  );
-  const createdRows = await dbQuery(
-    'SELECT id, name, gender, birth_date, class_id, enabled FROM children WHERE id = ? LIMIT 1',
-    [insertResult.insertId]
-  );
-  return { child: createdRows[0], created: true, reactivated: false };
 }
 
 async function saveFitnessRecord({ childId, testDate, data, result, userId }) {
