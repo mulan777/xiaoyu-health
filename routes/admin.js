@@ -923,6 +923,12 @@ module.exports = function mountAdminRoutes(app, upload) {
     const selectedUsers = await dbQuery(`SELECT id, username, name FROM users WHERE id IN (${ph})`, selectedIds);
     const selectedNames = selectedUsers.map((item) => item.name || item.username || `ID:${item.id}`);
     const selectedSummary = summarizeNames(selectedNames);
+    // 按 batchAction 分支收紧权限：delete 系列需 data.users.delete，其余需 data.users.edit
+    const isDeleteAction = action === 'delete';
+    const requiredPerm = isDeleteAction ? 'data.users.delete' : 'data.users.edit';
+    if (!hasPermission(req.session.user, requiredPerm)) {
+      return res.status(403).render('error', { message: '无权限执行该批量操作' });
+    }
     if (action === 'enable') { await dbQuery(`UPDATE users SET enabled = 1 WHERE id IN (${ph})`, selectedIds); audit('users_batch_enable', { actor: req.session.user, action: '批量启用用户', target: `批量启用用户（${selectedIds.length}项）`, batchAction: action, selectedIds, targetNames: selectedNames, ip: req.ip, message: `操作人：${req.session.user && (req.session.user.name || req.session.user.username) || '系统'}；批量启用：${selectedSummary}` }); return res.redirect(buildPanelUrl('已批量启用所选用户', 'users', redirectExtras)); }
     if (action === 'disable') { const affected = selectedUsers.filter((item) => item.username !== 'admin'); await dbQuery(`UPDATE users SET enabled = 0 WHERE id IN (${ph}) AND username <> ?`, [...selectedIds, 'admin']); audit('users_batch_disable', { actor: req.session.user, action: '批量禁用用户', target: `批量禁用用户（${affected.length}项）`, batchAction: action, selectedIds, targetNames: affected.map((item) => item.name || item.username || `ID:${item.id}`), ip: req.ip, message: `操作人：${req.session.user && (req.session.user.name || req.session.user.username) || '系统'}；批量禁用：${summarizeNames(affected.map((item) => item.name || item.username || `ID:${item.id}`))}` }); return res.redirect(buildPanelUrl('已批量禁用所选用户（默认 admin 除外）', 'users', redirectExtras)); }
     if (action === 'delete') {
@@ -1182,6 +1188,12 @@ module.exports = function mountAdminRoutes(app, upload) {
     const selectedChildren = await dbQuery(`SELECT id, name FROM children WHERE id IN (${ph})`, selectedIds);
     const selectedNames = selectedChildren.map((item) => item.name || `ID:${item.id}`);
     const selectedSummary = summarizeNames(selectedNames);
+    // 按 batchAction 分支收紧权限：delete 系列需 data.children.delete，其余需 data.children.edit
+    const isDeleteAction = action === 'delete';
+    const requiredPerm = isDeleteAction ? 'data.children.delete' : 'data.children.edit';
+    if (!hasPermission(req.session.user, requiredPerm)) {
+      return res.status(403).render('error', { message: '无权限执行该批量操作' });
+    }
     if (action === 'enable') { await dbQuery(`UPDATE children SET enabled = 1 WHERE id IN (${ph})`, selectedIds); audit('children_batch_enable', { actor: req.session.user, action: '批量启用幼儿档案', target: `批量启用幼儿档案（${selectedIds.length}项）`, batchAction: action, selectedIds, targetNames: selectedNames, ip: req.ip, message: `操作人：${req.session.user && (req.session.user.name || req.session.user.username) || '系统'}；批量启用幼儿：${selectedSummary}` }); return res.redirect(buildPanelUrl('已批量启用所选幼儿档案', 'children', redirectExtras)); }
     if (action === 'disable') { await dbQuery(`UPDATE children SET enabled = 0 WHERE id IN (${ph})`, selectedIds); audit('children_batch_disable', { actor: req.session.user, action: '批量禁用幼儿档案', target: `批量禁用幼儿档案（${selectedIds.length}项）`, batchAction: action, selectedIds, targetNames: selectedNames, ip: req.ip, message: `操作人：${req.session.user && (req.session.user.name || req.session.user.username) || '系统'}；批量禁用幼儿：${selectedSummary}` }); return res.redirect(buildPanelUrl('已批量禁用所选幼儿档案', 'children', redirectExtras)); }
     if (action === 'delete') { await dbQuery(`DELETE FROM children WHERE id IN (${ph})`, selectedIds); const totalRows = await dbQuery(`SELECT COUNT(*) AS total FROM children ch LEFT JOIN classes c ON c.id = ch.class_id WHERE (? = '' OR LOWER(CONCAT(COALESCE(ch.name,''),' ',COALESCE(ch.gender,''),' ',COALESCE(c.name,''))) LIKE ?) AND (? = '' OR CAST(ch.class_id AS CHAR) = ?)`, [redirectExtras.childKeyword || '', '%' + String(redirectExtras.childKeyword || '').toLowerCase() + '%', redirectExtras.childClassId || '', redirectExtras.childClassId || '']); const pageSize = Math.max(1, Number.parseInt(req.body.pageSize, 10) || 10); const requestedPage = Math.max(1, Number.parseInt(req.body.childPage, 10) || 1); const totalAfterDelete = totalRows[0] ? Number(totalRows[0].total || 0) : 0; const safePage = Math.max(1, Math.min(requestedPage, Math.max(1, Math.ceil(totalAfterDelete / pageSize)))); audit('children_batch_delete', { actor: req.session.user, action: '批量删除幼儿档案', target: `批量删除幼儿档案（${selectedIds.length}项）`, batchAction: action, selectedIds, targetNames: selectedNames, ip: req.ip, message: `操作人：${req.session.user && (req.session.user.name || req.session.user.username) || '系统'}；批量删除幼儿：${selectedSummary}` }); return res.redirect(buildPanelUrl('已批量删除所选幼儿档案', 'children', { ...redirectExtras, childPage: safePage, pageSize })); }
