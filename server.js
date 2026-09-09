@@ -39,6 +39,8 @@ const { parseWorkbookRows, sendWorkbook, buildFitnessTemplateWorkbook } = requir
 const mountAdminRoutes = require('./routes/admin');
 const mountVenueRoutes = require('./routes/venue');
 const mountUserRoutes = require('./routes/user');
+const mountBandRoutes = require('./routes/bands');
+const mountScreenRoutes = require('./routes/screen');
 
 const app = express();
 const ALLOWED_MIMETYPES = new Set([
@@ -176,7 +178,13 @@ function safeCell(value) {
 }
 
 function formatDateOnly(value) {
-  return value ? new Date(value).toISOString().slice(0, 10) : '';
+  // 本地时区日期提取：mysql2 返回的 Date 是本地时刻（服务器 TZ=+8），
+  // 用 toISOString 会按 UTC 截取导致日期错位 -1 天（2026-05-25 显示成 05-24）。
+  // 改用本地时区组件拼接，保证 数据库日期 == 页面显示日期。
+  if (!value) return '';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
 
 function normalizeChildGender(value) {
@@ -204,6 +212,27 @@ async function initRedis() {
   await redisClient.connect();
 }
 
+// 2026-09-08 安全加固(P1-8.7)：按 userId 踢掉其全部 Redis 会话（connect-redis 前缀 kgp:sess:）
+// 用于：禁用用户 / 重置密码 / 角色或班级变更 / 批量操作后，让目标用户旧 session 立即失效
+async function kickUserSessions(userId) {
+  if (!redisClient || !userId) return;
+  try {
+    const sessionKeys = await redisClient.keys('kgp:sess:*');
+    for (const key of sessionKeys) {
+      try {
+        const raw = await redisClient.get(key);
+        if (!raw) continue;
+        const data = JSON.parse(raw);
+        if (data && data.user && Number(data.user.id) === Number(userId)) {
+          await redisClient.del(key);
+        }
+      } catch (e) { /* 单个 session 解析失败忽略 */ }
+    }
+  } catch (e) {
+    console.error('kickUserSessions error:', e.message);
+  }
+}
+
 function createSessionMiddleware() {
   return session({
     store: new RedisStore({ client: redisClient, prefix: 'kgp:sess:' }),
@@ -211,7 +240,7 @@ function createSessionMiddleware() {
     resave: false,
     saveUninitialized: false,
     proxy: true,
-    cookie: { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', maxAge: 1000 * 60 * 60 * 8 }
+    cookie: { httpOnly: true, sameSite: 'lax', secure: false, maxAge: 1000 * 60 * 60 * 8 }
   });
 }
 
@@ -347,6 +376,7 @@ async function bootstrap() {
     res.locals.settings = await getSettings();
     res.locals.gradeLabel = gradeLabel;
     res.locals.calculateAge = calculateAge;
+    res.locals.formatDateOnly = formatDateOnly;
     // RBAC 权限辅助函数
     res.locals.hasPerm = function(perm) {
       const u = req.session.user;
@@ -426,8 +456,11 @@ async function bootstrap() {
     await dbQuery('UPDATE users SET password_hash = ? WHERE id = ?', [bcrypt.hashSync(newPassword, 10), req.session.user.id]);
     audit('password_changed', { actor: req.session.user, ip: req.ip });
 
-    const dest = req.session.user.role === 'user' ? '/user' : '/admin';
-    res.redirect(dest + '?message=' + encodeURIComponent('密码修改成功'));
+    // 2026-09-08 安全加固(P1-8.7)：改密后重建会话，强制重新登录，旧 session 立即作废
+    req.session.regenerate(function () {
+      res.redirect('/login?message=' + encodeURIComponent('密码修改成功，请重新登录'));
+    });
+    return;
   }));
 
   app.get('/logout', (req, res) => {
@@ -445,10 +478,16 @@ async function bootstrap() {
   // 教师体测导出
 
   // ========== 管理后台路由（拆分） ==========
-  mountAdminRoutes(app, upload);
+  mountAdminRoutes(app, upload, { kickUserSessions });
 
   // ========== 场地预约路由 ==========
   mountVenueRoutes(app, upload);
+
+  // ========== 手环健康监测路由 ==========
+  mountBandRoutes(app, upload);
+
+  // ========== 数据大屏路由 ==========
+  mountScreenRoutes(app);
 
   // 教师端 /user 路由(从server.js抽取, 依赖注入)
   const userRouteCtx = {

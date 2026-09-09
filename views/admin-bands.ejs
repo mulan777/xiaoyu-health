@@ -1,0 +1,670 @@
+<%- include('partials/header', { pageClass: isReadonly ? 'admin-page readonly-mode' : 'admin-page' }) %>
+<script src="/static/echarts.min.js"></script>
+
+<%
+  var bandList = bandList || [];
+  var classes = classes || [];
+  var enabledClassIds = enabledClassIds || [];
+  var mappings = mappings || [];
+  var children = children || [];
+  var latestRecords = latestRecords || [];
+  var nowIso = (function () {
+    var d = new Date(); function p(n) { return String(n).padStart(2, '0'); }
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+  })();
+  var _fmtT = function(v) {
+    if (v == null) return '—';
+    var d = (v instanceof Date) ? v : new Date(String(v).replace(' ', 'T'));
+    if (isNaN(d.getTime())) return String(v);
+    function p(n) { return String(n).padStart(2, '0'); }
+    return p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+  };
+  var _gradeLbl = function(g) { return g === 'small' ? '小班' : (g === 'middle' ? '中班' : '大班'); };
+  var _gradeCls = function(g) { return g === 'small' ? 'g-s' : (g === 'middle' ? 'g-m' : 'g-l'); };
+%>
+
+<style>
+  /* ============ 手环健康 - 温暖保健工作台视觉系统 ============ */
+  .band-hero {
+    position: relative; overflow: hidden;
+    background: linear-gradient(120deg, #eef2ff 0%, #f6f8ff 46%, #ffffff 100%);
+    border: 1px solid #e0e7ff !important;
+    border-radius: 22px !important;
+    padding: 22px 24px !important;
+  }
+  .band-hero::before {
+    content: ''; position: absolute; right: -70px; top: -70px;
+    width: 230px; height: 230px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(99,102,241,.10) 0%, rgba(99,102,241,0) 70%);
+    pointer-events: none;
+  }
+  .band-hero::after {
+    content: ''; position: absolute; right: 40px; bottom: -46px;
+    width: 170px; height: 90px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(14,165,233,.08) 0%, rgba(14,165,233,0) 72%);
+    pointer-events: none;
+  }
+  .band-hero > * { position: relative; z-index: 1; }
+  .band-hero h1 { font-size: 22px; }
+  .band-hero p { max-width: 640px; color: #475569; }
+  .band-hero .status-chip {
+    background: #fff; border: 1px solid #e0e7ff; color: #4338ca;
+    border-radius: 999px; padding: 8px 16px; font-weight: 700; font-size: 13px;
+    box-shadow: 0 2px 10px rgba(99,102,241,.10);
+    display: inline-flex; align-items: center; gap: 7px;
+  }
+  .band-hero .status-chip::before {
+    content: ''; width: 8px; height: 8px; border-radius: 50%;
+    background: #10b981; box-shadow: 0 0 0 3px rgba(16,185,129,.18);
+  }
+  .band-hero .hero-date { font-size: 12px; color: #64748b; font-weight: 500; margin-top: 2px; }
+
+  /* —— 统计卡 —— */
+  .band-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin: 18px 0; }
+  .band-stat {
+    display: flex; align-items: center; gap: 14px;
+    background: #fff; border-radius: 18px; padding: 16px 18px;
+    border: 1px solid #eef0f6;
+    box-shadow: 0 1px 2px rgba(15,23,42,.04), 0 10px 26px -16px rgba(99,102,241,.22);
+    transition: transform .18s ease, box-shadow .18s ease;
+  }
+  .band-stat:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(15,23,42,.05), 0 16px 32px -14px rgba(99,102,241,.28); }
+  .band-stat .ic {
+    width: 46px; height: 46px; border-radius: 14px; flex: 0 0 46px;
+    display: flex; align-items: center; justify-content: center; font-size: 22px;
+  }
+  .band-stat .ic.i-online { background: #ecfdf5; }
+  .band-stat .ic.i-total  { background: #eef2ff; }
+  .band-stat .ic.i-bind   { background: #eff6ff; }
+  .band-stat .ic.i-sos    { background: #fef2f2; }
+  .band-stat .txt { min-width: 0; }
+  .band-stat .num { font-size: 27px; font-weight: 800; line-height: 1.15; color: #0f172a; letter-spacing: -.5px; }
+  .band-stat .lbl { font-size: 12px; color: #64748b; margin-top: 3px; }
+  .band-stat.warn { border-color: #fecaca; box-shadow: 0 1px 2px rgba(15,23,42,.04), 0 10px 26px -16px rgba(239,68,68,.30); }
+  .band-stat.warn .num { color: #ef4444; }
+
+  /* —— 通用卡片 —— */
+  .band-card {
+    background: #fff; border-radius: 20px; padding: 20px 22px; margin-bottom: 18px;
+    border: 1px solid #eef0f6;
+    box-shadow: 0 1px 2px rgba(15,23,42,.04), 0 12px 30px -18px rgba(99,102,241,.22);
+  }
+  .band-card .band-title {
+    display: flex; align-items: center; gap: 10px; margin: 0 0 3px;
+  }
+  .band-card .band-title .bar {
+    width: 4px; height: 17px; border-radius: 4px; flex: 0 0 4px;
+    background: linear-gradient(180deg, #818cf8, #6366f1);
+  }
+  .band-card .band-title h3 { margin: 0; font-size: 16px; font-weight: 800; color: #0f172a; letter-spacing: -.2px; }
+  .band-card .sub { font-size: 12.5px; color: #64748b; margin: 3px 0 14px 14px; line-height: 1.6; }
+  .refresh-note { font-size: 12px; color: #94a3b8; font-weight: 400; }
+
+  /* —— 班级配置 chips —— */
+  .band-class-grid { display: flex; flex-wrap: wrap; gap: 10px; }
+  .band-class-chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 9px 14px; border-radius: 14px;
+    border: 1.5px solid #e2e8f0; background: #f8fafc;
+    cursor: pointer; font-size: 13px; font-weight: 600; color: #334155;
+    transition: all .16s ease; user-select: none;
+  }
+  .band-class-chip:hover { border-color: #c7d2fe; background: #eef2ff; transform: translateY(-1px); }
+  .band-class-chip input { display: none; }
+  .band-class-chip .ck {
+    width: 18px; height: 18px; border-radius: 6px; flex: 0 0 18px;
+    border: 2px solid #cbd5e1; background: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 11px; color: transparent; transition: all .15s ease;
+  }
+  .band-class-chip.active {
+    border-color: #6366f1; background: linear-gradient(135deg, #6d72f5, #545cd8);
+    color: #fff; box-shadow: 0 6px 16px -6px rgba(99,102,241,.55);
+  }
+  .band-class-chip.active .ck { border-color: #fff; background: #fff; color: #4f46e5; }
+  .band-class-chip.active .bg { color: #dbe1ff; border-color: rgba(255,255,255,.35); }
+  .band-class-chip .bg {
+    font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px;
+    border: 1px solid #e2e8f0; color: #64748b;
+  }
+  .band-class-chip .bg.g-s { color: #059669; border-color: #a7f3d0; background: #ecfdf5; }
+  .band-class-chip .bg.g-m { color: #2563eb; border-color: #bfdbfe; background: #eff6ff; }
+  .band-class-chip .bg.g-l { color: #d97706; border-color: #fde68a; background: #fffbeb; }
+  .band-class-chip.active .bg.g-s { color: #fff; border-color: rgba(255,255,255,.4); background: rgba(255,255,255,.14); }
+  .band-class-chip.active .bg.g-m { color: #fff; border-color: rgba(255,255,255,.4); background: rgba(255,255,255,.14); }
+  .band-class-chip.active .bg.g-l { color: #fff; border-color: rgba(255,255,255,.4); background: rgba(255,255,255,.14); }
+
+  /* —— 手环实时概览 —— */
+  .band-band-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+  .band-band-card {
+    position: relative; overflow: hidden;
+    border: 1px solid #e8ebf2; border-radius: 18px; padding: 14px 16px 16px;
+    background: #fff; cursor: pointer;
+    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+  }
+  .band-band-card:hover { transform: translateY(-3px); box-shadow: 0 12px 28px -10px rgba(99,102,241,.30); border-color: #c7d2fe; }
+  .band-band-card.online::before {
+    content: ''; position: absolute; left: 0; top: 14px; bottom: 14px; width: 4px;
+    border-radius: 0 4px 4px 0; background: linear-gradient(180deg, #818cf8, #6366f1);
+  }
+  .band-band-card .head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .band-band-card .dot { width: 9px; height: 9px; border-radius: 50%; background: #cbd5e1; flex: 0 0 9px; }
+  .band-band-card.online .dot { background: #10b981; box-shadow: 0 0 0 4px rgba(16,185,129,.16); animation: bandPulse 2.2s ease-in-out infinite; }
+  @keyframes bandPulse { 0%,100% { box-shadow: 0 0 0 3px rgba(16,185,129,.16); } 50% { box-shadow: 0 0 0 6px rgba(16,185,129,.07); } }
+  .band-band-card .mac { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px; font-weight: 700; color: #312e81; letter-spacing: .2px; }
+  .band-band-card .state {
+    margin-left: auto; font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 999px;
+  }
+  .band-band-card .state.on { background: #ecfdf5; color: #059669; }
+  .band-band-card .state.off { background: #f1f5f9; color: #64748b; }
+  .band-band-card .child { font-size: 12.5px; color: #475569; margin-top: 7px; display: flex; align-items: center; gap: 6px; }
+  .band-band-card .child .ph { width: 22px; height: 22px; border-radius: 50%; background: #eef2ff; color: #6366f1; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 22px; }
+  .band-band-card .metrics {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 9px 18px; margin-top: 12px;
+    border-top: 1px dashed #edf0f5; padding-top: 12px;
+  }
+  .band-band-card .m { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .band-band-card .m .dk { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 7px; }
+  .band-band-card .m b { font-size: 16px; font-weight: 800; color: #0f172a; line-height: 1.1; white-space: nowrap; }
+  .band-band-card .m span { font-size: 10.5px; color: #94a3b8; white-space: nowrap; margin-left: auto; }
+  .dk.c-hr { background: #f43f5e; } .dk.c-tp { background: #f59e0b; } .dk.c-sp { background: #06b6d4; }
+  .dk.c-bp { background: #8b5cf6; } .dk.c-st { background: #10b981; } .dk.c-bt { background: #64748b; }
+
+  /* —— 图表 —— */
+  .chart-panel { background: #f8fafc; border: 1px solid #eef0f6; border-radius: 16px; padding: 14px; }
+  .chart-tabs { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
+  .chart-tabs .seg {
+    display: inline-flex; background: #f1f5f9; border-radius: 12px; padding: 3px;
+    border: 1px solid #e8ebf2;
+  }
+  .chart-tabs .seg .tab {
+    padding: 5px 14px; border-radius: 9px; border: none; background: transparent;
+    font-size: 12.5px; font-weight: 600; color: #64748b; cursor: pointer; transition: all .15s ease;
+  }
+  .chart-tabs .seg .tab.active { background: #fff; color: #4338ca; box-shadow: 0 2px 8px rgba(15,23,42,.09); }
+  .chart-tabs .sel { font-size: 12.5px; color: #64748b; font-weight: 600; }
+  .chart-tabs select, .rec-filter select {
+    border: 1.5px solid #e2e8f0; border-radius: 11px; padding: 7px 12px; font-size: 13px;
+    background: #fff url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2364748b' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 12px center;
+    outline: none; appearance: none; -webkit-appearance: none; padding-right: 32px;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  .chart-tabs select:focus, .rec-filter select:focus { border-color: #818cf8; box-shadow: 0 0 0 3px rgba(99,102,241,.13); }
+
+  /* —— 记录表 —— */
+  .rec-filter { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+  .rec-filter .lbl { font-size: 12.5px; color: #64748b; font-weight: 600; }
+  .band-tbl-wrap { overflow-x: auto; border: 1px solid #eef0f6; border-radius: 16px; background: #fff; }
+  .band-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 860px; }
+  .band-table th {
+    text-align: left; padding: 10px 14px; color: #475569; font-weight: 700;
+    border-bottom: 1px solid #e8ebf2; background: #f8fafc; white-space: nowrap; position: sticky; top: 0; z-index: 1;
+    font-size: 12px; letter-spacing: .3px;
+  }
+  .band-table td { padding: 9px 14px; border-bottom: 1px solid #f3f5f9; white-space: nowrap; color: #334155; }
+  .band-table tbody tr:last-child td { border-bottom: none; }
+  .band-table tbody tr { transition: background .12s ease; }
+  .band-table tbody tr:hover td { background: #f4f6ff; }
+  .band-table .t-mac { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; color: #4338ca; font-weight: 700; letter-spacing: .2px; }
+  .band-table .t-time { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; color: #64748b; }
+  .band-table .t-child { font-weight: 600; color: #1e293b; }
+  .band-table .t-na { color: #cbd5e1; }
+  .band-table .v-hr { color: #e11d48; font-weight: 700; }
+  .band-table .v-tp { color: #d97706; font-weight: 600; }
+  .band-table .v-bp { color: #7c3aed; font-weight: 600; }
+  .band-table .v-sp { color: #0891b2; font-weight: 600; }
+  .band-table .v-st { color: #059669; font-weight: 600; }
+  .band-table .v-bt { color: #475569; }
+  .pill { display: inline-flex; align-items: center; gap: 5px; padding: 2px 11px; border-radius: 999px; font-size: 11.5px; font-weight: 700; }
+  .pill.ok { background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; }
+  .pill.off { background: #f1f5f9; color: #64748b; }
+  .pill.sos { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; animation: sosBlink 1.15s ease-in-out infinite; }
+  @keyframes sosBlink { 0%,100% { opacity: 1; box-shadow: 0 0 0 0 rgba(239,68,68,.28); } 50% { opacity: .72; box-shadow: 0 0 0 4px rgba(239,68,68,0); } }
+
+  /* —— 绑定管理 —— */
+  .band-form { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+  .band-form .fld label { font-size: 12px; color: #64748b; display: block; margin-bottom: 6px; font-weight: 600; }
+  .band-form .fld input, .band-form .fld select, .band-form input, .band-form select {
+    border: 1.5px solid #e2e8f0; border-radius: 11px; padding: 8px 12px; font-size: 13px;
+    outline: none; background: #fff; transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  .band-form .fld input:focus, .band-form select:focus { border-color: #818cf8; box-shadow: 0 0 0 3px rgba(99,102,241,.13); }
+  .band-form .hint-dash {
+    padding: 10px 14px; border: 1.5px dashed #d7dce8; border-radius: 12px;
+    font-size: 12.5px; color: #94a3b8; min-width: 220px; background: #fafbfd;
+  }
+  .band-empty { text-align: center; padding: 36px 10px; color: #94a3b8; font-size: 13px; }
+  .band-empty .ic { font-size: 34px; display: block; margin-bottom: 8px; opacity: .8; }
+
+  /* —— 按钮 —— */
+  .band-card .btn.primary, .band-hero .btn.primary {
+    background: linear-gradient(135deg, #6366f1, #4f46e5); color: #fff; border: none;
+    border-radius: 11px; padding: 9px 20px; font-size: 13px; font-weight: 700; cursor: pointer;
+    box-shadow: 0 6px 16px -6px rgba(79,70,229,.55); transition: transform .15s ease, box-shadow .15s ease;
+  }
+  .band-card .btn.primary:hover, .band-hero .btn.primary:hover { transform: translateY(-1px); box-shadow: 0 10px 22px -8px rgba(79,70,229,.65); }
+  .band-card .btn.secondary {
+    background: #fff; color: #475569; border: 1.5px solid #e2e8f0; border-radius: 10px;
+    padding: 7px 15px; font-size: 12.5px; font-weight: 600; cursor: pointer; transition: all .15s ease;
+  }
+  .band-card .btn.secondary:hover { border-color: #fca5a5; color: #dc2626; background: #fef2f2; }
+</style>
+
+<section class="admin-hero card shell-hero band-hero">
+  <div>
+    <div class="eyebrow">数据管理 · 手环健康监测</div>
+    <h1>手环健康监测</h1>
+    <p>YT9 智能手环实时健康数据：体温、心率、血压、血氧、步数与电量。仅启用班级的数据参与展示。</p>
+    <div class="hero-date"><%= nowIso %> · 每 30 秒自动更新</div>
+  </div>
+  <div class="admin-hero-actions">
+    <div class="status-chip"><%= bandList.filter(b => b.online).length %> 只手环在线</div>
+    <button class="btn primary" onclick="location.reload()">刷新</button>
+  </div>
+</section>
+
+<% if (message) { %><div class="alert success"><%= message %></div><% } %>
+<% if (isReadonly) { %><div class="alert" style="background:#fff3cd;color:#856404;border:1px solid #ffc107;">只读模式：当前为只读参观账号，无法进行修改操作。</div><% } %>
+
+<% const sosCount = latestRecords.filter(r => Number(r.sos) === 1).length; %>
+
+<div class="band-stats">
+  <div class="band-stat">
+    <div class="ic i-online">🟢</div>
+    <div class="txt"><div class="num"><%= bandList.filter(b => b.online).length %></div><div class="lbl">在线手环（6分钟内）</div></div>
+  </div>
+  <div class="band-stat">
+    <div class="ic i-total">⌚</div>
+    <div class="txt"><div class="num"><%= bandList.length %></div><div class="lbl">已采集手环总数</div></div>
+  </div>
+  <div class="band-stat">
+    <div class="ic i-bind">🧒</div>
+    <div class="txt"><div class="num"><%= mappings.length %></div><div class="lbl">已绑定孩子</div></div>
+  </div>
+  <div class="band-stat <%= sosCount ? 'warn' : '' %>">
+    <div class="ic i-sos">🆘</div>
+    <div class="txt"><div class="num"><%= sosCount %></div><div class="lbl">SOS 求救标记</div></div>
+  </div>
+</div>
+
+<div class="card band-card">
+  <div class="band-title"><span class="bar"></span><h2>展示班级配置</h2></div>
+  <div class="sub">勾选要展示手环健康数据的班级（只影响手环页面展示范围），保存后即时生效。</div>
+  <form method="POST" action="/admin/bands/config" class="band-form">
+    <div class="band-class-grid" style="flex:1">
+      <% if (!classes.length) { %><div class="band-empty">暂无班级，请先到「班级管理」新增班级</div><% } %>
+      <% classes.forEach(function(c){ const on = enabledClassIds.includes(c.id); %>
+        <label class="band-class-chip <%= on ? 'active' : '' %>" data-id="<%= c.id %>">
+          <input type="checkbox" name="classIds" value="<%= c.id %>" <%= on ? 'checked' : '' %> onchange="this.parentNode.classList.toggle('active', this.checked)">
+          <span class="ck">✓</span>
+          <%= c.name %><span class="bg <%= _gradeCls(c.grade_level) %>"><%= _gradeLbl(c.grade_level) %></span>
+        </label>
+      <% }); %>
+    </div>
+    <% if (hasPerm('data.bands.config') && !isReadonly) { %>
+      <button class="btn primary" type="submit">保存配置</button>
+    <% } %>
+  </form>
+</div>
+
+<div class="card band-card">
+  <div class="band-title"><span class="bar"></span><h3>手环实时概览 <%= latestRecords.length ? '<span class="refresh-note">· 点击手环卡片查看健康曲线</span>' : '' %></h3></div>
+  <div class="sub">最近一次上报的实时健康数据，绿点代表 6 分钟内有数据的手环。</div>
+  <% if (!bandList.length) { %>
+    <div class="band-empty">
+      <span class="ic">⌚</span>
+      暂无手环数据。请确保手环开机广播、网关在线，band-bridge 服务会将数据自动写入。<br>当前时间：<%= nowIso %>
+    </div>
+  <% } else { %>
+  <div class="band-band-grid">
+    <% bandList.forEach(function(b){ %>
+      <div class="band-band-card <%= b.online ? 'online' : '' %>" onclick="loadChart('<%= b.band_mac %>', 6)">
+        <div class="head">
+          <span class="dot"></span><span class="mac"><%= b.band_mac %></span>
+          <span class="state <%= b.online ? 'on' : 'off' %>"><%= b.online ? '在线' : (b.minutes_ago != null ? b.minutes_ago + '分钟前' : '离线') %></span>
+        </div>
+        <div class="child">
+          <% if (b.child_name) { %>
+            <span class="ph"><%= b.child_name.slice(0, 1) %></span><span><%= b.child_name %><% if (b.class_name) { %> · <span style="color:#94a3b8"><%= b.class_name %></span><% } %></span>
+          <% } else { %>
+            <span class="ph" style="background:#f1f5f9;color:#94a3b8">—</span><span style="color:#94a3b8">未绑定孩子</span>
+          <% } %>
+        </div>
+        <div class="metrics">
+          <div class="m"><span class="dk c-hr"></span><b><%= b.heart_rate != null ? b.heart_rate : '—' %></b><span>心率</span></div>
+          <div class="m"><span class="dk c-tp"></span><b><%= b.body_temp != null ? b.body_temp : '—' %>°</b><span>体温</span></div>
+          <div class="m"><span class="dk c-sp"></span><b><%= b.spo2 != null ? b.spo2 + '%' : '—' %></b><span>血氧</span></div>
+          <div class="m"><span class="dk c-bp"></span><b><%= b.systolic && b.diastolic ? b.systolic + '/' + b.diastolic : '—' %></b><span>血压</span></div>
+          <div class="m"><span class="dk c-bt"></span><b><%= b.battery != null ? b.battery + '%' : '—' %></b><span>电量</span></div>
+          <div class="m"><span class="dk c-st"></span><b><%= b.steps != null ? b.steps : '—' %></b><span>步数</span></div>
+        </div>
+      </div>
+    <% }); %>
+  </div>
+  <% } %>
+</div>
+
+<div class="card band-card" id="chartCard">
+  <div class="band-title"><span class="bar"></span><h2>健康趋势曲线</h2></div>
+  <div class="sub">点击上方手环卡片，或从下拉选择手环，查看其体温 / 心率 / 血氧随时间的变化。</div>
+  <div class="chart-tabs">
+    <span class="sel">手环</span>
+    <select id="chartMac" onchange="loadChart(this.value, ((document.querySelector('.chart-tabs .seg .tab.active') || { dataset: { h: '6' } }).dataset.h * 1))">
+      <option value="">— 请选择手环 —</option>
+      <% bandList.forEach(function(b){ %>
+        <option value="<%= b.band_mac %>"><%= b.band_mac %> <%= b.child_name ? '(' + b.child_name + ')' : '' %></option>
+      <% }); %>
+    </select>
+    <span class="sel">范围</span>
+    <div class="seg">
+      <button type="button" class="tab" data-h="1" onclick="setHourTab(this)">1小时</button>
+      <button type="button" class="tab active" data-h="6" onclick="setHourTab(this)">6小时</button>
+      <button type="button" class="tab" data-h="24" onclick="setHourTab(this)">24小时</button>
+      <button type="button" class="tab" data-h="72" onclick="setHourTab(this)">72小时</button>
+    </div>
+  </div>
+  <div class="chart-panel"><div class="chart-wrap" id="chartWrap"></div></div>
+</div>
+
+<div class="card band-card">
+  <div class="band-title"><span class="bar"></span><h3>最近上报记录 <span class="refresh-note">· 每30秒自动刷新<span id="recRefreshNote"></span></span></h3></div>
+  <div class="sub">实时显示最近 30 条手环健康上报记录，可按班级筛选；历史趋势请看上方健康曲线。</div>
+  <div class="rec-filter">
+    <span class="lbl">班级筛选</span>
+    <select id="recClassFilter" onchange="filterRecords()">
+      <option value="">全部班级</option>
+      <% classes.forEach(function(c){ %><option value="<%= c.name %>"><%= c.name %></option><% }); %>
+    </select>
+  </div>
+  <div class="band-tbl-wrap">
+  <table class="band-table">
+    <thead>
+      <tr>
+        <th>时间</th><th>手环 MAC</th><th>孩子</th><th>班级</th><th>心率</th><th>体温</th><th>血压</th><th>血氧</th><th>步数</th><th>电量</th><th>SOS</th>
+      </tr>
+    </thead>
+    <tbody id="recBody">
+      <% latestRecords.forEach(function(r){ %>
+        <tr data-class="<%= r.class_name || '' %>">
+          <td class="t-time"><%= _fmtT(r.bp_time) %></td>
+          <td class="t-mac"><%= r.band_mac %></td>
+          <td class="t-child"><% if (r.child_name) { %><%= r.child_name %><% } else { %><span class="t-na">未绑定</span><% } %></td>
+          <td><% if (r.class_name) { %><%= r.class_name %><% } else { %><span class="t-na">—</span><% } %></td>
+          <td class="v-hr"><% if (r.heart_rate != null) { %><%= r.heart_rate %><% } else { %><span class="t-na">—</span><% } %></td>
+          <td class="v-tp"><% if (r.body_temp != null) { %><%= r.body_temp %>℃<% } else { %><span class="t-na">—</span><% } %></td>
+          <td class="v-bp"><% if (r.systolic && r.diastolic) { %><%= r.systolic %>/<%= r.diastolic %><% } else { %><span class="t-na">—</span><% } %></td>
+          <td class="v-sp"><% if (r.spo2 != null) { %><%= r.spo2 %>%<% } else { %><span class="t-na">—</span><% } %></td>
+          <td class="v-st"><% if (r.steps != null) { %><%= r.steps %><% } else { %><span class="t-na">—</span><% } %></td>
+          <td class="v-bt"><% if (r.battery != null) { %><%= r.battery %>%<% } else { %><span class="t-na">—</span><% } %></td>
+          <td><% if (Number(r.sos) === 1) { %><span class="pill sos">SOS</span><% } else { %><span class="pill ok">正常</span><% } %></td>
+        </tr>
+      <% }); %>
+    </tbody>
+  </table>
+  </div>
+  <% if (!latestRecords.length) { %><div class="band-empty"><span class="ic">📋</span>暂无记录</div><% } %>
+</div>
+
+<div class="card band-card">
+  <div class="band-title"><span class="bar"></span><h2>手环绑定管理</h2></div>
+  <div class="sub">将手环 MAC 与幼儿档案绑定，绑定后页面自动显示孩子姓名与班级。绑定数据入库后展示即生效。学生下拉仅显示「展示班级配置」中勾选启用班级的幼儿。</div>
+  <form method="POST" action="/admin/bands/mapping/save" class="band-form" style="margin-bottom:16px;">
+    <div class="fld"><label>手环 MAC（12位hex）</label><input name="bandMac" placeholder="如 d612d9003502" required pattern="[0-9a-fA-F]{12}" style="width:170px;font-family:ui-monospace,Menlo,Consolas,monospace"></div>
+    <div class="fld"><label>绑定幼儿</label>
+      <% if (children.length) { %>
+      <select name="childId" style="min-width:180px">
+        <option value="">— 暂不绑定 —</option>
+        <% children.forEach(function(ch){ %><option value="<%= ch.id %>"><%= ch.name %>（<%= ch.class_name || '未分班' %>）</option><% }); %>
+      </select>
+      <% } else { %>
+      <div class="hint-dash">请先在「展示班级配置」勾选启用班级<br>学生下拉将只显示启用班级的孩子</div>
+      <% } %>
+    </div>
+    <div class="fld"><label>备注</label><input name="remark" placeholder="可选" style="width:140px"></div>
+    <% if (hasPerm('data.bands.config') && !isReadonly) { %><button class="btn primary" type="submit">保存绑定</button><% } %>
+  </form>
+  <% if (mappings.length) { %>
+  <div class="band-tbl-wrap">
+  <table class="band-table">
+    <thead><tr><th>手环 MAC</th><th>绑定幼儿</th><th>班级</th><th>备注</th><th style="width:80px">操作</th></tr></thead>
+    <tbody>
+      <% mappings.forEach(function(m){ %>
+        <tr>
+          <td class="t-mac"><%= m.band_mac %></td>
+          <td class="t-child"><%= m.child_name || '—' %></td>
+          <td><%= m.class_name || '<span class="t-na">—</span>' %></td>
+          <td><%= m.remark || '<span class="t-na">—</span>' %></td>
+          <td>
+            <% if (hasPerm('data.bands.config') && !isReadonly) { %>
+            <form method="POST" action="/admin/bands/mapping/delete" style="display:inline" onsubmit="return confirm('确认删除该绑定？')">
+              <input type="hidden" name="id" value="<%= m.id %>">
+              <button class="btn secondary" type="submit">删除</button>
+            </form>
+            <% } %>
+          </td>
+        </tr>
+      <% }); %>
+    </tbody>
+  </table>
+  </div>
+  <% } else { %><div class="band-empty"><span class="ic">🔗</span>暂无绑定，对照表来了之后在这里批量录入</div><% } %>
+</div>
+
+<script>
+  const gradeMap = { small: '小班', middle: '中班', large: '大班' };
+
+  function fmtT(v) {
+    if (v == null) return '—';
+    const d = v instanceof Date ? v : new Date(String(v).replace(' ', 'T'));
+    if (isNaN(d.getTime())) return String(v);
+    const p = n => String(n).padStart(2, '0');
+    return p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+  }
+  function fmtHm(v) {
+    const d = v instanceof Date ? v : new Date(String(v).replace(' ', 'T'));
+    if (isNaN(d.getTime())) return String(v).slice(11, 16);
+    const p = n => String(n).padStart(2, '0');
+    return p(d.getHours()) + ':' + p(d.getMinutes());
+  }
+
+  function filterRecords() {
+    const clazz = document.getElementById('recClassFilter').value;
+    document.querySelectorAll('#recBody tr').forEach(function(tr) {
+      tr.style.display = (!clazz || tr.getAttribute('data-class') === clazz) ? '' : 'none';
+    });
+  }
+
+  function setHourTab(btn) {
+    document.querySelectorAll('.chart-tabs .seg .tab').forEach(function(t) { t.classList.remove('active'); });
+    btn.classList.add('active');
+    const h = Number(btn.getAttribute('data-h'));
+    const mac = document.getElementById('chartMac').value;
+    if (mac) loadChart(mac, h);
+  }
+
+  /* ===== ECharts 曲线渲染（2026-09-07 Impeccable 重写，替代手写 SVG） ===== */
+  var __bandCharts = [];
+  function disposeBandCharts() {
+    __bandCharts.forEach(function (c) { try { c.dispose(); } catch (e) {} });
+    __bandCharts = [];
+  }
+  function fmtHmFull(v) {
+    if (v == null) return '';
+    var d = (v instanceof Date) ? v : new Date(String(v).replace(' ', 'T'));
+    if (isNaN(d.getTime())) return String(v);
+    function p(n) { return String(n).padStart(2, '0'); }
+    return p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+  }
+  function svgLine(points, w, h, color, fill) {
+    if (!points.length) return '';
+    const max = Math.max.apply(null, points);
+    const min = Math.min.apply(null, points);
+    const span = (max - min) || 1;
+    const pad = 6;
+    const step = (w - pad * 2) / Math.max(points.length - 1, 1);
+    const coords = points.map(function(v, i) {
+      const x = pad + i * step;
+      const y = h - pad - ((v - min) / span) * (h - pad * 2);
+      return x.toFixed(1) + ',' + y.toFixed(1);
+    });
+    let d = 'M' + coords.join(' L');
+    let area = d;
+    if (fill) area += ' L' + (pad + (points.length - 1) * step).toFixed(1) + ',' + (h - pad) + ' L' + pad + ',' + (h - pad) + ' Z';
+    return '<svg viewBox="0 0 ' + w + ' ' + h + '" style="width:100%;height:auto;display:block">'
+      + '<defs><linearGradient id="gFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="' + color + '" stop-opacity="0.18"/><stop offset="100%" stop-color="' + color + '" stop-opacity="0"/></linearGradient></defs>'
+      + (fill ? '<path d="' + area + '" fill="url(#gFill)"/>' : '')
+      + '<path d="' + d + '" fill="none" stroke="' + color + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>'
+      + '</svg>';
+  }
+
+  function bandLineChart(container, title, unit, times, values, color) {
+    if (!window.echarts) return null;
+    var data = values.map(function (v, i) { return [times[i] || '', v == null ? null : v]; });
+    var chart = echarts.init(container);
+    chart.setOption({
+      tooltip: { trigger: 'axis', confine: true },
+      grid: { left: 44, right: 16, top: 30, bottom: 30 },
+      xAxis: {
+        type: 'category',
+        data: times,
+        boundaryGap: false,
+        axisLabel: { color: '#64748b', fontSize: 11, hideOverlap: true },
+        axisLine: { lineStyle: { color: '#cbd5e1' } },
+        axisTick: { show: false }
+      },
+      yAxis: {
+        type: 'value',
+        scale: true,
+        axisLabel: { color: '#64748b', fontSize: 11 },
+        splitLine: { lineStyle: { color: '#e2e8f0' } }
+      },
+      series: [{
+        name: title,
+        type: 'line',
+        smooth: true,
+        showSymbol: false,
+        lineStyle: { width: 2.5, color: color },
+        itemStyle: { color: color },
+        areaStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: color + '33' },
+            { offset: 1, color: color + '00' }
+          ])
+        },
+        data: values.map(function (v, i) { return [times[i] || '', v == null ? null : v]; })
+      }]
+    });
+    __bandCharts.push(chart);
+    return chart;
+  }
+
+  function loadChart(mac, hours) {
+    if (!mac) return;
+    const wrap = document.getElementById('chartWrap');
+    wrap.innerHTML = '<div class="band-empty">加载中…</div>';
+    disposeBandCharts();
+    fetch('/admin/bands/api/records?mac=' + encodeURIComponent(mac) + '&hours=' + hours)
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (!data.ok || !data.records || !data.records.length) {
+          wrap.innerHTML = '<div class="band-empty">该手环在所选时间段内暂无数据</div>';
+          return;
+        }
+        const rec = data.records;
+        const hr = rec.map(r => r.heart_rate).filter(v => v != null);
+        const tp = rec.map(r => r.body_temp).filter(v => v != null);
+        const sp = rec.map(r => r.spo2).filter(v => v != null);
+        const times = rec.map(r => fmtHmFull(r.bp_time));
+        function minmax(arr) { if (!arr.length) return ''; return Math.min.apply(null, arr) + ' ~ ' + Math.max.apply(null, arr); }
+
+        let html = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:18px;">';
+        html += '<div><div style="font-size:13px;font-weight:700;margin-bottom:6px">心率 <span style="color:#94a3b8;font-weight:400">BPM · ' + minmax(hr) + '</span></div><div id="bandChartHr" style="width:100%;height:150px;"></div></div>';
+        html += '<div><div style="font-size:13px;font-weight:700;margin-bottom:6px">体温 <span style="color:#94a3b8;font-weight:400">℃ · ' + minmax(tp) + '</span></div><div id="bandChartTp" style="width:100%;height:150px;"></div></div>';
+        html += '<div><div style="font-size:13px;font-weight:700;margin-bottom:6px">血氧 <span style="color:#94a3b8;font-weight:400">% · ' + minmax(sp) + '</span></div><div id="bandChartSp" style="width:100%;height:150px;"></div></div>';
+        html += '</div>';
+        html += '<div style="font-size:12px;color:#94a3b8;margin-top:10px">共 ' + data.count + ' 条记录 · 最新上报 ' + (function(){ var v = rec[rec.length - 1].bp_time; var d = new Date(String(v).replace(' ','T')); function p(n){return String(n).padStart(2,'0');} return p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds()); })() + '</div>';
+        wrap.innerHTML = html;
+        if (window.echarts) {
+          if (hr.length) bandLineChart(document.getElementById('bandChartHr'), '心率', 'BPM', times, hr, '#e11d48');
+          if (tp.length) bandLineChart(document.getElementById('bandChartTp'), '体温', '℃', times, tp, '#d97706');
+          if (sp.length) bandLineChart(document.getElementById('bandChartSp'), '血氧', '%', times, sp, '#0891b2');
+        } else {
+          // 降级：无 echarts 时回退手写 SVG
+          let fb = '<div style="display:flex;gap:20px;flex-wrap:wrap;">';
+          function block(title, unit, arr, color) {
+            if (!arr.length) return '';
+            const maxV = Math.max.apply(null, arr), minV = Math.min.apply(null, arr);
+            return '<div style="flex:1;min-width:290px"><div style="font-size:13px;font-weight:700;margin-bottom:6px">' + title + ' <span style="color:#94a3b8;font-weight:400">' + unit + ' · ' + minV + ' ~ ' + maxV + '</span></div>' + svgLine(arr, 560, 130, color, true) + '</div>';
+          }
+          fb += block('心率', 'BPM', hr, '#e11d48') + block('体温', '℃', tp, '#d97706') + block('血氧', '%', sp, '#0891b2') + '</div>';
+          wrap.innerHTML = fb + wrap.innerHTML.replace(/^.*?(<div style="font-size:12px)/, '$1');
+        }
+      })
+      .catch(function(e) { wrap.innerHTML = '<div class="band-empty">加载失败：' + e.message + '</div>'; });
+  }
+
+  // 窗口 resize 联动
+  (function () {
+    var timer = null;
+    window.addEventListener('resize', function () {
+      clearTimeout(timer);
+      timer = setTimeout(function () {
+        __bandCharts.forEach(function (c) { try { c.resize(); } catch (e) {} });
+      }, 150);
+    });
+  })();
+
+  // 默认选中第一个在线手环并加载曲线
+  (function() {
+    const first = document.querySelector('.band-band-card.online .mac');
+    if (first) {
+      const mac = first.textContent.trim();
+      document.getElementById('chartMac').value = mac;
+      loadChart(mac, 6);
+    }
+  })();
+
+  // 记录表每 30 秒局部刷新：AJAX 替换表格，不整页 reload（保留滚动位置、班级筛选与正在查看的曲线）
+  function escHtml(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function renderRecentRows(rows) {
+    const tbody = document.getElementById('recBody');
+    if (!tbody) return;
+    if (!rows || !rows.length) {
+      tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#94a3b8;padding:14px">暂无记录</td></tr>';
+    } else {
+      tbody.innerHTML = rows.map(function(r) {
+        const sos = Number(r.sos) === 1 ? '<span class="pill sos">SOS</span>' : '<span class="pill ok">正常</span>';
+        const na = '<span class="t-na">—</span>';
+        return '<tr data-class="' + escHtml(r.class_name) + '">'
+          + '<td class="t-time">' + escHtml(fmtT(r.bp_time)) + '</td>'
+          + '<td class="t-mac">' + escHtml(r.band_mac) + '</td>'
+          + '<td class="t-child">' + (r.child_name ? escHtml(r.child_name) : '<span class="t-na">未绑定</span>') + '</td>'
+          + '<td>' + (r.class_name ? escHtml(r.class_name) : na) + '</td>'
+          + '<td class="v-hr">' + (r.heart_rate != null ? escHtml(r.heart_rate) : na) + '</td>'
+          + '<td class="v-tp">' + (r.body_temp != null ? escHtml(r.body_temp) + '℃' : na) + '</td>'
+          + '<td class="v-bp">' + (r.systolic && r.diastolic ? escHtml(r.systolic) + '/' + escHtml(r.diastolic) : na) + '</td>'
+          + '<td class="v-sp">' + (r.spo2 != null ? escHtml(r.spo2) + '%' : na) + '</td>'
+          + '<td class="v-st">' + (r.steps != null ? escHtml(r.steps) : na) + '</td>'
+          + '<td class="v-bt">' + (r.battery != null ? escHtml(r.battery) + '%' : na) + '</td>'
+          + '<td>' + sos + '</td></tr>';
+      }).join('');
+    }
+    filterRecords(); // 刷新后重新应用班级筛选，保持当前筛选状态
+    const note = document.getElementById('recRefreshNote');
+    if (note) note.textContent = ' · 已更新 ' + new Date().toLocaleTimeString('zh-CN', { hour12: false });
+  }
+  setInterval(function() {
+    fetch('/admin/bands/api/recent')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data && data.ok && data.records) renderRecentRows(data.records);
+      })
+      .catch(function() { /* 网络抖动时静默保留当前数据，不整页跳 */ });
+  }, 30000);
+</script>
+
+<%- include('partials/footer') %>

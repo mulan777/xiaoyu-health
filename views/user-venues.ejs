@@ -2,8 +2,8 @@
 
 <%
   const formatAttentionPeriod = function(startDate, endDate) {
-    const start = startDate ? new Date(startDate).toISOString().slice(0, 10) : '即日起';
-    const end = endDate ? new Date(endDate).toISOString().slice(0, 10) : '长期';
+    const start = startDate ? formatDateOnly(startDate) : '即日起';
+    const end = endDate ? formatDateOnly(endDate) : '长期';
     return start + ' ~ ' + end;
   };
   const parseAttentionTags = function(value) {
@@ -255,8 +255,8 @@
             <select name="childId" id="userVenueAttentionChild" required>
               <option value="">请选择本班幼儿</option>
               <% ownClassChildrenSafe.forEach(function(child) {
-                const childStart = child.attention_start_date ? new Date(child.attention_start_date).toISOString().slice(0, 10) : '';
-                const childEnd = child.attention_end_date ? new Date(child.attention_end_date).toISOString().slice(0, 10) : '';
+                const childStart = child.attention_start_date ? formatDateOnly(child.attention_start_date) : '';
+                const childEnd = child.attention_end_date ? formatDateOnly(child.attention_end_date) : '';
                 const childTagsText = parseAttentionTags(child.attention_tags).join(',');
               %>
                 <option
@@ -341,7 +341,7 @@
     <div class="section-head">
       <div>
         <div class="eyebrow">预约轮次</div>
-        <h3>活动日期：<%= activeRound.round_date_text || new Date(activeRound.round_date).toISOString().slice(0, 10) %></h3>
+        <h3>活动日期：<%= activeRound.round_date_text || formatDateOnly(activeRound.round_date) %></h3>
         <div class="muted">
           开放时间：<strong><%= activeRound.open_time_text ? activeRound.open_time_text.replace(/-/g, '/') : '-' %></strong>
           <% if (activeRound.close_time_text) { %>

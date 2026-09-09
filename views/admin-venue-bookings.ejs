@@ -6,7 +6,7 @@
   const fastestVenue = analytics.fastestVenue || null;
   const moduleCards = Array.isArray(analytics.moduleCards) ? analytics.moduleCards : [];
   const unbookedClasses = Array.isArray(analytics.unbookedClasses) ? analytics.unbookedClasses : [];
-  const roundDateLabel = selectedRound ? (selectedRound.round_date_text || new Date(selectedRound.round_date).toISOString().slice(0, 10)) : '';
+  const roundDateLabel = selectedRound ? (selectedRound.round_date_text || formatDateOnly(selectedRound.round_date)) : '';
   const vestToneLabel = function(type) {
     if (type === 'red') return '红马甲';
     if (type === 'green') return '绿马甲';
@@ -538,7 +538,7 @@
           <option value="">请选择轮次</option>
           <% rounds.forEach(function(r) { %>
             <option value="<%= r.id %>" <%= roundId == r.id ? 'selected' : '' %>>
-              <%= r.round_date_text || new Date(r.round_date).toISOString().slice(0, 10) %> · <%= r.status === 'open' ? '开放中' : (r.status === 'pending' ? '待开放' : '已关闭') %>
+              <%= r.round_date_text || formatDateOnly(r.round_date) %> · <%= r.status === 'open' ? '开放中' : (r.status === 'pending' ? '待开放' : '已关闭') %>
             </option>
           <% }) %>
         </select>

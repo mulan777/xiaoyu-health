@@ -21,3 +21,6 @@ views/*.bak*
 views/*.4.21*
 public/*.bak*
 tmp_patch_*.py
+backup-*
+data.db
+*.bak*

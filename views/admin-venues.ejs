@@ -216,7 +216,7 @@
         <tbody>
           <% rounds.forEach(function(round) { %>
             <tr>
-              <td><strong><%= round.round_date_text || new Date(round.round_date).toISOString().slice(0, 10) %></strong></td>
+              <td><strong><%= round.round_date_text || formatDateOnly(round.round_date) %></strong></td>
               <td><%= round.open_time_text || '-' %></td>
               <td><%= round.close_time_text || '-' %></td>
               <td><span class="status-badge <%= round.status === 'open' ? 'ok' : round.status === 'closed' ? 'off' : '' %>"><%= round.status === 'open' ? '开放中' : round.status === 'closed' ? '已关闭' : '待开放' %></span></td>

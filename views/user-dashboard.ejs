@@ -10,8 +10,8 @@
 <% const teacherDisplayName = currentUser && currentUser.name ? currentUser.name : '老师'; %>
 <% const birthdayChildNames = birthdayChildren.map(function(item) { return item.name; }); %>
 <% const formatAttentionPeriod = function(startDate, endDate) {
-     const start = startDate ? new Date(startDate).toISOString().slice(0,10) : '即日起';
-     const end = endDate ? new Date(endDate).toISOString().slice(0,10) : '长期';
+     const start = startDate ? formatDateOnly(startDate) : '即日起';
+     const end = endDate ? formatDateOnly(endDate) : '长期';
      return start + ' ~ ' + end;
    }; %>
 <% const parseAttentionTags = function(value) {
@@ -479,8 +479,8 @@
           <select name="childId" id="userAttentionChild" required>
             <option value="">请选择本班幼儿</option>
             <% childCollection.forEach(function(child) {
-              const childStart = child.attention_start_date ? new Date(child.attention_start_date).toISOString().slice(0, 10) : '';
-              const childEnd = child.attention_end_date ? new Date(child.attention_end_date).toISOString().slice(0, 10) : '';
+              const childStart = child.attention_start_date ? formatDateOnly(child.attention_start_date) : '';
+              const childEnd = child.attention_end_date ? formatDateOnly(child.attention_end_date) : '';
               const childTagsText = parseAttentionTags(child.attention_tags).join(',');
             %>
               <option
@@ -681,41 +681,8 @@
               <% }) %>
             </div>
           </div>
-          <svg class="radar-svg" viewBox="0 0 320 320" role="img" aria-label="班级体能结构雷达图">
-            <% for (let ring = 1; ring <= 4; ring++) { %>
-              <polygon class="radar-ring" points="<%= buildRadarPolygon(radarMetrics.map(function() { return ring * 25; })) %>"></polygon>
-            <% } %>
-            <% radarMetrics.forEach(function(item, i) {
-              const angle = (-Math.PI / 2) + (Math.PI * 2 * i / Math.max(1, radarMetrics.length));
-              const axisX = radarCx + Math.cos(angle) * radarRadius;
-              const axisY = radarCy + Math.sin(angle) * radarRadius;
-              const lx = radarCx + Math.cos(angle) * (radarRadius + 20);
-              const ly = radarCy + Math.sin(angle) * (radarRadius + 20);
-            %>
-              <line class="radar-axis" x1="<%= radarCx %>" y1="<%= radarCy %>" x2="<%= axisX.toFixed(1) %>" y2="<%= axisY.toFixed(1) %>"></line>
-              <text class="radar-label" x="<%= lx.toFixed(1) %>" y="<%= ly.toFixed(1) %>"><%= item.label %></text>
-            <% }) %>
-            <% radarSeries.forEach(function(series) { %>
-              <g class="radar-series <%= series.key === 'current' ? 'radar-series-current' : 'radar-series-reference' %><%= series.visible === false ? ' is-hidden' : '' %>" data-radar-series="<%= series.key %>">
-                <polygon
-                  class="radar-series-shape"
-                  points="<%= buildRadarPolygon(series.values || []) %>"
-                  style="fill:<%= series.fillColor || 'transparent' %>;stroke:<%= series.color %>;stroke-width:<%= series.strokeWidth || 2 %>;stroke-dasharray:<%= series.dasharray && series.dasharray !== 'none' ? series.dasharray : 'none' %>;"
-                ></polygon>
-                <% if (series.key === 'current') { %>
-                  <% radarMetrics.forEach(function(item, i) {
-                    const angle = (-Math.PI / 2) + (Math.PI * 2 * i / Math.max(1, radarMetrics.length));
-                    const score = Math.max(0, Math.min(100, Number(((series.values || [])[i]) || 0)));
-                    const length = radarRadius * score / 100;
-                    const x = radarCx + Math.cos(angle) * length;
-                    const y = radarCy + Math.sin(angle) * length;
-                  %>
-                    <circle class="radar-series-dot" cx="<%= x.toFixed(1) %>" cy="<%= y.toFixed(1) %>" r="4" style="fill:<%= series.color %>;"></circle>
-                  <% }) %>
-                <% } %>
-              </g>
-            <% }) %>
-          </svg>
+                    <script type="application/json" id="userRadarData"><%- JSON.stringify(radarData) %></script>
+          <div id="userRadarChart" class="radar-chart-el" style="width:100%;height:330px;" role="img" aria-label="班级体能结构雷达图"></div>
         </div>
         </div>
       </div>
@@ -724,8 +691,8 @@
 
     <!-- 班级生长趋势 -->
     <div class="card chart-card" style="margin-bottom:16px;">
-      <div class="collapse-trigger" onclick="toggleCollapse(this)"><span class="collapse-arrow">▶</span> 班级生长趋势</div>
-      <div class="collapse-body">
+      <div class="collapse-trigger open" onclick="toggleCollapse(this)"><span class="collapse-arrow">▶</span> 班级生长趋势</div>
+      <div class="collapse-body open">
         <div class="section-head"><div>
           <h3>班级生长趋势</h3>
           <div class="muted no-margin">按测试日期展示本班幼儿身高/体重/BMI均值趋势</div>
@@ -763,68 +730,8 @@
           wMin -= wRange * 0.15; wMax += wRange * 0.15; wRange = wMax - wMin;
                   %>
 
-        <svg viewBox="0 0 <%= GW %> <%= GH %>" role="img" aria-label="班级生长趋势">
-            <text x="<%= gPadL %>" y="<%= (gPadT - 2).toFixed(1) %>" fill="#f97316" font-size="10" font-weight="600" text-anchor="start">身高 (cm)</text>
-            <text x="<%= (gPadL + gIW).toFixed(1) %>" y="<%= (gPadT - 2).toFixed(1) %>" fill="#8b5cf6" font-size="10" font-weight="600" text-anchor="end">体重/BMI</text>
-          <% for (var i = 0; i <= 4; i++) { var gy = gPadT + gIH * i / 4; %>
-            <line x1="<%= gPadL %>" y1="<%= gy.toFixed(1) %>" x2="<%= (gPadL + gIW).toFixed(1) %>" y2="<%= gy.toFixed(1) %>" stroke="#e2e8f0" stroke-width="1"/>
-          <% } %>
-          <% for (var i = 0; i <= 4; i++) {
-            var valH = hMax - (hMax - hMin) * i / 4;
-            var ly = gPadT + gIH * i / 4;
-          %>
-            <text x="<%= gPadL - 6 %>" y="<%= (ly + 4).toFixed(1) %>" fill="#f97316" font-size="10" text-anchor="end"><%= valH.toFixed(0) %></text>
-          <% } %>
-          <% for (var i = 0; i <= 4; i++) {
-            var valW = wMax - (wMax - wMin) * i / 4;
-            var ry = gPadT + gIH * i / 4;
-          %>
-            <text x="<%= gPadL + gIW + 6 %>" y="<%= (ry + 4).toFixed(1) %>" fill="#8b5cf6" font-size="10" text-anchor="start"><%= valW.toFixed(1) %></text>
-          <% } %>
-          <% scopeItems.forEach(function(item, idx) {
-            var x = gPadL + (scopeItems.length <= 1 ? gIW / 2 : gIW * idx / Math.max(1, scopeItems.length - 1));
-          %>
-            <text x="<%= x.toFixed(1) %>" y="<%= GH - 8 %>" fill="#94a3b8" font-size="10" text-anchor="middle"><%= (item.testDate || '').slice(5) %></text>
-          <% }) %>
-          <%
-            function makeGrowthLine(records, valueKey, color, width, dash, useWMin) {
-              var points = [];
-              var rng = useWMin ? wRange : hRange;
-              var vmin = useWMin ? wMin : hMin;
-              records.forEach(function(r, idx) {
-                var x = gPadL + (records.length <= 1 ? gIW / 2 : gIW * idx / Math.max(1, records.length - 1));
-                if (r[valueKey] != null) {
-                  var y = gPadT + gIH - (Number(r[valueKey]) - vmin) / rng * gIH;
-                  points.push({ x: x, y: y, tip: (r.testDate || "").slice(5) + " " + (Number(r[valueKey]).toFixed(1) || "") });
-                }
-              });
-              var svg = '';
-              if (points.length >= 1) {
-                svg += '<polyline points="' + points.map(function(p) { return p.x.toFixed(1) + ',' + p.y.toFixed(1); }).join(' ') + '" fill="none" stroke="' + color + '" stroke-width="' + width + '"';
-                if (dash) svg += ' stroke-dasharray="' + dash + '"';
-                svg += ' stroke-linejoin="round"/>';
-                points.forEach(function(p, pi) { svg += '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="6" fill="' + color + '" style="cursor:pointer"';if (p.tip) svg += '><title>' + p.tip + '</title></circle>'; else svg += '/>'; });
-              }
-              return svg;
-            }
-          %>
-          <g class="growth-series" data-series="all">
-          <%- makeGrowthLine(scopeItems, 'heightAvg', '#f97316', 2.5, null, false) %>
-          <%- makeGrowthLine(scopeItems, 'weightAvg', '#8b5cf6', 2.5, null, true) %>
-          <%- makeGrowthLine(scopeItems, 'bmiAvg', '#ec4899', 2, '5,4', true) %>
-          </g>
-          <g class="growth-series" data-series="M" style="display:none;">
-          <%- makeGrowthLine(scopeItems, 'heightAvgM', '#f97316', 2.5, null, false) %>
-          <%- makeGrowthLine(scopeItems, 'weightAvgM', '#8b5cf6', 2.5, null, true) %>
-          <%- makeGrowthLine(scopeItems, 'bmiAvgM', '#ec4899', 2, '5,4', true) %>
-          </g>
-          <g class="growth-series" data-series="F" style="display:none;">
-          <%- makeGrowthLine(scopeItems, 'heightAvgF', '#f97316', 2.5, null, false) %>
-          <%- makeGrowthLine(scopeItems, 'weightAvgF', '#8b5cf6', 2.5, null, true) %>
-          <%- makeGrowthLine(scopeItems, 'bmiAvgF', '#ec4899', 2, '5,4', true) %>
-          </g>
-
-</svg>
+                <script type="application/json" id="userGrowthData"><%- JSON.stringify(scopeItems) %></script>
+        <div id="userGrowthChart" class="chart-el" style="width:100%;height:300px;" role="img" aria-label="班级生长趋势"></div>
         <div style="display:flex;flex-wrap:wrap;gap:10px 18px;justify-content:center;margin-top:10px;">
           <span style="display:inline-flex;align-items:center;gap:4px;font-size:12px;color:#475569;">
             <span style="width:10px;height:10px;background:#f97316;border-radius:50%;"></span>身高 (cm) 左轴
@@ -954,8 +861,8 @@
 
     <!-- 班级体测趋势对比 -->
     <div class="card chart-card" style="margin-bottom:16px;">
-      <div class="collapse-trigger" onclick="toggleCollapse(this)"><span class="collapse-arrow">▶</span> 班级体测趋势对比</div>
-      <div class="collapse-body">
+      <div class="collapse-trigger open" onclick="toggleCollapse(this)"><span class="collapse-arrow">▶</span> 班级体测趋势对比</div>
+      <div class="collapse-body open">
         <div class="section-head"><div>
           <h3>班级体测趋势对比</h3>
           <div class="muted no-margin">按测试日期展示本班各体测项目的均分趋势（班级级纵向对比）</div>
@@ -984,40 +891,8 @@
           var fyRange = fyMax - fyMin || 100;
                   %>
 
-        <svg viewBox="0 0 <%= FW %> <%= FH %>" role="img" aria-label="班级体测趋势对比">
-          <% for (var i = 0; i <= 4; i++) {
-            var gy = fPadT + fIH * i / 4;
-            var yval = fyMax - (fyMax - fyMin) * i / 4;
-          %>
-            <line x1="<%= fPadL %>" y1="<%= gy.toFixed(1) %>" x2="<%= (fPadL + fIW).toFixed(1) %>" y2="<%= gy.toFixed(1) %>" stroke="#e2e8f0" stroke-width="1"/>
-            <text x="<%= fPadL - 6 %>" y="<%= (gy + 4).toFixed(1) %>" fill="#94a3b8" font-size="10" text-anchor="end"><%= yval.toFixed(0) %></text>
-          <% } %>
-          <% if (fyMin <= 60 && fyMax >= 60) {
-            var ref60y = fPadT + fIH - (60 - fyMin) / fyRange * fIH;
-          %>
-            <line x1="<%= fPadL %>" y1="<%= ref60y.toFixed(1) %>" x2="<%= (fPadL + fIW).toFixed(1) %>" y2="<%= ref60y.toFixed(1) %>" stroke="#fca5a5" stroke-width="1" stroke-dasharray="4,4"/>
-          <% } %>
-          <% scopeItems2.forEach(function(item, idx) {
-            var x = fPadL + (scopeItems2.length <= 1 ? fIW / 2 : fIW * idx / Math.max(1, scopeItems2.length - 1));
-          %>
-            <text x="<%= x.toFixed(1) %>" y="<%= FH - 8 %>" fill="#94a3b8" font-size="10" text-anchor="middle"><%= (item.testDate || '').slice(5) %></text>
-          <% }) %>
-          <% fitnessMetrics.forEach(function(m) {
-            var points = [];
-            scopeItems2.forEach(function(item, idx) {
-              var x = fPadL + (scopeItems2.length <= 1 ? fIW / 2 : fIW * idx / Math.max(1, scopeItems2.length - 1));
-              if (item[m.key] != null) points.push({ x: x, y: fPadT + fIH - (item[m.key] - fyMin) / fyRange * fIH , val: item[m.key], date: (item.testDate || '').slice(5) });
-            });
-            if (points.length >= 1) {
-          %>
-            <polyline points="<%= points.map(function(p) { return p.x.toFixed(1) + ',' + p.y.toFixed(1); }).join(' ') %>"
-              fill="none" stroke="<%= m.color %>" stroke-width="2" stroke-linejoin="round"/>
-            <% points.forEach(function(p) { %>
-              <circle cx="<%= p.x.toFixed(1) %>" cy="<%= p.y.toFixed(1) %>" r="6" fill="<%= m.color %>" style="cursor:pointer"><title><%= m.label %>: <%= p.val %> (日期: <%= p.date %>)</title></circle>
-            <% }) %>
-          <% }}) %>
-
-</svg>
+                <script type="application/json" id="userFitnessData"><%- JSON.stringify(scopeItems2) %></script>
+        <div id="userFitnessChart" class="chart-el" style="width:100%;height:300px;" role="img" aria-label="班级体测趋势对比"></div>
         <div style="display:flex;flex-wrap:wrap;gap:10px 18px;justify-content:center;margin-top:10px;">
           <% fitnessMetrics.forEach(function(m) { %>
             <span style="display:inline-flex;align-items:center;gap:4px;font-size:12px;color:#475569;">
@@ -1202,7 +1077,7 @@
             <tr>
               <td><strong><a class="child-compare-link" data-child-id="<%= r.child_id %>" data-child-name="<%= r.child_name %>" role="button" tabindex="0"><%= r.child_name %></a></strong></td>
               <td><%= r.gender || '-' %></td>
-              <td><%= r.test_date ? new Date(r.test_date).toISOString().slice(0,10) : '-' %></td>
+              <td><%= r.test_date ? formatDateOnly(r.test_date) : '-' %></td>
               <td><%= r.height_cm ?? '-' %></td>
               <td><%= r.height_score ?? '-' %></td>
               <td><%= r.weight_kg ?? '-' %></td>
@@ -1257,7 +1132,7 @@
 <section class="card" id="fitness-entry">
   <h2>录入体测数据</h2>
   <% const selectedEntryBatchDate = typeof entryBatchDate !== 'undefined' ? entryBatchDate : ''; %>
-  <% const selectedEntryTestDate = typeof entryTestDate !== 'undefined' ? entryTestDate : new Date().toISOString().slice(0,10); %>
+  <% const selectedEntryTestDate = typeof entryTestDate !== 'undefined' ? entryTestDate : formatDateOnly(new Date()); %>
   <% const batchDateOptions = Array.isArray(fitnessBatchDates) ? fitnessBatchDates : []; %>
   <% const batchMissingChildren = Array.isArray(entryBatchMissingChildren) ? entryBatchMissingChildren : []; %>
   <% const batchRecordedChildren = Array.isArray(entryBatchRecordedChildren) ? entryBatchRecordedChildren : []; %>
@@ -1415,6 +1290,9 @@
   const SCROLL_KEY = 'kgp-user-scroll-target';
   function bindRadarToggles(root) {
     (root || document).querySelectorAll('[data-radar-root]').forEach(function (card) {
+      // 2026-09-08: ECharts 化雷达由 initUserCharts 绑定 toggle（legend 联动），
+      // 此处跳过避免新旧两个 click 监听互相抵消（合格/良好/优秀永远加不上）。
+      if (card.querySelector('.radar-chart-el')) return;
       card.querySelectorAll('[data-radar-toggle]').forEach(function (button) {
         if (button.dataset.radarBound === '1') return;
         button.dataset.radarBound = '1';
@@ -1465,6 +1343,7 @@
     if (!res.ok) { if (scroll !== false) sessionStorage.setItem(SCROLL_KEY, 'fitness-records'); window.location.href = url; return; }
     const html = await res.text();
     replaceRecordsFromHtml(html);
+    if (window.initUserCharts) window.initUserCharts();
     if (push) window.history.pushState({ kind: 'user-records', url: url }, '', url);
     bindUserPagination();
     if (scroll !== false) scrollToUserRecords('smooth');
@@ -2389,4 +2268,235 @@ function closeUserChildFitnessModal() {
 })();
 </script>
 
+<script src="/static/echarts.min.js"></script>
+<script>
+/* ========== ECharts 图表初始化（2026-09-07 Impeccable 重写；2026-09-08 修 toggle 打架 + AJAX 重绘） ========== */
+function initUserCharts() {
+  if (!window.echarts) return;
+  var chartInstances = {};
+
+  /* ---------- 1. 雷达图 ---------- */
+  var radarJson = document.getElementById('userRadarData');
+  var radarEl = document.getElementById('userRadarChart');
+  if (radarJson && radarEl) {
+    try {
+      var rd = JSON.parse(radarJson.textContent || '{}');
+      var metrics = rd.metrics || [];
+      var series = rd.series || [];
+      if (metrics.length && series.length) {
+        var oldRadar = window.echarts.getInstanceByDom(radarEl);
+        if (oldRadar) oldRadar.dispose();
+        var radar = echarts.init(radarEl);
+        radar.setOption({
+          color: series.map(function (s) { return s.color; }),
+          tooltip: { trigger: 'item' },
+          legend: {
+            bottom: 0,
+            icon: 'circle',
+            itemWidth: 10,
+            itemHeight: 10,
+            textStyle: { fontSize: 12, color: '#475569' },
+            selected: (function () {
+              var sel = {};
+              series.forEach(function (s) { sel[s.label || s.key] = s.visible !== false; });
+              return sel;
+            })()
+          },
+          radar: {
+            indicator: metrics.map(function (m) { return { name: m.label, max: 100 }; }),
+            radius: '62%',
+            center: ['50%', '44%'],
+            splitNumber: 4,
+            axisName: { color: '#475569', fontSize: 13 },
+            splitLine: { lineStyle: { color: 'rgba(148,163,184,0.35)' } },
+            splitArea: { areaStyle: { color: ['rgba(99,102,241,0.02)', 'rgba(99,102,241,0.05)'] } },
+            axisLine: { lineStyle: { color: 'rgba(100,116,139,0.32)' } }
+          },
+          series: series.map(function (s) {
+            return {
+              name: s.label || s.key,
+              type: 'radar',
+              symbol: 'circle',
+              symbolSize: 5,
+              lineStyle: {
+                color: s.color,
+                width: s.strokeWidth || 2,
+                type: (s.dasharray && s.dasharray !== 'none') ? 'dashed' : 'solid'
+              },
+              itemStyle: { color: s.color },
+              areaStyle: { color: s.color, opacity: 0.14 },
+              data: [{ value: (s.values || []).map(function (v) { return Math.round(Number(v) || 0); }) }]
+            };
+          })
+        });
+        chartInstances.radar = radar;
+        // 雷达 toggle 按钮 → ECharts legend 联动
+        var root = radarEl.closest('[data-radar-root]');
+        if (root) {
+          root.querySelectorAll('[data-radar-toggle]').forEach(function (btn) {
+            var key = btn.getAttribute('data-radar-toggle');
+            if (!key || btn.dataset.radarBound === '1') return;
+            btn.addEventListener('click', function () {
+              var name = btn.textContent.trim();
+              var isActive = btn.classList.toggle('is-active');
+              btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+              radar.dispatchAction({ type: isActive ? 'legendSelect' : 'legendUnSelect', name: name });
+            });
+            // 移除旧行为的 bound 标记（原函数绑定在 SVG 节点上，现在无 SVG）
+            btn.dataset.radarBound = '1';
+          });
+        }
+        window.addEventListener('resize', function () { radar.resize(); });
+      }
+    } catch (e) { console.error('[radar-chart]', e); }
+  }
+
+  /* ---------- 2. 生长趋势（全班/男/女 三口径） ---------- */
+  var growthJson = document.getElementById('userGrowthData');
+  var growthEl = document.getElementById('userGrowthChart');
+  if (growthJson && growthEl) {
+    try {
+      var items = (function () { try { return JSON.parse(growthJson.textContent || '[]'); } catch (e) { return []; } })();
+      if (items.length >= 2) {
+        var SCOPE_GROUPS = [
+          { key: 'all', label: '全班', suffix: '' },
+          { key: 'M', label: '男生', suffix: 'M' },
+          { key: 'F', label: '女生', suffix: 'F' }
+        ];
+        var METRICS = [
+          { key: 'heightAvg', label: '身高 (cm)', color: '#f97316', axis: 0 },
+          { key: 'weightAvg', label: '体重 (kg)', color: '#8b5cf6', axis: 1 },
+          { key: 'bmiAvg', label: 'BMI', color: '#ec4899', axis: 1 }
+        ];
+        var xLabels = items.map(function (r) { return (r.testDate || '').slice(5); });
+        function buildGrowthSeries(group) {
+          var list = [];
+          METRICS.forEach(function (m, mi) {
+            SCOPE_GROUPS.forEach(function (g) {
+              if (g.key !== group.key) return;
+              var vals = items.map(function (r) {
+                var v = r[m.key + g.suffix];
+                return v == null ? null : Number(v);
+              });
+              list.push({
+                name: m.label,
+                type: 'line',
+                yAxisIndex: m.axis,
+                smooth: true,
+                symbol: 'circle',
+                symbolSize: 6,
+                connectNulls: false,
+                lineStyle: { width: 2.5, color: m.color },
+                itemStyle: { color: m.color },
+                data: vals
+              });
+            });
+          });
+          return list;
+        }
+        var oldGrowth = window.echarts.getInstanceByDom(growthEl);
+        if (oldGrowth) oldGrowth.dispose();
+        var growth = echarts.init(growthEl);
+        growth.setOption({
+          tooltip: { trigger: 'axis' },
+          legend: {
+            top: 0, icon: 'circle', itemWidth: 10, itemHeight: 10,
+            textStyle: { fontSize: 12, color: '#475569' }
+          },
+          grid: { left: 48, right: 52, top: 34, bottom: 28 },
+          xAxis: { type: 'category', data: xLabels, axisLabel: { color: '#64748b', fontSize: 12 }, axisLine: { lineStyle: { color: '#cbd5e1' } }, axisTick: { show: false } },
+          yAxis: [
+            { type: 'value', name: '身高 (cm)', nameTextStyle: { color: '#f97316', fontSize: 12 }, axisLabel: { color: '#64748b', fontSize: 12 }, splitLine: { lineStyle: { color: '#e2e8f0' } } },
+            { type: 'value', name: '体重/BMI', nameTextStyle: { color: '#8b5cf6', fontSize: 12 }, axisLabel: { color: '#64748b', fontSize: 12 }, splitLine: { show: false } }
+          ],
+          series: buildGrowthSeries({ key: 'all' })
+        });
+        chartInstances.growth = growth;
+        chartInstances.growthBuild = buildGrowthSeries;
+        window.addEventListener('resize', function () { growth.resize(); });
+      }
+    } catch (e) { console.error('[growth-chart]', e); }
+  }
+
+  /* ---------- 3. 体测趋势对比（6 指标） ---------- */
+  var fitJson = document.getElementById('userFitnessData');
+  var fitEl = document.getElementById('userFitnessChart');
+  if (fitJson && fitEl) {
+    try {
+      var items2 = (function () { try { return JSON.parse(fitJson.textContent || '[]'); } catch (e) { return []; } })();
+      if (items2.length >= 2) {
+        var FM = [
+          { key: 'gripAvg', label: '握力', color: '#ef4444' },
+          { key: 'jumpAvg', label: '跳远', color: '#f97316' },
+          { key: 'sitAvg', label: '体前屈', color: '#eab308' },
+          { key: 'djumpAvg', label: '双脚跳', color: '#22c55e' },
+          { key: 'obstacleAvg', label: '障碍跑', color: '#06b6d4' },
+          { key: 'balanceAvg', label: '平衡木', color: '#8b5cf6' }
+        ];
+        var oldFit = window.echarts.getInstanceByDom(fitEl);
+        if (oldFit) oldFit.dispose();
+        var fit = echarts.init(fitEl);
+        fit.setOption({
+          tooltip: { trigger: 'axis' },
+          legend: {
+            top: 0, icon: 'circle', itemWidth: 10, itemHeight: 10,
+            textStyle: { fontSize: 12, color: '#475569' }
+          },
+          grid: { left: 42, right: 24, top: 34, bottom: 28 },
+          xAxis: { type: 'category', data: items2.map(function (r) { return (r.testDate || '').slice(5); }), axisLabel: { color: '#64748b', fontSize: 12 }, axisLine: { lineStyle: { color: '#cbd5e1' } }, axisTick: { show: false } },
+          yAxis: { type: 'value', min: 0, max: 100, axisLabel: { color: '#64748b', fontSize: 12 }, splitLine: { lineStyle: { color: '#e2e8f0' } } },
+          series: FM.map(function (m) {
+            return {
+              name: m.label,
+              type: 'line',
+              smooth: true,
+              symbol: 'circle',
+              symbolSize: 6,
+              lineStyle: { width: 2, color: m.color },
+              itemStyle: { color: m.color },
+              emphasis: { focus: 'series' },
+              data: items2.map(function (r) { return r[m.key] == null ? null : Number(r[m.key]); })
+            };
+          }),
+          markLine: (function () {
+            var anyGt = items2.some(function (r) { return FM.some(function (m) { return r[m.key] != null && r[m.key] > 60; }); });
+            return anyGt ? [] : [];
+          })()
+        });
+        chartInstances.fit = fit;
+        window.addEventListener('resize', function () { fit.resize(); });
+      }
+    } catch (e) { console.error('[fitness-chart]', e); }
+  }
+
+  /* collapse 展开时联动 ECharts resize（隐藏容器初始化得 0 尺寸，展开后恢复） */
+  var origCollapse = window.toggleCollapse;
+  window.toggleCollapse = function (el) {
+    if (typeof origCollapse === 'function') origCollapse(el);
+    var body = el.nextElementSibling;
+    if (body && body.classList && body.classList.contains('collapse-body') && body.classList.contains('open') && window.echarts) {
+      setTimeout(function () {
+        body.querySelectorAll('[id$="Chart"], .radar-chart-el, .chart-el').forEach(function (dom) {
+          var inst = window.echarts.getInstanceByDom(dom);
+          if (inst) inst.resize();
+        });
+      }, 60);
+    }
+  };
+
+  /* 生长趋势性别切换：改造原 switchGrowthSeries —— ECharts 复用同一实例换 series */
+  var origSwitchGrowth = window.switchGrowthSeries;
+  window.switchGrowthSeries = function (btn, series) {
+    if (chartInstances.growth && chartInstances.growthBuild) {
+      var group = null;
+      SCOPE_GROUPS && SCOPE_GROUPS.forEach(function (g) { if (g.key === series) group = g; });
+      if (group) chartInstances.growth.setOption({ series: chartInstances.growthBuild(group) });
+    }
+    if (typeof origSwitchGrowth === 'function') origSwitchGrowth(btn, series); // 洞察面板逻辑不变
+  };
+  window.initUserCharts = initUserCharts;
+}
+window.initUserCharts();
+
+</script>
 <%- include('partials/footer') %>

@@ -505,7 +505,7 @@ module.exports = function mountUserRoutes(app, upload, ctx) {
     const trendMap = new Map();
     for (const item of allFitnessRecords.slice().reverse()) {
       if (!item.test_date) continue;
-      const day = new Date(item.test_date).toISOString().slice(0, 10);
+      const day = formatDateOnly(item.test_date);
       if (!trendMap.has(day)) trendMap.set(day, { label: day, totalScoreSum: 0, totalScoreCount: 0, recordCount: 0 });
       const bucket = trendMap.get(day);
       bucket.recordCount += 1;
@@ -716,7 +716,7 @@ module.exports = function mountUserRoutes(app, upload, ctx) {
           className: item.class_name || '-',
           gender: item.gender || '-',
           birthDate: item.birth_date || '',
-          testDate: item.test_date ? new Date(item.test_date).toISOString().slice(0, 10) : '',
+          testDate: item.test_date ? formatDateOnly(item.test_date) : '',
           totalScore: item.total_score ?? '-',
           rating: item.rating || '-',
           heightCm: item.height_cm ?? '-',
@@ -910,7 +910,7 @@ module.exports = function mountUserRoutes(app, upload, ctx) {
 
     let tbodyHtml = '';
     for (const r of paged) {
-      const d = r.test_date ? new Date(r.test_date).toISOString().slice(0, 10) : '-';
+      const d = r.test_date ? formatDateOnly(r.test_date) : '-';
       const childId = Number(r.child_id || 0);
       const childName = safeCell(r.child_name);
       let ratingHtml = '-';
@@ -1249,7 +1249,7 @@ module.exports = function mountUserRoutes(app, upload, ctx) {
       result.totalScore, result.rating, req.session.user.id, recordId
     ]);
     const previousAuditState = {
-      testDate: record.test_date ? new Date(record.test_date).toISOString().slice(0, 10) : '',
+      testDate: record.test_date ? formatDateOnly(record.test_date) : '',
       heightCm: record.height_cm,
       weightKg: record.weight_kg,
       bmi: record.bmi,
@@ -1313,11 +1313,11 @@ module.exports = function mountUserRoutes(app, upload, ctx) {
         id: child.id,
         name: child.name,
         gender: child.gender,
-        birthDate: child.birth_date ? new Date(child.birth_date).toISOString().slice(0, 10) : ''
+        birthDate: child.birth_date ? formatDateOnly(child.birth_date) : ''
       },
       records: records.map(r => ({
         id: r.id,
-        testDate: r.test_date ? new Date(r.test_date).toISOString().slice(0, 10) : '',
+        testDate: r.test_date ? formatDateOnly(r.test_date) : '',
         heightCm: r.height_cm,
         weightKg: r.weight_kg,
         bmi: r.bmi,
@@ -1373,7 +1373,7 @@ module.exports = function mountUserRoutes(app, upload, ctx) {
       const childName = normalizeText(pickValue(row, ['幼儿姓名', '姓名', 'name']));
       const rawTestDate = pickValue(row, ['测试日期', 'date', '日期']);
       const rawTestDateText = normalizeText(rawTestDate);
-      const testDate = rawTestDateText ? normalizeFlexibleDate(rawTestDate) : new Date().toISOString().slice(0, 10);
+      const testDate = rawTestDateText ? normalizeFlexibleDate(rawTestDate) : formatDateOnly(new Date());
       if (!childName) { skipped++; skippedNames.push('空姓名'); continue; }
       if (rawTestDateText && !testDate) { skipped++; skippedNames.push(`${childName || '未知幼儿'}：测试日期格式错误(${rawTestDateText})`); continue; }
       const cr = await dbQuery('SELECT id, name, gender, birth_date FROM children WHERE class_id = ? AND name = ? LIMIT 1', [classId, childName]);

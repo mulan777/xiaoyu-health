@@ -1,0 +1,1788 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>小鱼健康 · 智能健康监测大屏</title>
+  <style>
+    :root {
+      /* 典雅明亮高级科技风配色 */
+      --bg-base: #f8fafc;
+      --panel-bg: #ffffff;
+      --panel-border: #e2e8f0;
+      
+      --primary: #4f46e5;
+      --primary-light: #6366f1;
+      --accent-cyan: #0284c7;
+      --accent-emerald: #059669;
+      --accent-rose: #e11d48;
+      --accent-amber: #d97706;
+      --accent-purple: #7c3aed;
+
+      --text-main: #0f172a;
+      --text-sub: #475569;
+      --text-muted: #94a3b8;
+      
+      --shadow-sm: 0 2px 4px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02);
+      --shadow-md: 0 10px 25px -3px rgba(15, 23, 42, 0.07), 0 4px 10px -2px rgba(15, 23, 42, 0.03), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+      --shadow-glow: 0 12px 30px -4px rgba(79, 70, 229, 0.12), inset 0 1px 1px rgba(255, 255, 255, 0.9);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background-color: #f1f5f9;
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", "Microsoft YaHei", Roboto, sans-serif;
+      color: var(--text-main);
+      user-select: none;
+    }
+
+    /* 柔和科技微光背景 */
+    body::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(1200px 600px at 50% -10%, rgba(99, 102, 241, 0.10) 0%, transparent 60%),
+        radial-gradient(800px 400px at 10% 40%, rgba(14, 165, 233, 0.06) 0%, transparent 50%),
+        radial-gradient(800px 400px at 90% 40%, rgba(168, 85, 247, 0.06) 0%, transparent 50%),
+        linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%);
+      z-index: -2;
+    }
+    
+    body::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: 
+        linear-gradient(rgba(15, 23, 42, 0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(15, 23, 42, 0.025) 1px, transparent 1px);
+      background-size: 30px 30px;
+      z-index: -1;
+      pointer-events: none;
+    }
+
+    .screen-root {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      padding: 12px 18px 8px;
+    }
+
+    /* ============ 顶部 Header ============ */
+    .screen-header {
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: relative;
+      margin-bottom: 10px;
+      padding: 0 16px;
+      background: rgba(255, 255, 255, 0.95);
+      border: 1px solid rgba(226, 232, 240, 0.9);
+      border-radius: 12px;
+      backdrop-filter: blur(16px);
+      box-shadow: var(--shadow-md);
+      flex: 0 0 60px;
+    }
+    
+    .screen-header::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 10%;
+      right: 10%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #38bdf8, #818cf8, transparent);
+      opacity: 0.8;
+    }
+
+    .brand-section {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand-logo-img {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      object-fit: cover;
+      box-shadow: 0 3px 10px rgba(79, 70, 229, 0.2);
+      border: 1px solid rgba(226, 232, 240, 0.8);
+      background: #fff;
+    }
+    .brand-meta h1 {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      color: #0f172a;
+      line-height: 1.2;
+    }
+    .brand-meta .sub-title {
+      font-size: 11px;
+      color: #6366f1;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+
+    /* 范围切换胶囊 */
+    .scope-bar {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: #f1f5f9;
+      padding: 3px 5px;
+      border-radius: 999px;
+      border: 1px solid #e2e8f0;
+    }
+    .scope-chip {
+      padding: 4px 13px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-sub);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .scope-chip:hover {
+      color: #0f172a;
+      background: rgba(255, 255, 255, 0.6);
+    }
+    .scope-chip.active {
+      background: linear-gradient(135deg, #4f46e5, #0ea5e9);
+      color: #ffffff;
+      box-shadow: 0 2px 6px rgba(79, 70, 229, 0.3);
+    }
+
+    /* 顶栏右侧状态与时钟 */
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .live-indicator {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #059669;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      padding: 3px 9px;
+      border-radius: 999px;
+    }
+    .live-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #059669;
+      box-shadow: 0 0 5px rgba(5, 150, 105, 0.6);
+      animation: liveBlink 1.8s infinite;
+    }
+    @keyframes liveBlink {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+    .clock-display {
+      text-align: right;
+    }
+    .clock-display .time {
+      font-size: 24px;
+      font-weight: 800;
+      color: #0f172a;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.5px;
+      line-height: 1;
+    }
+    .clock-display .date {
+      font-size: 10.5px;
+      color: var(--text-sub);
+      margin-top: 2px;
+      font-weight: 500;
+    }
+
+    /* ============ 主网格主体 ============ */
+    .screen-grid {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 315px 1fr 325px;
+      gap: 12px;
+    }
+
+    .tech-panel {
+      background: linear-gradient(175deg, #ffffff 0%, #fcfdfe 70%, #f8fafc 100%);
+      border: 1px solid rgba(226, 232, 240, 0.85);
+      border-radius: 14px;
+      box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.06), 0 4px 12px -2px rgba(15, 23, 42, 0.03), inset 0 1px 0 0 rgba(255, 255, 255, 0.95), inset 0 -1px 2px rgba(226, 232, 240, 0.4);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease;
+    }
+    .tech-panel:hover {
+      box-shadow: 0 14px 36px -4px rgba(15, 23, 42, 0.09), 0 6px 16px -2px rgba(15, 23, 42, 0.04), inset 0 1px 0 0 #ffffff;
+      transform: translateY(-1px);
+    }
+
+    .panel-header {
+      height: 36px;
+      padding: 0 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #f1f5f9;
+      background: linear-gradient(90deg, rgba(248, 250, 252, 0.8), transparent);
+      flex: 0 0 36px;
+    }
+    .panel-title {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #1e293b;
+      letter-spacing: 0.2px;
+    }
+    .panel-title-bar {
+      width: 3.5px;
+      height: 12px;
+      border-radius: 2px;
+      background: linear-gradient(180deg, #4f46e5, #0ea5e9);
+      box-shadow: 0 1px 4px rgba(79, 70, 229, 0.25);
+    }
+    .panel-tag {
+      font-size: 11px;
+      color: var(--text-sub);
+    }
+    .panel-tag b {
+      color: #4f46e5;
+      font-weight: 600;
+    }
+
+    .panel-body {
+      flex: 1;
+      min-height: 0;
+      position: relative;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .chart-container {
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+    }
+
+    .col-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-height: 0;
+    }
+
+    /* ============ 中间核心：5 个体征卡片（含异常告警卡） ============ */
+    .center-top-metrics {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+      margin-bottom: 8px;
+      flex: 0 0 auto;
+    }
+    
+    .metric-card {
+      background: linear-gradient(160deg, #ffffff 0%, #f8fafc 100%);
+      border: 1px solid rgba(226, 232, 240, 0.9);
+      border-radius: 12px;
+      padding: 9px 12px;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .metric-card:hover {
+      box-shadow: 0 8px 20px -2px rgba(79, 70, 229, 0.12), inset 0 1px 0 rgba(255, 255, 255, 1);
+      transform: translateY(-2px);
+      border-color: rgba(99, 102, 241, 0.3);
+    }
+
+    .metric-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+    }
+    .metric-card.hr::before { background: linear-gradient(90deg, #e11d48, #fb7185); }
+    .metric-card.sp::before { background: linear-gradient(90deg, #0284c7, #38bdf8); }
+    .metric-card.tp::before { background: linear-gradient(90deg, #d97706, #fbbf24); }
+    .metric-card.bp::before { background: linear-gradient(90deg, #7c3aed, #a855f7); }
+    .metric-card.alert::before { background: linear-gradient(90deg, #dc2626, #f87171); }
+
+    .m-label-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-sub);
+    }
+    .m-label-row .icon {
+      font-size: 12px;
+    }
+    .m-value-row {
+      margin: 2px 0 1px;
+      display: flex;
+      align-items: baseline;
+      gap: 3px;
+    }
+    .m-value-row .number {
+      font-size: 23px;
+      font-weight: 800;
+      color: #0f172a;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+    }
+    .metric-card.hr .number { color: #e11d48; }
+    .metric-card.sp .number { color: #0284c7; }
+    .metric-card.tp .number { color: #d97706; }
+    .metric-card.bp .number { color: #7c3aed; font-size: 19px; }
+    .metric-card.alert .number { color: #dc2626; }
+
+    .m-value-row .unit {
+      font-size: 10.5px;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+    .m-status-row {
+      font-size: 10px;
+      color: var(--text-muted);
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* 设备药丸条 */
+    .band-pills-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      margin-bottom: 6px;
+      flex-wrap: wrap;
+      flex: 0 0 auto;
+    }
+    .mini-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 2.5px 8px;
+      border-radius: 6px;
+      font-size: 10.5px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      color: var(--text-sub);
+      font-weight: 500;
+    }
+    .mini-pill b {
+      color: #0f172a;
+      font-size: 11.5px;
+      font-weight: 700;
+    }
+    .mini-pill .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+    .mini-pill.green .dot { background: #10b981; box-shadow: 0 0 4px rgba(16, 185, 129, 0.5); }
+    .mini-pill.cyan .dot { background: #0284c7; box-shadow: 0 0 4px rgba(2, 132, 199, 0.5); }
+    .mini-pill.red {
+      background: #fff1f2;
+      border-color: #fecdd3;
+      color: #e11d48;
+    }
+    .mini-pill.red .dot { background: #e11d48; box-shadow: 0 0 5px rgba(225, 29, 72, 0.5); animation: liveBlink 1.2s infinite; }
+
+    /* 折线趋势大模块 */
+    .trend-block {
+      flex: 1;
+      min-height: 0;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 6px 10px 4px;
+      margin-bottom: 8px;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      box-shadow: var(--shadow-sm);
+    }
+    .trend-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-sub);
+      margin-bottom: 2px;
+      flex: 0 0 auto;
+    }
+
+    /* 异常报警与最近上报 */
+    .center-bottom-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      height: 108px;
+      flex: 0 0 108px;
+    }
+    
+    .feed-box {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 6px 8px;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+    .feed-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-sub);
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex: 0 0 auto;
+    }
+    .feed-list {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .feed-list::-webkit-scrollbar { width: 3px; }
+    .feed-list::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+
+    .feed-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 10.5px;
+      padding: 2.5px 6px;
+      border-radius: 4px;
+      background: #f8fafc;
+      border: 1px solid #f1f5f9;
+    }
+    .feed-time { color: var(--text-muted); font-size: 9.5px; }
+    .feed-name { color: #334155; font-weight: 600; font-family: ui-monospace, Menlo, monospace; font-size: 10px; }
+    .feed-val { font-variant-numeric: tabular-nums; font-weight: 600; }
+    .feed-val.hr { color: #e11d48; }
+    .feed-val.tp { color: #d97706; }
+    .feed-val.sp { color: #0284c7; }
+
+    /* 重点关注右侧列表（完全显示不溢出，带独立滚动条） */
+    .attn-container {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding-right: 2px;
+    }
+    .attn-container::-webkit-scrollbar { width: 4px; }
+    .attn-container::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+    .attention-card {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 9px;
+      border-radius: 8px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      box-shadow: var(--shadow-sm);
+      flex: 0 0 auto;
+    }
+    .vest-bar {
+      width: 4px;
+      height: 26px;
+      border-radius: 2px;
+      flex: 0 0 4px;
+    }
+    .att-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .att-row-1 {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .att-name {
+      font-size: 12px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .att-class {
+      font-size: 10.5px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+    .att-reason {
+      font-size: 10px;
+      color: var(--text-sub);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 1px;
+    }
+
+    /* ============ 底部状态条 Footer ============ */
+    .screen-footer {
+      height: 24px;
+      margin-top: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--text-sub);
+      padding: 0 4px;
+      flex: 0 0 24px;
+    }
+    .footer-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .footer-item b {
+      color: #4f46e5;
+      font-weight: 700;
+      margin-left: 2px;
+    }
+    .back-btn {
+      color: var(--text-sub);
+      text-decoration: none;
+      font-weight: 600;
+      transition: color 0.2s;
+    }
+    .back-btn:hover {
+      color: #4f46e5;
+    }
+  
+    
+    
+    /* ========== 深色未来科技大屏微光主题 (Cyber Dark Theme) ========== */
+    body.theme-dark {
+      background-color: #030712 !important;
+      color: #f1f5f9 !important;
+    }
+    body.theme-dark::before {
+      background:
+        radial-gradient(1000px 500px at 50% -5%, rgba(14, 165, 233, 0.22) 0%, transparent 65%),
+        radial-gradient(800px 400px at 15% 35%, rgba(99, 102, 241, 0.18) 0%, transparent 55%),
+        radial-gradient(800px 400px at 85% 45%, rgba(16, 185, 129, 0.15) 0%, transparent 55%),
+        linear-gradient(180deg, #040918 0%, #020617 100%) !important;
+    }
+    body.theme-dark::after {
+      background-image: 
+        linear-gradient(rgba(56, 189, 248, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(56, 189, 248, 0.05) 1px, transparent 1px) !important;
+      background-size: 24px 24px !important;
+    }
+    
+    body.theme-dark .screen-header {
+      background: rgba(10, 22, 40, 0.85) !important;
+      border: 1px solid rgba(56, 189, 248, 0.35) !important;
+      box-shadow: 0 0 25px rgba(14, 165, 233, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+    }
+    body.theme-dark .brand-meta h1 {
+      color: #ffffff !important;
+      text-shadow: 0 0 12px rgba(56, 189, 248, 0.6) !important;
+    }
+    body.theme-dark .brand-meta .sub-title {
+      color: #38bdf8 !important;
+    }
+    body.theme-dark .scope-chip {
+      background: rgba(15, 23, 42, 0.8) !important;
+      border-color: rgba(56, 189, 248, 0.25) !important;
+      color: #94a3b8 !important;
+    }
+    body.theme-dark .scope-chip.active {
+      background: linear-gradient(135deg, #0ea5e9, #6366f1) !important;
+      color: #ffffff !important;
+      border-color: #38bdf8 !important;
+      box-shadow: 0 0 14px rgba(14, 165, 233, 0.5) !important;
+    }
+    body.theme-dark .clock-display .time {
+      color: #38bdf8 !important;
+      text-shadow: 0 0 10px rgba(56, 189, 248, 0.7) !important;
+    }
+    body.theme-dark .clock-display .date {
+      color: #64748b !important;
+    }
+
+    /* 科技面板强化 */
+    body.theme-dark .tech-panel {
+      background: rgba(10, 20, 36, 0.82) !important;
+      border: 1px solid rgba(56, 189, 248, 0.22) !important;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), inset 0 0 20px rgba(14, 165, 233, 0.05) !important;
+      backdrop-filter: blur(20px) !important;
+    }
+    body.theme-dark .panel-header {
+      background: linear-gradient(90deg, rgba(14, 165, 233, 0.12), transparent) !important;
+      border-bottom: 1px solid rgba(56, 189, 248, 0.2) !important;
+    }
+    body.theme-dark .panel-title {
+      color: #f8fafc !important;
+      text-shadow: 0 0 8px rgba(56, 189, 248, 0.4) !important;
+    }
+    body.theme-dark .panel-title-bar {
+      box-shadow: 0 0 10px #38bdf8 !important;
+    }
+    body.theme-dark .panel-tag {
+      background: rgba(15, 23, 42, 0.85) !important;
+      border-color: rgba(56, 189, 248, 0.3) !important;
+      color: #7dd3fc !important;
+    }
+
+    /* 中间 5 大卡片 */
+    body.theme-dark .metric-card {
+      background: rgba(15, 28, 48, 0.85) !important;
+      border: 1px solid rgba(56, 189, 248, 0.22) !important;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+    }
+    body.theme-dark .metric-card .number {
+      color: #ffffff !important;
+      text-shadow: 0 0 10px rgba(255, 255, 255, 0.3) !important;
+    }
+    body.theme-dark .metric-card.hr { border-top: 2px solid #f43f5e !important; }
+    body.theme-dark .metric-card.sp { border-top: 2px solid #0ea5e9 !important; }
+    body.theme-dark .metric-card.tp { border-top: 2px solid #10b981 !important; }
+    body.theme-dark .metric-card.bp { border-top: 2px solid #a855f7 !important; }
+    body.theme-dark .metric-card.alert-card { border-top: 2px solid #eab308 !important; }
+
+    /* 关键：修复之前 trend-block 为纯白色大坑！彻底深色科技化 */
+    body.theme-dark .trend-block {
+      background: rgba(8, 16, 30, 0.85) !important;
+      border: 1px solid rgba(56, 189, 248, 0.25) !important;
+      box-shadow: inset 0 0 24px rgba(14, 165, 233, 0.06) !important;
+    }
+    body.theme-dark .trend-header {
+      border-bottom: 1px solid rgba(56, 189, 248, 0.15) !important;
+      color: #94a3b8 !important;
+    }
+
+    /* 底部预警与实时流 */
+    body.theme-dark .feed-box {
+      background: rgba(8, 16, 30, 0.85) !important;
+      border: 1px solid rgba(56, 189, 248, 0.2) !important;
+    }
+    body.theme-dark .feed-title {
+      border-bottom: 1px solid rgba(56, 189, 248, 0.15) !important;
+      color: #94a3b8 !important;
+    }
+    body.theme-dark .feed-item {
+      background: rgba(15, 28, 48, 0.6) !important;
+      border-color: rgba(56, 189, 248, 0.15) !important;
+    }
+    body.theme-dark .feed-item:hover {
+      background: rgba(15, 28, 48, 0.95) !important;
+      border-color: rgba(56, 189, 248, 0.4) !important;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.2) !important;
+    }
+    body.theme-dark .feed-name {
+      color: #f8fafc !important;
+    }
+
+    /* 重点关注卡片 */
+    body.theme-dark .attention-card {
+      background: rgba(15, 28, 48, 0.6) !important;
+      border: 1px solid rgba(56, 189, 248, 0.18) !important;
+    }
+    body.theme-dark .attention-card:hover {
+      background: rgba(15, 28, 48, 0.95) !important;
+      border-color: rgba(56, 189, 248, 0.45) !important;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.25) !important;
+    }
+    body.theme-dark .att-name {
+      color: #f8fafc !important;
+    }
+    body.theme-dark .att-reason {
+      color: #94a3b8 !important;
+    }
+    body.theme-dark .screen-footer {
+      border-top: 1px solid rgba(56, 189, 248, 0.15) !important;
+      color: #64748b !important;
+    }
+    body.theme-dark .footer-item b {
+      color: #38bdf8 !important;
+      text-shadow: 0 0 8px rgba(56, 189, 248, 0.5) !important;
+    }
+
+    
+    /* ========== 彻底消除暗黑模式下的所有浅色/白底块 (Zero White Blocks) ========== */
+    body.theme-dark .brand-logo-img {
+      background: rgba(15, 23, 42, 0.9) !important;
+      border-color: rgba(56, 189, 248, 0.4) !important;
+    }
+    body.theme-dark .scope-bar {
+      background: rgba(10, 20, 36, 0.9) !important;
+      border: 1px solid rgba(56, 189, 248, 0.25) !important;
+      box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5) !important;
+    }
+    body.theme-dark .scope-chip {
+      background: rgba(15, 28, 48, 0.8) !important;
+      color: #94a3b8 !important;
+      border: 1px solid rgba(56, 189, 248, 0.15) !important;
+    }
+    body.theme-dark .scope-chip.active {
+      background: linear-gradient(135deg, #0284c7, #4f46e5) !important;
+      color: #ffffff !important;
+      border-color: #38bdf8 !important;
+      box-shadow: 0 0 12px rgba(14, 165, 233, 0.6) !important;
+    }
+    body.theme-dark .mini-pill {
+      background: rgba(15, 28, 48, 0.85) !important;
+      border: 1px solid rgba(56, 189, 248, 0.25) !important;
+      color: #cbd5e1 !important;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+    }
+    body.theme-dark .mini-pill.green {
+      border-color: rgba(16, 185, 129, 0.35) !important;
+      color: #34d399 !important;
+    }
+    body.theme-dark .mini-pill.red {
+      background: rgba(36, 14, 24, 0.85) !important;
+      border-color: rgba(244, 63, 94, 0.4) !important;
+      color: #fb7185 !important;
+    }
+    body.theme-dark .feed-row,
+    body.theme-dark .feed-item {
+      background: rgba(12, 22, 38, 0.75) !important;
+      border: 1px solid rgba(56, 189, 248, 0.15) !important;
+      color: #cbd5e1 !important;
+    }
+    body.theme-dark .feed-row:nth-child(even),
+    body.theme-dark .feed-item:nth-child(even) {
+      background: rgba(16, 28, 48, 0.85) !important;
+    }
+    body.theme-dark .feed-item:hover,
+    body.theme-dark .feed-row:hover {
+      background: rgba(20, 36, 62, 0.95) !important;
+      border-color: rgba(56, 189, 248, 0.4) !important;
+    }
+    body.theme-dark .theme-toggle-btn {
+      background: rgba(15, 28, 48, 0.9) !important;
+      color: #38bdf8 !important;
+      border: 1px solid rgba(56, 189, 248, 0.4) !important;
+      box-shadow: 0 0 12px rgba(14, 165, 233, 0.3) !important;
+    }
+
+    /* 主题切换按钮 */
+    .theme-toggle-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      font-size: 11.5px;
+      font-weight: 700;
+      color: #475569;
+      background: rgba(241, 245, 249, 0.9);
+      border: 1px solid rgba(203, 213, 225, 0.8);
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    body.theme-dark .theme-toggle-btn {
+      background: rgba(15, 28, 48, 0.9) !important;
+      color: #38bdf8 !important;
+      border: 1px solid #38bdf8 !important;
+      box-shadow: 0 0 14px rgba(56, 189, 248, 0.4) !important;
+    }
+
+    
+  
+    /* ========== 手机端专用独立流式排版 (仅在宽度 <= 768px 的真机窄屏生效，完全不影响电脑大屏) ========== */
+    @media screen and (max-width: 768px) {
+      html, body {
+        width: 100% !important;
+        height: auto !important;
+        min-height: 100vh !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+      }
+      .screen-root {
+        width: 100% !important;
+        height: auto !important;
+        min-height: 100vh !important;
+        display: block !important;
+        padding: 10px 8px 30px 8px !important;
+      }
+      .screen-header {
+        height: auto !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 10px !important;
+        padding: 12px 10px !important;
+        margin-bottom: 12px !important;
+      }
+      .brand-section {
+        justify-content: flex-start !important;
+      }
+      .scope-bar {
+        width: 100% !important;
+        overflow-x: auto !important;
+        white-space: nowrap !important;
+        padding: 4px 0 !important;
+        -webkit-overflow-scrolling: touch;
+      }
+      .scope-bar::-webkit-scrollbar {
+        display: none;
+      }
+      .header-right {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        width: 100% !important;
+        border-top: 1px dashed rgba(226, 232, 240, 0.8) !important;
+        padding-top: 8px !important;
+      }
+      body.theme-dark .header-right {
+        border-top-color: rgba(51, 65, 85, 0.6) !important;
+      }
+      .screen-grid {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 14px !important;
+        height: auto !important;
+      }
+      .col-stack {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 14px !important;
+        height: auto !important;
+      }
+      .tech-panel {
+        height: auto !important;
+        flex: none !important;
+        margin-bottom: 0 !important;
+      }
+      .chart-container {
+        height: 250px !important;
+        min-height: 250px !important;
+      }
+      .center-top-metrics {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 8px !important;
+      }
+      .metric-card.alert-card {
+        grid-column: span 2 !important;
+      }
+      .band-subgrid {
+        grid-template-columns: 1fr !important;
+        height: auto !important;
+        gap: 12px !important;
+      }
+      #curveChart {
+        height: 230px !important;
+      }
+      #feedList {
+        max-height: 240px !important;
+      }
+      #attnList {
+        max-height: 300px !important;
+      }
+      .screen-footer {
+        flex-direction: column !important;
+        gap: 8px !important;
+        padding: 16px 4px 8px 4px !important;
+        text-align: center !important;
+      }
+      .footer-metrics {
+        justify-content: center !important;
+        flex-wrap: wrap !important;
+        gap: 12px !important;
+      }
+    }
+
+  </style>
+</head>
+<body>
+
+  <div class="screen-root">
+    <!-- 头部通栏 -->
+    <header class="screen-header">
+      <div class="brand-section">
+        <img class="brand-logo-img" src="/static/site-logo-sm.jpg?v=20260613b" alt="小鱼健康" />
+        <div class="brand-meta">
+          <h1 id="screenTitle">小鱼健康 · 动态感知大屏</h1>
+          <div class="sub-title" id="screenSub">全园体测 × 手环健康动态感知中心</div>
+        </div>
+      </div>
+
+      <div class="scope-bar" id="scopeSwitch">
+        <button class="scope-chip active" data-scope="all" data-class-id="0">全园视角</button>
+      </div>
+
+      <div class="header-right">
+        <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" title="切换亮白/科技深色主题">
+          <span id="themeIcon">🌓</span>
+          <span id="themeLabel">科技暗黑</span>
+        </button>
+        <div class="live-indicator">
+          <span class="live-dot"></span>
+          <span>实时同步</span>
+        </div>
+        <div class="clock-display">
+          <div class="time" id="clockTime">--:--:--</div>
+          <div class="date" id="clockDate">----</div>
+        </div>
+      </div>
+    </header>
+
+    <!-- 三列核心栅格 -->
+    <main class="screen-grid">
+      <!-- 左列：体测综合概况 -->
+      <section class="col-stack">
+        <!-- 评级分布环形图 -->
+        <div class="tech-panel" style="flex: 0.85;">
+          <div class="panel-header">
+            <div class="panel-title">
+              <span class="panel-title-bar"></span>
+              <span>体测评级分布</span>
+            </div>
+            <span class="panel-tag" id="ratingTag"></span>
+          </div>
+          <div class="panel-body">
+            <div class="chart-container" id="ratingChart"></div>
+          </div>
+        </div>
+
+        <!-- 生长趋势面积图（身高/体重/BMI） -->
+        <div class="tech-panel" style="flex: 1.15;">
+          <div class="panel-header">
+            <div class="panel-title">
+              <span class="panel-title-bar"></span>
+              <span>生长趋势</span>
+            </div>
+            <span class="panel-tag" id="growthTag"></span>
+          </div>
+          <div class="panel-body">
+            <div class="chart-container" id="growthChart"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 中列：手环体征核心监测 -->
+      <section class="tech-panel" style="border-color: rgba(99, 102, 241, 0.25); box-shadow: var(--shadow-glow);">
+        <div class="panel-header" style="background: linear-gradient(90deg, rgba(99, 102, 241, 0.06), transparent);">
+          <div class="panel-title">
+            <span class="panel-title-bar" style="background: linear-gradient(180deg, #4f46e5, #0ea5e9);"></span>
+            <span>智能手环动态监测</span>
+          </div>
+          <span class="panel-tag" id="bandTag"></span>
+        </div>
+
+        <div class="panel-body">
+          <!-- 5 大体征核心卡片（新增异常告警卡） -->
+          <div class="center-top-metrics">
+            <div class="metric-card hr">
+              <div class="m-label-row">
+                <span>平均心率</span>
+                <span class="icon">💓</span>
+              </div>
+              <div class="m-value-row">
+                <span class="number" id="avgHr">--</span>
+                <span class="unit">bpm</span>
+              </div>
+              <div class="m-status-row" id="avgHrSub">基线 60-140</div>
+            </div>
+
+            <div class="metric-card sp">
+              <div class="m-label-row">
+                <span>平均血氧</span>
+                <span class="icon">🫁</span>
+              </div>
+              <div class="m-value-row">
+                <span class="number" id="avgSpo2">--</span>
+                <span class="unit">%</span>
+              </div>
+              <div class="m-status-row" id="avgSpo2Sub">标准 ≥95%</div>
+            </div>
+
+            <div class="metric-card tp">
+              <div class="m-label-row">
+                <span>平均体温</span>
+                <span class="icon">🌡</span>
+              </div>
+              <div class="m-value-row">
+                <span class="number" id="avgTp">--</span>
+                <span class="unit">℃</span>
+              </div>
+              <div class="m-status-row" id="avgTpSub">标准 36.0-37.3</div>
+            </div>
+
+            <div class="metric-card bp">
+              <div class="m-label-row">
+                <span>平均血压</span>
+                <span class="icon">🩸</span>
+              </div>
+              <div class="m-value-row">
+                <span class="number" id="avgBp">--</span>
+              </div>
+              <div class="m-status-row" id="avgBpSub">有效上报均值</div>
+            </div>
+
+            <!-- 第 5 个卡片：今日异常/预警指标 -->
+            <div class="metric-card alert" id="metricCardAlert">
+              <div class="m-label-row">
+                <span>体征预警</span>
+                <span class="icon">⚠️</span>
+              </div>
+              <div class="m-value-row">
+                <span class="number" id="alertTotalNum">0</span>
+                <span class="unit">起</span>
+              </div>
+              <div class="m-status-row" id="alertTotalSub" style="color:#059669;">当前平稳正常</div>
+            </div>
+          </div>
+
+          <!-- 设备在线小状态条 -->
+          <div class="band-pills-row" id="bandPills">
+            <!-- 动态注入 -->
+          </div>
+
+          <!-- 实时动态走势曲线（清晰图例与双 Y 轴分布） -->
+          <div class="trend-block">
+            <div class="trend-header">
+              <span>动态健康走势 (近2小时)</span>
+              <span id="curveNote" style="color: #0284c7;"></span>
+            </div>
+            <div class="chart-container" id="curveChart"></div>
+            <div id="curveEmpty" style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;font-size:12px;color:var(--text-muted);">
+              等待手环数据上报中…
+            </div>
+          </div>
+
+          <!-- 底部双组件：异常事件 & 最近上报 -->
+          <div class="center-bottom-row">
+            <div class="feed-box">
+              <div class="feed-title">
+                <span>⚠️ 重点预警事件</span>
+                <span style="font-size: 10px; color: var(--accent-rose);" id="alertCountTag"></span>
+              </div>
+              <div class="feed-list" id="bandAlerts">
+                <!-- 预警内容 -->
+              </div>
+            </div>
+
+            <div class="feed-box">
+              <div class="feed-title">
+                <span>📡 实时监测流 (30s刷新)</span>
+              </div>
+              <div class="feed-list" id="recentList">
+                <!-- 数据流水 -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 右列：体能结构与关注名单 -->
+      <section class="col-stack">
+        <!-- 体能六维雷达 -->
+        <div class="tech-panel" style="flex: 1.25;">
+          <div class="panel-header">
+            <div class="panel-title">
+              <span class="panel-title-bar"></span>
+              <span>体能结构雷达分析</span>
+            </div>
+            <span class="panel-tag" id="radarTag"></span>
+          </div>
+          <div class="panel-body">
+            <div class="chart-container" id="radarChart"></div>
+          </div>
+        </div>
+
+        <!-- 重点关注幼儿（支持完整滑动浏览，杜绝显示不全） -->
+        <div class="tech-panel" style="flex: 1;">
+          <div class="panel-header">
+            <div class="panel-title">
+              <span class="panel-title-bar"></span>
+              <span>重点关注幼儿名单</span>
+            </div>
+            <span class="panel-tag" id="attnTag"></span>
+          </div>
+          <div class="panel-body" style="padding: 6px 8px;">
+            <div class="attn-container" id="attnList"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- 底部状态通栏 -->
+    <footer class="screen-footer">
+      <div class="footer-left">
+        <span class="footer-item">最后同步：<b id="footUpdated">--</b></span>
+        <span class="footer-item">全园幼儿：<b id="footChildren">-</b></span>
+        <span class="footer-item">体测记录：<b id="footFitness">-</b></span>
+        <span class="footer-item">手环累计：<b id="footBands">-</b></span>
+      </div>
+      <a class="back-btn" href="/admin">返回后台工作台 →</a>
+    </footer>
+  </div>
+
+  <script src="/static/echarts.min.js"></script>
+  <script>
+  // ========== 全局主题切换功能 ==========
+  function applyTheme(theme) {
+    var btn = document.getElementById('themeToggleBtn');
+    var icon = document.getElementById('themeIcon');
+    var label = document.getElementById('themeLabel');
+    if (theme === 'dark') {
+      document.body.classList.add('theme-dark');
+      if (icon) icon.textContent = '☀️';
+      if (label) label.textContent = '典雅明亮';
+    } else {
+      document.body.classList.remove('theme-dark');
+      if (icon) icon.textContent = '🌙';
+      if (label) label.textContent = '科技暗黑';
+    }
+  }
+
+  function initTheme() {
+    var saved = localStorage.getItem('fish_screen_theme') || 'light';
+    applyTheme(saved);
+  }
+
+  function toggleTheme() {
+    var isDark = document.body.classList.contains('theme-dark');
+    var target = isDark ? 'light' : 'dark';
+    applyTheme(target);
+    localStorage.setItem('fish_screen_theme', target);
+    // 强制触发图表自适应和重新拉取渲染
+    if (typeof load === 'function') {
+      load();
+    }
+    if (window.dispatchEvent) {
+      window.dispatchEvent(new Event('resize'));
+    }
+  }
+
+  // 立即执行以防闪烁
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initTheme);
+  } else {
+    initTheme();
+  }
+</script>
+<script>
+  (function () {
+    'use strict';
+    if (!window.echarts) return;
+
+    var charts = {};
+    function initChart(id) {
+      if (!charts[id] && document.getElementById(id)) {
+        charts[id] = echarts.init(document.getElementById(id));
+      }
+      return charts[id];
+    }
+    function setOpt(id, opt) {
+      var c = initChart(id);
+      if (c) c.setOption(opt, true);
+    }
+
+    // 时钟
+    function pad(n) { return String(n).padStart(2, '0'); }
+    function tick() {
+      var d = new Date();
+      var ct = document.getElementById('clockTime');
+      var cd = document.getElementById('clockDate');
+      if (ct) ct.textContent = pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+      if (cd) {
+        var w = ['日','一','二','三','四','五','六'][d.getDay()];
+        cd.textContent = d.getFullYear() + '年' + pad(d.getMonth() + 1) + '月' + pad(d.getDate()) + '日 星期' + w;
+      }
+    }
+    tick();
+    setInterval(tick, 1000);
+
+    var state = { scope: 'all', classId: 0 };
+
+    function rebuildScopeChips(classes) {
+      var wrap = document.getElementById('scopeSwitch');
+      if (!wrap) return;
+      var existing = [];
+      wrap.querySelectorAll('.scope-chip').forEach(function (b) { existing.push(b.getAttribute('data-class-id')); });
+      var target = ['0'].concat(classes.map(function (c) { return String(c.id); }));
+      var same = existing.length === target.length && existing.every(function (e, i) { return e === target[i]; });
+      if (same) return;
+
+      wrap.innerHTML = '<button class="scope-chip active" data-scope="all" data-class-id="0">全园视角</button>'
+        + classes.map(function (c) { return '<button class="scope-chip" data-scope="class" data-class-id="' + c.id + '">' + c.name + '</button>'; }).join('');
+
+      wrap.querySelectorAll('.scope-chip').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          wrap.querySelectorAll('.scope-chip').forEach(function (b) { b.classList.remove('active'); });
+          btn.classList.add('active');
+          state.scope = btn.getAttribute('data-scope');
+          state.classId = Number(btn.getAttribute('data-class-id')) || 0;
+          load();
+        });
+      });
+    }
+
+    function load() {
+      var url = '/screen/api/overview?scope=' + state.scope + (state.classId ? '&classId=' + state.classId : '');
+      fetch(url, { headers: { 'X-Requested-With': 'fetch' }, credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .then(render)
+        .catch(function (e) { console.error('[screen]', e); });
+    }
+
+    function render(d) {
+      if (!d || !d.ok) return;
+      if (d.displayClasses) rebuildScopeChips(d.displayClasses);
+
+      document.getElementById('screenTitle').textContent = '小鱼健康 · ' + d.scopeLabel + '感知大屏';
+      document.getElementById('screenSub').textContent = d.scope === 'all' ? '全园体测 × 手环健康动态感知中心' : '班级体测 × 手环健康动态监测（' + d.scopeLabel + '）';
+      document.getElementById('footUpdated').textContent = d.updatedAt ? d.updatedAt.slice(11) : '--';
+      document.getElementById('footChildren').textContent = d.totals.children;
+      document.getElementById('footFitness').textContent = d.totals.fitnessRecords;
+      document.getElementById('footBands').textContent = d.totals.bandRecords;
+
+      renderRating(d);
+      renderGrowth(d);
+      renderRadar(d);
+      renderBands(d);
+      renderAttention(d);
+    }
+
+    // ---------- 1. 评级分布环形图 ----------
+    function renderRating(d) {
+      document.getElementById('ratingTag').innerHTML = '最新批次 <b>' + (d.latestBatch?.day || '--') + '</b>';
+      var colors = {
+        '优秀': '#10b981',
+        '良好': '#0284c7',
+        '合格': '#f59e0b',
+        '待提升': '#f43f5e'
+      };
+      var data = (d.ratingSummary || []).map(function (item) {
+        return {
+          name: item.label,
+          value: item.count,
+          itemStyle: { color: colors[item.label] || '#6366f1' }
+        };
+      });
+      var avg = d.avgScore != null ? d.avgScore.toFixed(1) : '--';
+      var prevAvg = d.prevAvgScore != null ? d.prevAvgScore.toFixed(1) : null;
+      var diff = prevAvg != null ? (d.avgScore - d.prevAvgScore) : null;
+      var diffTxt = diff == null ? '' : (diff >= 0 ? '▲ ' : '▼ ') + Math.abs(diff).toFixed(1);
+
+      setOpt('ratingChart', {
+        tooltip: {
+          trigger: 'item',
+          backgroundColor: '#ffffff',
+          borderColor: '#e2e8f0',
+          textStyle: { color: '#0f172a', fontSize: 12 },
+          extraCssText: 'box-shadow: 0 4px 12px rgba(0,0,0,0.08); border-radius: 8px;',
+          formatter: '{b}: {c} 人 ({d}%)'
+        },
+        legend: {
+          bottom: 0,
+          icon: 'circle',
+          itemWidth: 8,
+          itemHeight: 8,
+          textStyle: { color: '#64748b', fontSize: 11 }
+        },
+        series: [{
+          type: 'pie',
+          radius: ['52%', '74%'],
+          center: ['50%', '42%'],
+          avoidLabelOverlap: true,
+          itemStyle: {
+            borderRadius: 6,
+            borderColor: (document.body.classList.contains('theme-dark') ? '#0d1527' : '#ffffff'),
+            borderWidth: 3,
+            shadowBlur: 10,
+            shadowColor: 'rgba(0, 0, 0, 0.08)',
+            shadowOffsetY: 3
+          },
+          label: { show: false },
+          data: data.length ? data : [{ name: '暂无数据', value: 1, itemStyle: { color: '#e2e8f0' } }],
+          emphasis: {
+            scale: true,
+            scaleSize: 5
+          }
+        }],
+        graphic: [
+          {
+            type: 'text',
+            left: 'center',
+            top: '30%',
+            style: {
+              text: String(avg),
+              fontSize: 24,
+              fontWeight: 800,
+              fill: (document.body.classList.contains('theme-dark') ? '#f8fafc' : '#0f172a'),
+              textAlign: 'center'
+            }
+          },
+          {
+            type: 'text',
+            left: 'center',
+            top: '46%',
+            style: {
+              text: '平均分 ' + diffTxt,
+              fontSize: 10.5,
+              fontWeight: 600,
+              fill: diff != null && diff < 0 ? '#e11d48' : (diff != null ? '#059669' : '#64748b'),
+              textAlign: 'center'
+            }
+          }
+        ]
+      });
+    }
+
+    // ---------- 2. 生长趋势立体胶囊柱状图（方案一：高光立体圆柱对比） ----------
+    function renderGrowth(d) {
+      var gt = d.growthTrend || [];
+      var tagParts = [];
+      if (gt.length >= 2) {
+        var lastH = gt[gt.length - 1].height, firstH = gt[0].height;
+        var lastW = gt[gt.length - 1].weight, firstW = gt[0].weight;
+        var lastBmi = gt[gt.length - 1].bmi, firstBmi = gt[0].bmi;
+        if (lastH != null && firstH != null) {
+          var dH = (Number(lastH) - Number(firstH));
+          tagParts.push('<span style="color:#0284c7;font-weight:700;">身高 ' + (dH >= 0 ? '+' : '') + dH.toFixed(1) + 'cm</span>');
+        }
+        if (lastW != null && firstW != null) {
+          var dW = (Number(lastW) - Number(firstW));
+          tagParts.push('<span style="color:#7c3aed;font-weight:700;">体重 ' + (dW >= 0 ? '+' : '') + dW.toFixed(1) + 'kg</span>');
+        }
+        if (lastBmi != null && firstBmi != null) {
+          var dBmi = (Number(lastBmi) - Number(firstBmi));
+          tagParts.push('<span style="color:#059669;font-weight:700;">BMI ' + (dBmi >= 0 ? '+' : '') + dBmi.toFixed(2) + '</span>');
+        }
+      }
+      document.getElementById('growthTag').innerHTML = tagParts.join(' · ');
+
+      var hs = gt.map(function (g) { return g.height; }).filter(function (v) { return v != null; });
+      var ws = gt.map(function (g) { return g.weight; }).filter(function (v) { return v != null; });
+
+      var avgH = hs.length ? (hs.reduce(function(a,b){return a+b;},0)/hs.length) : 112;
+      var yMin1 = Math.max(80, Math.floor((avgH - 20) / 10) * 10);
+      var yMax1 = Math.ceil((avgH + 15) / 10) * 10;
+
+      var avgW = ws.length ? (ws.reduce(function(a,b){return a+b;},0)/ws.length) : 20;
+      var yMin2 = Math.max(5, Math.floor((avgW - 10) / 5) * 5);
+      var yMax2 = Math.ceil((avgW + 10) / 5) * 5;
+
+      var isDark = document.body.classList.contains('theme-dark');
+
+      setOpt('growthChart', {
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: {
+            type: 'shadow',
+            shadowStyle: {
+              color: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(79, 70, 229, 0.05)'
+            }
+          },
+          backgroundColor: isDark ? '#1e293b' : '#ffffff',
+          borderColor: isDark ? '#334155' : '#e2e8f0',
+          textStyle: { color: isDark ? '#f1f5f9' : '#0f172a', fontSize: 11 },
+          extraCssText: 'box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2), 0 8px 10px -6px rgba(0,0,0,0.1); border-radius: 10px; backdrop-filter: blur(8px); border: 1px solid ' + (isDark ? 'rgba(255,255,255,0.12)' : 'rgba(79,70,229,0.15)'),
+          formatter: function (params) {
+            var idx = params[0].dataIndex;
+            var itemData = gt[idx] || {};
+            var res = '<div style="font-weight:700;margin-bottom:6px;color:' + (isDark ? '#f8fafc' : '#0f172a') + ';">' + (itemData.full || params[0].name) + ' 阶段体测</div>';
+            res += '<div style="display:flex;justify-content:space-between;gap:16px;font-size:11px;line-height:1.8;">'
+                 + '<span style="color:#0ea5e9;font-weight:600;">● 均值身高</span><b style="font-size:12px;">' + (itemData.height != null ? itemData.height + ' cm' : '--') + '</b></div>';
+            res += '<div style="display:flex;justify-content:space-between;gap:16px;font-size:11px;line-height:1.8;">'
+                 + '<span style="color:#8b5cf6;font-weight:600;">● 均值体重</span><b style="font-size:12px;">' + (itemData.weight != null ? itemData.weight + ' kg' : '--') + '</b></div>';
+            res += '<div style="display:flex;justify-content:space-between;gap:16px;font-size:11px;line-height:1.8;">'
+                 + '<span style="color:#10b981;font-weight:600;">● 均值 BMI</span><b style="font-size:12px;">' + (itemData.bmi != null ? itemData.bmi : '--') + '</b></div>';
+            return res;
+          }
+        },
+        legend: {
+          bottom: 2,
+          icon: 'roundRect',
+          itemWidth: 12,
+          itemHeight: 6,
+          itemGap: 18,
+          textStyle: { color: isDark ? '#94a3b8' : '#64748b', fontSize: 11, fontWeight: 500 }
+        },
+        grid: { left: 14, right: 48, top: 32, bottom: 26, containLabel: true },
+        xAxis: {
+          type: 'category',
+          data: gt.map(function (g) { return g.label; }),
+          axisLabel: { color: isDark ? '#cbd5e1' : '#334155', fontSize: 11, fontWeight: 700, margin: 10 },
+          axisLine: { lineStyle: { color: isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0', width: 1.5 } },
+          axisTick: { show: false }
+        },
+        yAxis: [
+          {
+            type: 'value',
+            name: '身高(cm)',
+            min: yMin1,
+            max: yMax1,
+            splitNumber: 4,
+            nameTextStyle: { color: isDark ? '#94a3b8' : '#64748b', fontSize: 10.5, padding: [0, 0, 0, 8] },
+            axisLine: { show: false },
+            axisTick: { show: false },
+            axisLabel: { color: isDark ? '#64748b' : '#94a3b8', fontSize: 10 },
+            splitLine: { lineStyle: { color: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9', type: 'dashed' } }
+          },
+          {
+            type: 'value',
+            name: '体重(kg)',
+            min: yMin2,
+            max: yMax2,
+            splitNumber: 4,
+            nameTextStyle: { color: isDark ? '#94a3b8' : '#64748b', fontSize: 10.5, padding: [0, 8, 0, 0] },
+            axisLine: { show: false },
+            axisTick: { show: false },
+            axisLabel: { color: isDark ? '#64748b' : '#94a3b8', fontSize: 10 },
+            splitLine: { show: false }
+          }
+        ],
+        series: [
+          {
+            name: '身高 cm',
+            type: 'bar',
+            barWidth: 14,
+            barGap: '35%',
+            data: gt.map(function (g) { return g.height; }),
+            itemStyle: {
+              borderRadius: [7, 7, 3, 3],
+              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                { offset: 0, color: '#38bdf8' },
+                { offset: 0.3, color: '#0284c7' },
+                { offset: 1, color: '#0369a1' }
+              ]),
+              shadowColor: 'rgba(2, 132, 199, 0.45)',
+              shadowBlur: 8,
+              shadowOffsetY: 4
+            },
+            label: {
+              show: true,
+              position: 'top',
+              distance: 5,
+              fontSize: 10.5,
+              fontWeight: 700,
+              color: isDark ? '#38bdf8' : '#0284c7',
+              formatter: '{c}'
+            }
+          },
+          {
+            name: '体重 kg',
+            type: 'bar',
+            yAxisIndex: 1,
+            barWidth: 14,
+            data: gt.map(function (g) { return g.weight; }),
+            itemStyle: {
+              borderRadius: [7, 7, 3, 3],
+              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                { offset: 0, color: '#c084fc' },
+                { offset: 0.3, color: '#9333ea' },
+                { offset: 1, color: '#6b21a8' }
+              ]),
+              shadowColor: 'rgba(147, 51, 234, 0.45)',
+              shadowBlur: 8,
+              shadowOffsetY: 4
+            },
+            label: {
+              show: true,
+              position: 'top',
+              distance: 5,
+              fontSize: 10.5,
+              fontWeight: 700,
+              color: isDark ? '#c084fc' : '#7c3aed',
+              formatter: '{c}'
+            }
+          }
+        ]
+      });
+    }
+
+    // ---------- 3. 体能六维雷达 ----------
+    
+
+    // ---------- 3. 体能六维雷达 ----------
+    function renderRadar(d) {
+      var rd = d.radarChartData || { metrics: [], series: [] };
+      document.getElementById('radarTag').innerHTML = d.prevBatch?.day ? '对比 <b>' + d.prevBatch.day + '</b>' : '最新批次';
+
+      setOpt('radarChart', {
+        tooltip: {
+          trigger: 'item',
+          backgroundColor: '#ffffff',
+          borderColor: '#e2e8f0',
+          textStyle: { color: '#0f172a', fontSize: 11 },
+          extraCssText: 'box-shadow: 0 4px 12px rgba(0,0,0,0.08); border-radius: 8px;'
+        },
+        legend: {
+          bottom: 0,
+          icon: 'circle',
+          itemWidth: 8,
+          itemHeight: 8,
+          textStyle: { color: '#64748b', fontSize: 11 }
+        },
+        radar: {
+          indicator: rd.metrics.map(function (m) { return { name: m.label, max: 100 }; }),
+          radius: '62%',
+          center: ['50%', '46%'],
+          splitNumber: 4,
+          axisName: { color: '#475569', fontSize: 11 },
+          splitLine: { lineStyle: { color: '#e2e8f0' } },
+          splitArea: {
+            areaStyle: {
+              color: ['rgba(248, 250, 252, 0.6)', 'rgba(241, 245, 249, 0.8)']
+            }
+          },
+          axisLine: { lineStyle: { color: '#e2e8f0' } }
+        },
+        series: [{
+          type: 'radar',
+          symbol: 'circle',
+          symbolSize: 4,
+          data: rd.series.map(function (s, idx) {
+            var color = idx === 0 ? '#0284c7' : '#7c3aed';
+            return {
+              name: s.label,
+              value: (s.values || []).map(function (v) { return Math.round(Number(v) || 0); }),
+              lineStyle: { width: 2, color: color },
+              itemStyle: { color: color },
+              areaStyle: { color: idx === 0 ? 'rgba(2, 132, 199, 0.22)' : 'rgba(124, 58, 237, 0.15)' }
+            };
+          })
+        }]
+      });
+    }
+
+    // ---------- 4. 手环动态监测核心（5 卡片 + 双轴趋势曲线） ----------
+    function renderBands(d) {
+      var bs = d.bandSummary || {};
+      var alerts = d.bandAlerts || [];
+      document.getElementById('bandTag').innerHTML = '设备 <b>' + (bs.total || 0) + '</b> · 绑定 <b>' + (bs.mappedMacs || 0) + '</b>';
+
+      // 药丸芯片
+      document.getElementById('bandPills').innerHTML =
+        '<span class="mini-pill green"><span class="dot"></span>在线 <b>' + (bs.online != null ? bs.online : 0) + '</b></span>'
+        + '<span class="mini-pill"><span class="dot" style="background:#94a3b8;"></span>离线 <b>' + (bs.offline != null ? bs.offline : 0) + '</b></span>'
+        + '<span class="mini-pill cyan"><span class="dot"></span>活跃幼儿 <b>' + (bs.childrenOnlineBounded != null ? bs.childrenOnlineBounded : 0) + '</b></span>'
+        + (alerts.length ? '<span class="mini-pill red"><span class="dot"></span>异常告警 <b>' + alerts.length + '</b></span>' : '<span class="mini-pill green"><span class="dot"></span>体征平稳</span>');
+
+      // 4 大卡片均值
+      var ah = d.avgHealth || {};
+      var sampleTxt = ah.sampleCount ? (ah.sampleCount + ' 台有效') : '基线参考';
+      document.getElementById('avgHr').textContent = ah.avgHr != null ? ah.avgHr : '--';
+      document.getElementById('avgHrSub').textContent = sampleTxt;
+      document.getElementById('avgSpo2').textContent = ah.avgSpo2 != null ? ah.avgSpo2 : '--';
+      document.getElementById('avgSpo2Sub').textContent = sampleTxt;
+      document.getElementById('avgTp').textContent = ah.avgTp != null ? ah.avgTp : '--';
+      document.getElementById('avgTpSub').textContent = sampleTxt;
+      document.getElementById('avgBp').textContent = ah.avgBp != null ? ah.avgBp : '--';
+      document.getElementById('avgBpSub').textContent = sampleTxt;
+
+      // 第 5 个指标卡：体征预警
+      var alertTotalNum = document.getElementById('alertTotalNum');
+      var alertTotalSub = document.getElementById('alertTotalSub');
+      var alertCount = alerts.length;
+      alertTotalNum.textContent = alertCount;
+      if (alertCount > 0) {
+        alertTotalNum.style.color = '#dc2626';
+        alertTotalSub.textContent = '需关注处置';
+        alertTotalSub.style.color = '#dc2626';
+      } else {
+        alertTotalNum.textContent = '0';
+        alertTotalNum.style.color = '#059669';
+        alertTotalSub.textContent = '全员体征正常';
+        alertTotalSub.style.color = '#059669';
+      }
+
+      // 动态走势折线：过滤掉无效的前缀空点，并且合理配置双 Y 轴与网格边距
+      var rawCurve = d.curveData || [];
+      // 找到有实际心率/血氧数据的有效点
+      var validPoints = rawCurve.filter(function (c) { return c.avgHr != null || c.avgSpo2 != null; });
+      var api = validPoints.length >= 2 ? validPoints : rawCurve;
+
+      var emptyEl = document.getElementById('curveEmpty');
+      var chartEl = document.getElementById('curveChart');
+
+      if (api && api.length && api.some(function (c) { return c.avgHr != null || c.avgSpo2 != null; })) {
+        emptyEl.style.display = 'none';
+        chartEl.style.display = 'block';
+
+        setOpt('curveChart', {
+          tooltip: {
+            trigger: 'axis',
+            backgroundColor: '#ffffff',
+            borderColor: '#e2e8f0',
+            textStyle: { color: '#0f172a', fontSize: 11 },
+            extraCssText: 'box-shadow: 0 4px 12px rgba(0,0,0,0.08); border-radius: 8px;'
+          },
+          legend: {
+            top: 0,
+            left: 'center',
+            icon: 'circle',
+            itemWidth: 8,
+            itemHeight: 8,
+            itemGap: 16,
+            textStyle: { color: '#475569', fontSize: 10.5, fontWeight: 500 }
+          },
+          grid: { left: 10, right: 44, top: 32, bottom: 8, containLabel: true },
+          xAxis: {
+            type: 'category',
+            data: api.map(function (c) { return c.t; }),
+            boundaryGap: false,
+            axisLabel: { color: '#94a3b8', fontSize: 9.5 },
+            axisLine: { lineStyle: { color: '#e2e8f0' } }
+          },
+          yAxis: [
+            {
+              type: 'value',
+              name: '心率 (bpm)',
+              scale: true,
+              nameTextStyle: { color: '#64748b', fontSize: 10.5, padding: [0, 0, 0, 8] },
+              axisLine: { show: false },
+              axisTick: { show: false },
+              axisLabel: { color: '#94a3b8', fontSize: 10 },
+              splitLine: { lineStyle: { color: '#f1f5f9', type: 'dashed' } }
+            },
+            {
+              type: 'value',
+              name: '血氧 (%)',
+              min: 90,
+              max: 100,
+              nameTextStyle: { color: '#64748b', fontSize: 10.5, padding: [0, 8, 0, 0] },
+              axisLine: { show: false },
+              axisTick: { show: false },
+              axisLabel: { color: '#94a3b8', fontSize: 10 },
+              splitLine: { show: false }
+            }
+          ],
+          series: [
+            {
+              name: '均值心率',
+              type: 'line',
+              smooth: true,
+              showSymbol: false,
+              lineStyle: { width: 2.2, color: '#e11d48' },
+              itemStyle: { color: '#e11d48' },
+              areaStyle: {
+                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                  { offset: 0, color: 'rgba(225, 29, 72, 0.18)' },
+                  { offset: 1, color: 'rgba(225, 29, 72, 0.0)' }
+                ])
+              },
+              data: api.map(function (c) { return c.avgHr; })
+            },
+            {
+              name: '均值血氧',
+              type: 'line',
+              yAxisIndex: 1,
+              smooth: true,
+              showSymbol: false,
+              lineStyle: { width: 2.2, color: '#0284c7' },
+              itemStyle: { color: '#0284c7' },
+              data: api.map(function (c) { return c.avgSpo2; })
+            }
+          ]
+        });
+      } else {
+        if (charts.curveChart) { charts.curveChart.dispose(); delete charts.curveChart; }
+        chartEl.style.display = 'none';
+        emptyEl.style.display = 'flex';
+      }
+
+      // 异常事件渲染
+      var alertCountEl = document.getElementById('alertCountTag');
+      alertCountEl.textContent = alerts.length ? (alerts.length + ' 起') : '无异常';
+      var alertBox = document.getElementById('bandAlerts');
+      if (alerts.length) {
+        alertBox.innerHTML = alerts.slice(0, 4).map(function (a) {
+          var name = a.child_name || a.band_mac;
+          var msg = a.kind === 'high' ? ('心率偏高 ' + a.heart_rate) : (a.kind === 'low' ? ('心率偏低 ' + a.heart_rate) : 'SOS 紧急');
+          return '<div class="feed-row" style="background:#fff1f2;border-color:#fecdd3;">'
+            + '<span class="feed-time">' + (a.last_time ? a.last_time.slice(11, 19) : '--') + '</span>'
+            + '<span class="feed-name" style="color:#be123c;">' + name + '</span>'
+            + '<span class="feed-val hr">' + msg + '</span>'
+            + '</div>';
+        }).join('');
+      } else {
+        alertBox.innerHTML = '<div style="font-size:11px;color:#059669;padding:8px 4px;text-align:center;font-weight:600;">✨ 当前各监测项运转平稳，无异常预警</div>';
+      }
+
+      // 最近流水
+      var recs = d.recentBands || [];
+      var recBox = document.getElementById('recentList');
+      if (recs.length) {
+        recBox.innerHTML = recs.slice(0, 4).map(function (r) {
+          return '<div class="feed-row">'
+            + '<span class="feed-time">' + r.t.slice(11, 19) + '</span>'
+            + '<span class="feed-name">' + r.band_mac.slice(-5) + '</span>'
+            + '<span class="feed-val hr">' + (r.hr ? (r.hr + 'bpm') : '--') + '</span>'
+            + '<span class="feed-val tp">' + (r.tp ? (r.tp + '°') : '--') + '</span>'
+            + '<span class="feed-val sp">' + (r.sp ? (r.sp + '%') : '--') + '</span>'
+            + '</div>';
+        }).join('');
+      } else {
+        recBox.innerHTML = '<div style="font-size:11px;color:var(--text-muted);padding:8px 4px;text-align:center;">暂无近期上报数据</div>';
+      }
+    }
+
+    // ---------- 5. 重点关注名单（修复完整显示与内滚动） ----------
+    function renderAttention(d) {
+      var list = d.attentionChildren || [];
+      document.getElementById('attnTag').innerHTML = '共 <b>' + (d.attentionTotal || 0) + '</b> 人';
+      var box = document.getElementById('attnList');
+      if (list.length) {
+        box.innerHTML = list.map(function (r) {
+          var color = r.vest?.color || '#0284c7';
+          var why = r.reason || r.tags || '重点关注';
+          return '<div class="attention-card">'
+            + '<div class="vest-bar" style="background:' + color + ';"></div>'
+            + '<div class="att-info">'
+            + '<div class="att-row-1"><span class="att-name">' + r.name + '</span><span class="att-class">' + (r.class_name || '') + '</span></div>'
+            + '<div class="att-reason" title="' + why + '">' + why + '</div>'
+            + '</div></div>';
+        }).join('');
+      } else {
+        box.innerHTML = '<div style="font-size:11px;color:var(--text-muted);text-align:center;padding:18px 0;">当前展示范围暂无重点关注人员</div>';
+      }
+    }
+
+    window.addEventListener('resize', function () {
+      Object.keys(charts).forEach(function (k) {
+        if (charts[k]) charts[k].resize();
+      });
+    });
+
+    load();
+    setInterval(load, 30000);
+  })();
+  </script>
+</body>
+</html>

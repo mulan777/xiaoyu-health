@@ -14,7 +14,16 @@ const { computeFitnessResult } = require('../lib/fitness-scoring');
 const { buildFitnessSummaries, buildRadarChartData } = require('../lib/fitness-analytics');
 const { audit, buildAuditChanges, buildAuditSnapshot, formatAuditValue, pruneJsonLog } = require('../lib/logger');
 
-module.exports = function mountAdminRoutes(app, upload) {
+// 本地时区日期提取（替代 toISOString 截取，避免 UTC 错位 -1 天）
+function fmtLocalDate(value) {
+  if (!value) return '';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+module.exports = function mountAdminRoutes(app, upload, ctx = {}) {
+  const { kickUserSessions } = ctx;
   const adminOnly = requireRole('admin');
   const PANEL_PERMISSIONS = {
     overview: 'ops.overview', site: 'ops.site', ai: 'ops.site', logs: 'ops.logs',
@@ -380,7 +389,12 @@ module.exports = function mountAdminRoutes(app, upload) {
     };
     const orderExpr = sortFieldMap[sortField] || 'fr.test_date';
     const orderDir = sortOrder === 'asc' ? 'ASC' : 'DESC';
-    const dateOnly = (value) => value ? new Date(value).toISOString().slice(0, 10) : '';
+    const dateOnly = (value) => {
+      if (!value) return '';
+      const d = new Date(value);
+      if (Number.isNaN(d.getTime())) return '';
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    };
     const latestBatchRecords = (items) => {
       const list = Array.isArray(items) ? items : [];
       const latestDay = list.length ? dateOnly(list[0].test_date) : '';
@@ -569,7 +583,7 @@ module.exports = function mountAdminRoutes(app, upload) {
     const trendMap = new Map();
     for (const item of allScopedRecords.slice().reverse()) {
       if (!item.test_date) continue;
-      const day = new Date(item.test_date).toISOString().slice(0, 10);
+      const day = fmtLocalDate(item.test_date);
       if (!trendMap.has(day)) trendMap.set(day, { label: day, totalScoreSum: 0, totalScoreCount: 0, recordCount: 0 });
       const bucket = trendMap.get(day);
       bucket.recordCount += 1;
@@ -620,7 +634,7 @@ module.exports = function mountAdminRoutes(app, upload) {
           className: item.class_name || '-',
           gender: item.gender || '-',
           birthDate: item.birth_date || '',
-          testDate: item.test_date ? new Date(item.test_date).toISOString().slice(0, 10) : '',
+          testDate: item.test_date ? fmtLocalDate(item.test_date) : '',
           totalScore: item.total_score ?? '-',
           rating: item.rating || '-',
           heightCm: item.height_cm ?? '-',
@@ -733,7 +747,7 @@ module.exports = function mountAdminRoutes(app, upload) {
     }
 
     const attentionReason = normalizeText(req.body.attentionReason);
-    const attentionStartDate = normalizeDateInput(req.body.attentionStartDate) || new Date().toISOString().slice(0, 10);
+    const attentionStartDate = normalizeDateInput(req.body.attentionStartDate) || fmtLocalDate(new Date());
     const attentionEndDateRaw = normalizeDateInput(req.body.attentionEndDate);
     const attentionEndDate = attentionEndDateRaw || null;
     const attentionTags = extractAttentionTags(req.body.attentionTags, req.body.attentionTagsExtra);
@@ -819,7 +833,7 @@ module.exports = function mountAdminRoutes(app, upload) {
       activeGroup,
       message: normalizeText(req.query.message),
       query: req.query || {},
-      today: new Date().toISOString().slice(0, 10),
+      today: fmtLocalDate(new Date()),
       visiblePanels,
       roles,
       hasPerm: (perm) => hasPermission(req.session.user, perm),
@@ -930,10 +944,11 @@ module.exports = function mountAdminRoutes(app, upload) {
       return res.status(403).render('error', { message: '无权限执行该批量操作' });
     }
     if (action === 'enable') { await dbQuery(`UPDATE users SET enabled = 1 WHERE id IN (${ph})`, selectedIds); audit('users_batch_enable', { actor: req.session.user, action: '批量启用用户', target: `批量启用用户（${selectedIds.length}项）`, batchAction: action, selectedIds, targetNames: selectedNames, ip: req.ip, message: `操作人：${req.session.user && (req.session.user.name || req.session.user.username) || '系统'}；批量启用：${selectedSummary}` }); return res.redirect(buildPanelUrl('已批量启用所选用户', 'users', redirectExtras)); }
-    if (action === 'disable') { const affected = selectedUsers.filter((item) => item.username !== 'admin'); await dbQuery(`UPDATE users SET enabled = 0 WHERE id IN (${ph}) AND username <> ?`, [...selectedIds, 'admin']); audit('users_batch_disable', { actor: req.session.user, action: '批量禁用用户', target: `批量禁用用户（${affected.length}项）`, batchAction: action, selectedIds, targetNames: affected.map((item) => item.name || item.username || `ID:${item.id}`), ip: req.ip, message: `操作人：${req.session.user && (req.session.user.name || req.session.user.username) || '系统'}；批量禁用：${summarizeNames(affected.map((item) => item.name || item.username || `ID:${item.id}`))}` }); return res.redirect(buildPanelUrl('已批量禁用所选用户（默认 admin 除外）', 'users', redirectExtras)); }
+    if (action === 'disable') { const affected = selectedUsers.filter((item) => item.username !== 'admin'); await dbQuery(`UPDATE users SET enabled = 0 WHERE id IN (${ph}) AND username <> ?`, [...selectedIds, 'admin']); if (kickUserSessions) { for (const u of affected) { if (Number(u.id) !== Number(req.session.user.id)) await kickUserSessions(u.id); } } audit('users_batch_disable', { actor: req.session.user, action: '批量禁用用户', target: `批量禁用用户（${affected.length}项）`, batchAction: action, selectedIds, targetNames: affected.map((item) => item.name || item.username || `ID:${item.id}`), ip: req.ip, message: `操作人：${req.session.user && (req.session.user.name || req.session.user.username) || '系统'}；批量禁用：${summarizeNames(affected.map((item) => item.name || item.username || `ID:${item.id}`))}` }); return res.redirect(buildPanelUrl('已批量禁用所选用户（默认 admin 除外）', 'users', redirectExtras)); }
     if (action === 'delete') {
       const affected = selectedUsers.filter((item) => item.username !== 'admin');
       await dbQuery(`DELETE FROM users WHERE id IN (${ph}) AND username <> ?`, [...selectedIds, 'admin']);
+      if (kickUserSessions) { for (const u of affected) { await kickUserSessions(u.id); } }
       const totalBeforeDelete = await dbQuery(
         `SELECT COUNT(*) AS total
            FROM users u
@@ -954,8 +969,8 @@ module.exports = function mountAdminRoutes(app, upload) {
       audit('users_batch_delete', { actor: req.session.user, action: '批量删除用户', target: `批量删除用户（${affected.length}项）`, batchAction: action, selectedIds, targetNames: affected.map((item) => item.name || item.username || `ID:${item.id}`), ip: req.ip, message: `操作人：${req.session.user && (req.session.user.name || req.session.user.username) || '系统'}；批量删除：${summarizeNames(affected.map((item) => item.name || item.username || `ID:${item.id}`))}` });
       return res.redirect(buildPanelUrl('已批量删除所选用户（默认 admin 除外）', 'users', { ...redirectExtras, userPage: safePage, pageSize }));
     }
-    if (action === 'setClass') { if (!classId) return res.redirect(buildPanelUrl('批量设置班级失败：请选择目标班级', 'users', redirectExtras)); await dbQuery(`UPDATE users SET class_id = ? WHERE role = 'user' AND id IN (${ph})`, [classId, ...selectedIds]); audit('users_batch_set_class', { actor: req.session.user, action: '批量设置用户班级', target: `批量设置用户班级（${selectedIds.length}项）`, batchAction: action, selectedIds, targetNames: selectedNames, classId, ip: req.ip, message: `操作人：${req.session.user && (req.session.user.name || req.session.user.username) || '系统'}；设置班级用户：${selectedSummary}` }); return res.redirect(buildPanelUrl('已批量设置用户所属班级', 'users', redirectExtras)); }
-    if (action === 'clearClass') { await dbQuery(`UPDATE users SET class_id = NULL WHERE role = 'user' AND id IN (${ph})`, selectedIds); audit('users_batch_clear_class', { actor: req.session.user, action: '批量清空用户班级', target: `批量清空用户班级（${selectedIds.length}项）`, batchAction: action, selectedIds, targetNames: selectedNames, ip: req.ip, message: `操作人：${req.session.user && (req.session.user.name || req.session.user.username) || '系统'}；清空班级绑定用户：${selectedSummary}` }); return res.redirect(buildPanelUrl('已批量清空教师绑定班级', 'users', redirectExtras)); }
+    if (action === 'setClass') { if (!classId) return res.redirect(buildPanelUrl('批量设置班级失败：请选择目标班级', 'users', redirectExtras)); await dbQuery(`UPDATE users SET class_id = ? WHERE role = 'user' AND id IN (${ph})`, [classId, ...selectedIds]); if (kickUserSessions) { for (const id of selectedIds) { if (Number(id) !== Number(req.session.user.id)) await kickUserSessions(id); } } audit('users_batch_set_class', { actor: req.session.user, action: '批量设置用户班级', target: `批量设置用户班级（${selectedIds.length}项）`, batchAction: action, selectedIds, targetNames: selectedNames, classId, ip: req.ip, message: `操作人：${req.session.user && (req.session.user.name || req.session.user.username) || '系统'}；设置班级用户：${selectedSummary}` }); return res.redirect(buildPanelUrl('已批量设置用户所属班级', 'users', redirectExtras)); }
+    if (action === 'clearClass') { await dbQuery(`UPDATE users SET class_id = NULL WHERE role = 'user' AND id IN (${ph})`, selectedIds); if (kickUserSessions) { for (const id of selectedIds) { if (Number(id) !== Number(req.session.user.id)) await kickUserSessions(id); } } audit('users_batch_clear_class', { actor: req.session.user, action: '批量清空用户班级', target: `批量清空用户班级（${selectedIds.length}项）`, batchAction: action, selectedIds, targetNames: selectedNames, ip: req.ip, message: `操作人：${req.session.user && (req.session.user.name || req.session.user.username) || '系统'}；清空班级绑定用户：${selectedSummary}` }); return res.redirect(buildPanelUrl('已批量清空教师绑定班级', 'users', redirectExtras)); }
     return res.redirect(buildPanelUrl('未识别的批量操作', 'users', redirectExtras));
   }));
 
@@ -967,6 +982,10 @@ module.exports = function mountAdminRoutes(app, upload) {
     if (rows[0].username === 'admin') return res.redirect(buildPanelUrl('默认 admin 账号不可禁用', 'users', redirectExtras));
     const nextEnabled = rows[0].enabled ? 0 : 1;
     await dbQuery('UPDATE users SET enabled = ? WHERE id = ?', [nextEnabled, userId]);
+    // 2026-09-08 安全加固(P1-8.7)：禁用用户立即踢掉其在线会话
+    if (nextEnabled === 0 && kickUserSessions && Number(userId) !== Number(req.session.user.id)) {
+      await kickUserSessions(userId);
+    }
     const targetName = rows[0].name || rows[0].username;
     audit('user_toggled', { actor: req.session.user, action: nextEnabled ? '启用用户' : '禁用用户', target: targetName, username: rows[0].username, targetNames: [targetName], enabled: nextEnabled, ip: req.ip, message: `操作人：${req.session.user && (req.session.user.name || req.session.user.username) || '系统'}；${nextEnabled ? '启用' : '禁用'}用户：${targetName}（${rows[0].username}）` });
     res.redirect(buildPanelUrl('用户状态已更新', 'users', redirectExtras));
@@ -980,6 +999,10 @@ module.exports = function mountAdminRoutes(app, upload) {
     const rows = await dbQuery('SELECT id, username, name FROM users WHERE id = ? LIMIT 1', [userId]);
     if (!rows.length) return res.redirect(buildPanelUrl('重置失败：用户不存在', 'users', redirectExtras));
     await dbQuery('UPDATE users SET password_hash = ? WHERE id = ?', [bcrypt.hashSync(password, 10), userId]);
+    // 2026-09-08 安全加固(P1-8.7)：重置密码后踢掉旧会话
+    if (kickUserSessions && Number(userId) !== Number(req.session.user.id)) {
+      await kickUserSessions(userId);
+    }
     const targetName = rows[0] ? (rows[0].name || rows[0].username) : `用户#${userId}`;
     audit('user_password_reset', { actor: req.session.user, action: '重置用户密码', target: targetName, username: rows[0] ? rows[0].username : '', targetNames: [targetName], ip: req.ip, message: `操作人：${req.session.user && (req.session.user.name || req.session.user.username) || '系统'}；重置密码用户：${targetName}${rows[0] && rows[0].username ? `（${rows[0].username}）` : ''}` });
     res.redirect(buildPanelUrl('用户密码已重置', 'users', redirectExtras));
@@ -1010,6 +1033,13 @@ module.exports = function mountAdminRoutes(app, upload) {
     await dbQuery('UPDATE users SET name = ?, username = ?, role = ?, birth_date = ?, class_id = ? WHERE id = ?', [name, username, role, birthDate, classId, userId]);
     if (password) {
       await dbQuery('UPDATE users SET password_hash = ? WHERE id = ?', [bcrypt.hashSync(password, 10), userId]);
+    }
+    // 2026-09-08 安全加固(P1-8.7)：角色/班级/密码任一变化即踢旧会话（权限与身份已变）
+    const authChanged = current.role !== role
+      || Number(current.class_id || 0) !== Number(classId || 0)
+      || !!password;
+    if (authChanged && kickUserSessions && Number(userId) !== Number(req.session.user.id)) {
+      await kickUserSessions(userId);
     }
     const targetClassRows = classId ? await dbQuery('SELECT name FROM classes WHERE id = ? LIMIT 1', [classId]) : [];
     audit('user_updated', {
@@ -1232,7 +1262,7 @@ module.exports = function mountAdminRoutes(app, upload) {
   // ========== 体测数据录入 ==========
   app.post('/admin/fitness/add', adminOnly, requirePermission('data.fitness.create'), requireWritable(), asyncHandler(async (req, res) => {
     const childId = toNullableInt(req.body.childId);
-    const testDate = normalizeText(req.body.testDate) || new Date().toISOString().slice(0, 10);
+    const testDate = normalizeText(req.body.testDate) || fmtLocalDate(new Date());
     const redirectExtras = buildFitnessQueryExtras(req.body);
     if (!childId) return res.redirect(buildFitnessUrl('体测录入失败：请选择幼儿', redirectExtras));
 
@@ -1296,7 +1326,7 @@ module.exports = function mountAdminRoutes(app, upload) {
 
     if (existingRows.length) {
       const previousAuditState = {
-        testDate: existingRows[0].test_date ? new Date(existingRows[0].test_date).toISOString().slice(0, 10) : testDate,
+        testDate: existingRows[0].test_date ? fmtLocalDate(existingRows[0].test_date) : testDate,
         heightCm: existingRows[0].height_cm,
         weightKg: existingRows[0].weight_kg,
         bmi: existingRows[0].bmi,
@@ -1378,7 +1408,7 @@ module.exports = function mountAdminRoutes(app, upload) {
       const childName = normalizeText(pickValue(row, ['幼儿姓名', '姓名', 'name']));
       const rawTestDate = pickValue(row, ['测试日期', 'date', '日期']);
       const rawTestDateText = normalizeText(rawTestDate);
-      const testDate = rawTestDateText ? normalizeFlexibleDate(rawTestDateText) : new Date().toISOString().slice(0, 10);
+      const testDate = rawTestDateText ? normalizeFlexibleDate(rawTestDateText) : fmtLocalDate(new Date());
       const rowHasAnyValue = [className, childName, rawTestDateText].some(Boolean) || metricSpecs.some((spec) => normalizeText(pickValue(row, spec.aliases)));
       if (!rowHasAnyValue) { skipped++; continue; }
       if (!childName) {
@@ -1571,7 +1601,7 @@ module.exports = function mountAdminRoutes(app, upload) {
     }
 
     // 预检查唯一约束：同一幼儿 同一天已有另一条记录时提供明确提示
-    if (testDate !== (record.test_date ? new Date(record.test_date).toISOString().slice(0, 10) : '')) {
+    if (testDate !== (record.test_date ? fmtLocalDate(record.test_date) : '')) {
       const dupRows = await dbQuery(
         'SELECT id FROM fitness_records WHERE child_id = ? AND test_date = ? AND id <> ? LIMIT 1',
         [record.child_id, testDate, recordId]
@@ -1614,7 +1644,7 @@ module.exports = function mountAdminRoutes(app, upload) {
     }
 
     const previousAuditState = {
-      testDate: record.test_date ? new Date(record.test_date).toISOString().slice(0, 10) : '',
+      testDate: record.test_date ? fmtLocalDate(record.test_date) : '',
       heightCm: record.height_cm,
       weightKg: record.weight_kg,
       bmi: record.bmi,
@@ -1667,7 +1697,7 @@ module.exports = function mountAdminRoutes(app, upload) {
       recordId,
       testDate: record.test_date,
       ip: req.ip,
-      message: `【高亮】${req.session.user && (req.session.user.name || req.session.user.username) || '系统'} 删除了 ${record.child_name} 在 ${record.test_date ? new Date(record.test_date).toISOString().slice(0, 10) : '-'} 的体测记录（ID:${recordId}）`
+      message: `【高亮】${req.session.user && (req.session.user.name || req.session.user.username) || '系统'} 删除了 ${record.child_name} 在 ${record.test_date ? fmtLocalDate(record.test_date) : '-'} 的体测记录（ID:${recordId}）`
     });
     res.redirect(buildFitnessUrl(`${record.child_name} 的体测记录已删除`, redirectExtras));
   }));
@@ -1693,7 +1723,7 @@ module.exports = function mountAdminRoutes(app, upload) {
       ' fr.total_score, fr.rating' +
       ' FROM fitness_records fr WHERE fr.child_id = ? ORDER BY fr.test_date ASC';
     const records = await dbQuery(sql, [childId]);
-    res.json({ ok: true, child: { id: child.id, name: child.name, gender: child.gender, birthDate: child.birth_date ? new Date(child.birth_date).toISOString().slice(0, 10) : '' }, records: records.map(r => ({ id: r.id, testDate: r.test_date ? new Date(r.test_date).toISOString().slice(0, 10) : '', heightCm: r.height_cm, weightKg: r.weight_kg, bmi: r.bmi, gripKg: r.grip_kg, gripScore: r.grip_score, longJumpCm: r.long_jump_cm, jumpScore: r.jump_score, sitReachCm: r.sit_reach_cm, sitScore: r.sit_score, doubleJumpSec: r.double_jump_sec, djumpScore: r.djump_score, obstacleRunSec: r.obstacle_run_sec, obstacleScore: r.obstacle_score, balanceBeamSec: r.balance_beam_sec, balanceScore: r.balance_score, totalScore: r.total_score, rating: r.rating })) });
+    res.json({ ok: true, child: { id: child.id, name: child.name, gender: child.gender, birthDate: child.birth_date ? fmtLocalDate(child.birth_date) : '' }, records: records.map(r => ({ id: r.id, testDate: r.test_date ? fmtLocalDate(r.test_date) : '', heightCm: r.height_cm, weightKg: r.weight_kg, bmi: r.bmi, gripKg: r.grip_kg, gripScore: r.grip_score, longJumpCm: r.long_jump_cm, jumpScore: r.jump_score, sitReachCm: r.sit_reach_cm, sitScore: r.sit_score, doubleJumpSec: r.double_jump_sec, djumpScore: r.djump_score, obstacleRunSec: r.obstacle_run_sec, obstacleScore: r.obstacle_score, balanceBeamSec: r.balance_beam_sec, balanceScore: r.balance_score, totalScore: r.total_score, rating: r.rating })) });
   }));
 
   app.post('/admin/fitness/batch-delete', adminOnly, requirePermission('data.fitness.delete'), requireWritable(), asyncHandler(async (req, res) => {
@@ -1731,7 +1761,7 @@ module.exports = function mountAdminRoutes(app, upload) {
       班级: r.class_name || '',
       幼儿姓名: r.child_name || '',
       性别: r.gender || '',
-      测试日期: r.test_date ? new Date(r.test_date).toISOString().slice(0, 10) : '',
+      测试日期: r.test_date ? fmtLocalDate(r.test_date) : '',
       '身高(CM)': r.height_cm ?? '',
       身高分: r.height_score ?? '',
       '体重(KG)': r.weight_kg ?? '',

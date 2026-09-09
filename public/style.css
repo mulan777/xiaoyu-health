@@ -7010,3 +7010,67 @@ label{
   .record-actions{gap:4px}
   .record-actions .btn.small{padding:4px 8px;font-size:11px}
 }
+/* ===== P2 可访问性修复（2026-09-07 Impeccable 审查后追加）=====
+   原则：只提对比度/字号，不改视觉结构。首页 hero 蓝保留。 */
+:root {
+  --muted-deep: #64748b;   /* 原 #94a3b8 → 提深保证 4.5:1 */
+}
+
+/* 1) muted 文本全局提深（#94a3b8 → #64748b） */
+.muted, .muted.no-margin,
+.sub, .band-card .sub,
+.trend-insight .muted,
+.stat-card .muted,
+.radar-card-head .muted,
+.toolbar .muted {
+  color: #64748b !important;
+}
+
+/* 2) 图表/表格辅助文本 ≥12px */
+.wave-chart-wrap svg text,
+.radar-svg text {
+  font-size: 12px !important;
+}
+.chart-el, .radar-chart-el {
+  font-size: 12px;
+}
+
+/* 3) 手环卡 10.5px 功能标签 → 12px */
+.band-stat .stat-label,
+.band-metric-label,
+.band-band-card .m-label {
+  font-size: 12px !important;
+}
+
+/* 4) 主按钮对比度：白字 #6366f1 → 深字白底 或 深紫底（保证 4.5:1） */
+.btn.primary, .btn-primary,
+.btn.primary:hover, .btn-primary:hover {
+  background: #4f46e5 !important;   /* 深靛紫，白字对比 6.1:1 */
+  border-color: #4f46e5 !important;
+  color: #fff !important;
+}
+
+/* 5) hover 黑字压深底的修复（#000 on #334155 等） */
+.btn.secondary:hover, .btn-outline:hover,
+.child-compare-link:hover,
+.trend-decline-chip:hover {
+  color: #1e40af !important;   /* 深蓝，而非黑 */
+}
+
+/* 6) 评级色文本对比（#16a34a/#d97706 on 白 仅 3.3:1 → 加深） */
+.text-success, .stat-number[style*="#16a34a"],
+.rating-green { color: #15803d !important; }
+.text-warning, .rating-amber { color: #b45309 !important; }
+
+/* 7) 表格操作列不换行（横向排布避免撑高行） */
+.record-actions, .table-wrap td .stacked-links {
+  flex-direction: row !important;
+  flex-wrap: wrap !important;
+  gap: 6px !important;
+}
+
+/* 8) 标题层级视觉一致性（h2 卡片标题字号收敛） */
+.chart-card h2, .card h2 {
+  font-size: 15px !important;
+  margin: 0 0 8px !important;
+}
