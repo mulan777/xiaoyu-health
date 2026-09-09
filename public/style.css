@@ -663,7 +663,7 @@ input:focus, textarea:focus, select:focus {
 .admin-layout {
   display: grid;
   grid-template-columns: 240px 1fr;
-  gap: 0;
+  gap: 24px;
   align-items: start;
 }
 .sidebar-brand {
@@ -7073,4 +7073,1052 @@ label{
 .chart-card h2, .card h2 {
   font-size: 15px !important;
   margin: 0 0 8px !important;
+}
+/* ================================================================
+   COLLAPSIBLE SIDEBAR & RESPONSIVE REFACTOR (2026-09-09)
+   ================================================================ */
+.main-nav-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #1d1d1f;
+  text-align: left;
+  cursor: pointer;
+  transition: all .2s ease;
+}
+.main-nav-header:hover {
+  background: rgba(0, 113, 227, 0.05);
+  color: #0071e3;
+}
+.main-nav-header.active {
+  background: rgba(0, 113, 227, 0.08);
+  color: #0071e3;
+  font-weight: 600;
+}
+.main-nav-header .main-nav-title {
+  font-size: 14px;
+  font-weight: 600;
+  flex: 1 1 auto;
+}
+.nav-group-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  background: rgba(100, 116, 139, 0.12);
+  padding: 2px 7px;
+  border-radius: 999px;
+  margin-right: 8px;
+}
+.nav-chevron {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid #94a3b8;
+  border-bottom: 2px solid #94a3b8;
+  transform: rotate(-45deg);
+  transition: transform .25s ease;
+  flex-shrink: 0;
+}
+.nav-group-card.is-expanded .nav-chevron {
+  transform: rotate(45deg);
+}
+
+/* 默认收起子菜单，展开时平滑展示 */
+.nav-group-card .nav-submenu {
+  display: none;
+  grid-gap: 6px;
+  padding: 4px 0 6px 12px;
+}
+.nav-group-card.is-expanded .nav-submenu {
+  display: grid;
+  animation: navSubmenuFadeIn .2s ease-out;
+}
+@keyframes navSubmenuFadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.sidebar-subtitle-mobile {
+  display: none;
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+/* 电脑端优化：紧凑精致，hover反馈 */
+@media (min-width: 861px) {
+  .admin-sidebar {
+    width: 240px;
+    flex-shrink: 0;
+    padding: 16px 14px;
+  }
+  .sidebar-link {
+    min-height: 38px;
+    padding: 8px 12px;
+    font-size: 13px;
+    border-radius: 7px;
+  }
+  .nav-group-card {
+    gap: 4px;
+  }
+}
+
+/* 手机端深度适配：彻底解决目录过长与两边空白 */
+@media (max-width: 860px) {
+  .sidebar-subtitle-mobile {
+    display: inline-block;
+  }
+  .container.admin-container {
+    width: 100% !important;
+    padding: 10px 10px 24px !important;
+  }
+  .admin-hero {
+    padding: 16px !important;
+    border-radius: 14px !important;
+    margin-bottom: 12px !important;
+    gap: 12px !important;
+  }
+  .admin-hero h1 {
+    font-size: 20px !important;
+    line-height: 1.3 !important;
+    margin: 4px 0 6px !important;
+  }
+  .admin-hero p {
+    font-size: 13px !important;
+    line-height: 1.5 !important;
+  }
+  .admin-hero-actions {
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+  }
+  .admin-hero-actions .btn {
+    padding: 6px 14px !important;
+    font-size: 13px !important;
+  }
+  .admin-layout {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+  }
+  .admin-sidebar {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 14px !important;
+    border-radius: 14px !important;
+    margin-bottom: 0 !important;
+    display: block !important;
+    position: static !important;
+    overflow: visible !important;
+  }
+  .sidebar-menu {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+  .nav-group-card {
+    width: 100% !important;
+    border: 1px solid rgba(226, 232, 240, 0.8) !important;
+    border-radius: 10px !important;
+    padding: 2px !important;
+    background: #ffffff !important;
+  }
+  .nav-group-card.active {
+    border-color: rgba(0, 113, 227, 0.3) !important;
+    background: rgba(248, 250, 252, 0.9) !important;
+  }
+  .main-nav-header {
+    min-height: 44px !important;
+    padding: 10px 14px !important;
+  }
+  .nav-submenu {
+    padding: 4px 8px 10px 8px !important;
+    gap: 6px !important;
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .sidebar-link {
+    min-height: 40px !important;
+    padding: 8px 10px !important;
+    font-size: 13px !important;
+    border-radius: 8px !important;
+    justify-content: flex-start !important;
+  }
+  .admin-main.shell-main {
+    padding: 0 !important;
+    width: 100% !important;
+  }
+}
+
+/* ==========================================================================
+   2026-09-09 UI Refinement: 彻底解决电脑端碰撞、截断与4大板块布局
+   ========================================================================== */
+
+/* 1. 电脑端 (min-width: 861px) */
+@media (min-width: 861px) {
+  .admin-layout {
+    display: grid !important;
+    grid-template-columns: 240px minmax(0, 1fr) !important;
+    gap: 24px !important; /* 彻底拉开间距，杜绝左侧栏与主工作台发生物理碰撞 */
+    align-items: start !important;
+  }
+
+  .admin-sidebar {
+    width: 240px !important;
+    min-width: 240px !important;
+    max-width: 240px !important;
+    margin: 0 !important;
+    border-radius: 16px !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04) !important;
+    box-sizing: border-box !important;
+  }
+
+  .admin-main {
+    min-width: 0 !important;
+    width: 100% !important;
+    overflow: hidden !important; /* 避免任何横向溢出 */
+  }
+
+  /* 概览统计卡片：自适应 4 列网格，杜绝溢出屏幕右边界与截断 */
+  .stats-grid.overview-stats.admin-data-stats {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 16px !important;
+    width: 100% !important;
+    margin-bottom: 24px !important;
+  }
+
+  .stats-grid.overview-stats.admin-data-stats .stat-card {
+    min-width: 0 !important;
+    padding: 16px 18px !important;
+    border-radius: 14px !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    justify-content: center !important;
+    gap: 4px !important;
+  }
+
+  .stats-grid.overview-stats.admin-data-stats .stat-card .stat-label {
+    font-size: 13px !important;
+    color: #475569 !important;
+    font-weight: 500 !important;
+    white-space: nowrap !important;
+  }
+
+  .stats-grid.overview-stats.admin-data-stats .stat-card .stat-number {
+    font-size: 26px !important;
+    line-height: 1.2 !important;
+    font-weight: 700 !important;
+    color: #0f172a !important;
+  }
+
+  .stats-grid.overview-stats.admin-data-stats .stat-card .muted {
+    font-size: 12px !important;
+    color: #64748b !important;
+    white-space: nowrap !important;
+  }
+}
+
+/* 屏幕适中（861px ~ 1200px）时，4 张统计卡片自动折为 2x2 网格，绝不截断 */
+@media (min-width: 861px) and (max-width: 1200px) {
+  .stats-grid.overview-stats.admin-data-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+/* 2. 针对 860px 以下的移动端 */
+@media (max-width: 860px) {
+  .admin-layout {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 14px !important;
+  }
+
+  .admin-sidebar {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .stats-grid.overview-stats.admin-data-stats {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  .stats-grid.overview-stats.admin-data-stats .stat-card {
+    padding: 12px 14px !important;
+  }
+}
+
+
+/* ============================================================
+   班级管理现代 UI 改造样式 (Apple 简洁现代风格)
+   ============================================================ */
+
+/* 顶部标题与操作区 */
+.modern-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.heading-sub {
+  color: #64748b;
+  font-size: 13.5px;
+  margin-top: 4px;
+}
+.add-class-trigger-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  font-weight: 600;
+  font-size: 14px;
+  border-radius: 999px;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+  transition: all 0.2s ease;
+}
+.add-class-trigger-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.3);
+}
+
+/* 顶部概览指标卡 */
+.classes-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.classes-metrics-grid .metric-card {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.classes-metrics-grid .metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
+}
+.classes-metrics-grid .metric-label {
+  display: block;
+  font-size: 12.5px;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+.classes-metrics-grid .metric-val {
+  font-size: 24px;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.5px;
+}
+.classes-metrics-grid .metric-val small {
+  font-size: 13px;
+  font-weight: 500;
+  color: #94a3b8;
+  margin-left: 2px;
+}
+.classes-metrics-grid .metric-tag {
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+.classes-metrics-grid .tag-blue { background: #eff6ff; color: #2563eb; }
+.classes-metrics-grid .tag-green { background: #f0fdf4; color: #16a34a; }
+.classes-metrics-grid .tag-orange { background: #fff7ed; color: #ea580c; }
+.classes-metrics-grid .tag-purple { background: #faf5ff; color: #9333ea; }
+
+/* 现代数据表格与工具栏卡片 */
+.modern-table-card {
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+  padding: 0;
+  overflow: hidden;
+}
+.table-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  flex-wrap: wrap;
+}
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+.search-input-wrap {
+  position: relative;
+  min-width: 260px;
+  max-width: 360px;
+  flex: 1;
+}
+.search-input-wrap .search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 13px;
+  color: #94a3b8;
+  pointer-events: none;
+}
+.table-search-input {
+  width: 100%;
+  padding: 8px 12px 8px 34px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  font-size: 13.5px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+.table-search-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+.table-filter-select {
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  font-size: 13px;
+  color: #334155;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+.table-filter-select:focus {
+  border-color: #3b82f6;
+}
+.filter-count-badge {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #64748b;
+  background: #f1f5f9;
+  padding: 6px 12px;
+  border-radius: 8px;
+}
+
+/* 现代表格样式细节 */
+.modern-class-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.modern-class-table th {
+  background: #ffffff;
+  color: #475569;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 14px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  letter-spacing: 0.3px;
+}
+.modern-class-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 13.5px;
+  color: #1e293b;
+  vertical-align: middle;
+}
+.modern-class-table tbody tr:hover {
+  background: #f8fafc;
+}
+.class-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.class-avatar-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 13.5px;
+  flex-shrink: 0;
+}
+.class-avatar-badge.grade-small { background: #ffedd5; color: #ea580c; }
+.class-avatar-badge.grade-middle { background: #ede9fe; color: #7c3aed; }
+.class-avatar-badge.grade-large { background: #e0f2fe; color: #0284c7; }
+
+.grade-pill {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.grade-pill.grade-small { background: #fff7ed; color: #c2410c; border: 1px solid #ffedd5; }
+.grade-pill.grade-middle { background: #faf5ff; color: #6b21a8; border: 1px solid #f3e8ff; }
+.grade-pill.grade-large { background: #f0f9ff; color: #0369a1; border: 1px solid #e0f2fe; }
+
+.teacher-tags-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.teacher-tag {
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+.teacher-empty-tag {
+  font-size: 12px;
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.child-count-pill {
+  font-weight: 600;
+  font-size: 13px;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+.child-count-pill.has-children {
+  background: #f0fdf4;
+  color: #15803d;
+}
+.child-count-pill.no-children {
+  background: #f8fafc;
+  color: #94a3b8;
+}
+
+.capacity-pill {
+  font-size: 12.5px;
+  color: #64748b;
+  background: #f1f5f9;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.class-desc-cell {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  color: #64748b;
+  max-width: 220px;
+}
+
+.table-row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.action-btn-edit {
+  background: #f1f5f9;
+  color: #0f172a;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.15s ease;
+}
+.action-btn-edit:hover {
+  background: #e2e8f0;
+  color: #000;
+}
+.action-btn-danger {
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.action-btn-danger:hover {
+  background: #fecaca;
+}
+.action-btn-success {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.action-btn-success:hover {
+  background: #bbf7d0;
+}
+
+/* 模态框样式增强 */
+.class-modal-dialog {
+  max-width: 580px;
+  width: 92%;
+  background: #ffffff;
+  border-radius: 18px;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+  animation: modalScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes modalScaleIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+.modal-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #ffffff;
+}
+.modal-title-wrap h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+}
+.modal-subtitle {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #64748b;
+}
+.modal-close-btn {
+  background: #f1f5f9;
+  border: none;
+  font-size: 16px;
+  color: #64748b;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+.modal-close-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+.modal-form-body {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.form-row-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.form-field label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+}
+.required-star {
+  color: #ef4444;
+}
+.modern-input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  font-size: 14px;
+  color: #0f172a;
+  background: #ffffff;
+  outline: none;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+.modern-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+.field-hint {
+  font-size: 11.5px;
+  color: #94a3b8;
+}
+
+/* 教师槽位样式 */
+.teacher-slot-section {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 4px;
+}
+.slot-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.slot-section-title span:first-child {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #1e293b;
+}
+.slot-hint {
+  font-size: 12px;
+  color: #64748b;
+}
+.teacher-slots-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.slot-field {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  align-items: center;
+  gap: 12px;
+}
+.slot-field label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #475569;
+}
+.teacher-slot-select {
+  font-size: 13.5px;
+}
+
+.modal-footer {
+  padding: 16px 24px;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+.modern-btn-cancel {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+  border-radius: 10px;
+  padding: 9px 18px;
+  font-weight: 600;
+  font-size: 13.5px;
+  cursor: pointer;
+}
+.modern-btn-cancel:hover {
+  background: #f1f5f9;
+}
+.modern-btn-submit {
+  border-radius: 10px;
+  padding: 9px 22px;
+  font-weight: 600;
+  font-size: 13.5px;
+  cursor: pointer;
+}
+
+
+/* ============================================================
+   班级管理极致紧凑化 & 手机端原生卡片适配
+   ============================================================ */
+
+/* 1. 顶部 Hero 在 classes 等具体业务面板下更紧凑，避免大块空白 */
+.admin-page[data-panel="classes"] .admin-hero,
+.admin-panel.is-active .panel-heading {
+  margin-bottom: 12px;
+}
+.modern-heading {
+  margin-bottom: 14px;
+}
+.modern-heading h2 {
+  font-size: 20px;
+  margin-bottom: 2px;
+}
+.heading-sub {
+  font-size: 12.5px;
+  margin-top: 2px;
+}
+
+/* 2. 统计卡片更紧凑精简，单行高度压缩 */
+.classes-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.classes-metrics-grid .metric-card {
+  padding: 12px 14px;
+  border-radius: 12px;
+}
+.classes-metrics-grid .metric-label {
+  font-size: 11.5px;
+  margin-bottom: 2px;
+}
+.classes-metrics-grid .metric-val {
+  font-size: 20px;
+}
+.classes-metrics-grid .metric-tag {
+  font-size: 11px;
+  padding: 2px 8px;
+}
+
+/* 3. 工具栏与表格行高压缩（原先 padding 太大导致纵向拉很长） */
+.table-toolbar {
+  padding: 10px 14px;
+  gap: 10px;
+}
+.table-search-input {
+  padding: 6px 10px 6px 30px;
+  font-size: 13px;
+  height: 34px;
+}
+.table-filter-select {
+  padding: 6px 10px;
+  font-size: 12.5px;
+  height: 34px;
+}
+.modern-class-table th {
+  padding: 10px 12px;
+  font-size: 12px;
+}
+.modern-class-table td {
+  padding: 10px 12px;
+  font-size: 13px;
+}
+.class-avatar-badge {
+  width: 28px;
+  height: 28px;
+  font-size: 12px;
+}
+
+/* 4. 手机端专属移动卡片视图（超流畅自适应，彻底避免横向溢出和过长纵向拉伸） */
+@media (max-width: 860px) {
+  /* 顶部统计卡片在手机端改为 2x2 紧凑网格 */
+  .classes-metrics-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+    margin-bottom: 12px !important;
+  }
+  .classes-metrics-grid .metric-card {
+    padding: 10px 12px !important;
+  }
+  .classes-metrics-grid .metric-val {
+    font-size: 18px !important;
+  }
+
+  /* 搜索工具栏在手机端垂直流式排布 */
+  .table-toolbar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    padding: 10px !important;
+    gap: 8px !important;
+  }
+  .toolbar-left {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    width: 100% !important;
+    gap: 8px !important;
+  }
+  .search-input-wrap {
+    min-width: 100% !important;
+    max-width: 100% !important;
+  }
+  .filter-select-wrap {
+    width: 100% !important;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+  .table-filter-select {
+    width: 100% !important;
+  }
+  .toolbar-right {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+  }
+
+  /* 手机端将表格行转为原生 App 式精简卡片，手指点选非常舒服 */
+  .modern-class-table thead {
+    display: none !important;
+  }
+  .modern-class-table,
+  .modern-class-table tbody,
+  .modern-class-table tr.class-data-row {
+    display: block !important;
+    width: 100% !important;
+  }
+  .modern-class-table tr.class-data-row {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 12px !important;
+    margin-bottom: 10px !important;
+    padding: 12px 14px !important;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.03) !important;
+  }
+  .modern-class-table td {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 5px 0 !important;
+    border: none !important;
+    font-size: 13px !important;
+    text-align: left !important;
+  }
+
+  /* 首行：班级名与年级徽章紧凑靠拢 */
+  .modern-class-table td:nth-child(1) {
+    padding-bottom: 8px !important;
+    margin-bottom: 6px !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+  }
+  .modern-class-table td:nth-child(2) {
+    display: none !important; /* 年级直接内嵌到第一行展示 */
+  }
+  .mobile-grade-inline {
+    display: inline-block !important;
+    margin-left: 8px !important;
+  }
+
+  /* 其他字段移动端专属前缀标签 */
+  .modern-class-table td:nth-child(3)::before { content: "带班教师"; color: #94a3b8; font-size: 12px; font-weight: 500; }
+  .modern-class-table td:nth-child(4)::before { content: "在册幼儿"; color: #94a3b8; font-size: 12px; font-weight: 500; }
+  .modern-class-table td:nth-child(5)::before { content: "容量上限"; color: #94a3b8; font-size: 12px; font-weight: 500; }
+  .modern-class-table td:nth-child(6)::before { content: "班级寄语"; color: #94a3b8; font-size: 12px; font-weight: 500; }
+  .modern-class-table td:nth-child(7)::before { content: "班级状态"; color: #94a3b8; font-size: 12px; font-weight: 500; }
+  
+  /* 操作栏独立一行置底，按钮大且容易点 */
+  .modern-class-table td:nth-child(8) {
+    margin-top: 8px !important;
+    padding-top: 8px !important;
+    border-top: 1px dashed #f1f5f9 !important;
+    justify-content: flex-end !important;
+  }
+  .modern-class-table td:nth-child(8) .table-row-actions {
+    width: 100% !important;
+    display: flex !important;
+    justify-content: flex-end !important;
+    gap: 10px !important;
+  }
+  .modern-class-table td:nth-child(8) .action-btn-edit,
+  .modern-class-table td:nth-child(8) button {
+    padding: 6px 16px !important;
+    font-size: 13px !important;
+  }
+
+  /* 弹窗在手机端全宽底部升起，手感极佳 */
+  .class-modal-dialog {
+    width: 95% !important;
+    max-width: 95% !important;
+    margin: 16px auto !important;
+    border-radius: 16px !important;
+  }
+  .modal-form-body {
+    padding: 16px !important;
+    gap: 12px !important;
+  }
+  .form-row-2col {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+  .slot-field {
+    grid-template-columns: 1fr !important;
+    gap: 4px !important;
+  }
+}
+
+
+/* 非概览页时 Hero 区域紧凑化，把垂直高度压缩还给主体内容 */
+.admin-hero.admin-hero-compact {
+  padding: 14px 20px !important;
+  margin-bottom: 14px !important;
+  min-height: auto !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+.admin-hero.admin-hero-compact h1 {
+  font-size: 18px !important;
+  margin: 2px 0 !important;
+  display: inline-block !important;
+}
+.admin-hero.admin-hero-compact .eyebrow {
+  margin-bottom: 0 !important;
+  font-size: 11.5px !important;
+}
+.admin-hero.admin-hero-compact p {
+  display: none !important; /* 业务面板隐藏大段欢迎废话 */
+}
+.admin-hero.admin-hero-compact .admin-hero-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+.admin-hero.admin-hero-compact .admin-hero-actions .btn {
+  padding: 6px 14px !important;
+  font-size: 12.5px !important;
+}
+
+@media (max-width: 860px) {
+  .admin-hero.admin-hero-compact {
+    flex-direction: row !important;
+    padding: 10px 14px !important;
+    gap: 8px !important;
+  }
+  .admin-hero.admin-hero-compact h1 {
+    font-size: 16px !important;
+  }
+  .admin-hero.admin-hero-compact .admin-hero-actions {
+    width: auto !important;
+  }
+}
+
+
+@media (max-width: 860px) {
+  .table-pagination-bar {
+    flex-direction: column !important;
+    gap: 10px !important;
+    padding: 12px 14px !important;
+    align-items: center !important;
+    text-align: center !important;
+  }
+  .pagination-controls {
+    width: 100% !important;
+    justify-content: center !important;
+    flex-wrap: wrap !important;
+  }
+  .page-size-selector {
+    margin-bottom: 4px !important;
+  }
 }

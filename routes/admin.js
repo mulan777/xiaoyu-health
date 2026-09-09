@@ -787,7 +787,7 @@ module.exports = function mountAdminRoutes(app, upload, ctx = {}) {
     const data = await fetchAdminData(activePanel, req.query);
     const aiSettings = activePanel === 'ai' ? await getAiSettings(false) : null;
     const roles = await getRoles();
-    const activeGroup = ['overview', 'site', 'ai', 'logs'].includes(activePanel) ? 'ops' : (['users', 'classes', 'children', 'roles'].includes(activePanel) ? 'data' : 'booking');
+    const activeGroup = ['overview'].includes(activePanel) ? 'monitor' : (['attention'].includes(activePanel) ? 'care' : (['classes', 'children'].includes(activePanel) ? 'edu' : 'system'));
     const logs = activePanel === 'logs' ? (() => {
       const logActor = normalizeText(req.query.logActor);
       const logAction = normalizeText(req.query.logAction);

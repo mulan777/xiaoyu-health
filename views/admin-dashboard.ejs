@@ -1,6 +1,6 @@
 <%- include('partials/header', { pageClass: 'admin-page' + (isReadonly ? ' readonly-mode' : '') }) %>
 
-<section class="admin-hero card shell-hero">
+<section class="admin-hero card shell-hero <%= activePanel !== 'overview' ? 'admin-hero-compact' : '' %>">
   <div>
     <div class="eyebrow"><%= currentUser.roleDisplayName || "管理后台" %></div>
     <h1>你好，<%= currentUser.name %></h1>
@@ -33,63 +33,136 @@
   <aside class="admin-sidebar card shell-sidebar">
     <div class="sidebar-brand">
       <div class="sidebar-title">后台导航</div>
+      <div class="sidebar-subtitle-mobile">点击分组可折叠展开</div>
     </div>
 
     <div class="sidebar-menu shell-menu nav-group-menu">
-      <% const opsItems = [
-        {perm:'ops.overview', panel:'overview', label:'工作台概览'},
-        {perm:'ops.site', panel:'site', label:'站点管理'},
-        {perm:'ops.site', panel:'ai', label:'AI 接入'},
-        {perm:'ops.logs', panel:'logs', label:'日志记录'}
-      ].filter(i => hasPerm(i.perm)); %>
-      <% if (opsItems.length) { %>
-      <div class="nav-group nav-group-card <%= activeGroup === 'ops' ? 'active' : '' %>">
-        <a class="main-nav-link <%= activeGroup === 'ops' ? 'active' : '' %>" href="/admin?panel=<%= opsItems[0].panel %>">
-          <span class="main-nav-title">运维管理</span>
-        </a>
-        <div class="nav-submenu always-open">
-          <% opsItems.forEach(i => { %><a class="sidebar-link sub-nav-link <%= activePanel === i.panel ? 'active' : '' %>" href="/admin?panel=<%= i.panel %>"><span class="sub-nav-dot"></span><span><%= i.label %></span></a><% }); %>
-        </div>
-      </div>
-      <% } %>
+      <% 
+        // 1. 📊 态势与感知
+        const monitorItems = [
+          {perm:'ops.overview', panel:'overview', label:'工作台概览', icon:'📊'},
+          {perm:'data.fitness', href:'/screen', target:'_blank', label:'全园感知大屏 ↗', icon:'🖥️', badge:'新窗口'},
+          {perm:'data.bands', href:'/admin/bands', label:'手环健康监测', icon:'⌚'}
+        ].filter(i => hasPerm(i.perm));
 
-      <% const dataItems = [
-        {perm:'data.users', panel:'users', label:'用户管理'},
-        {perm:'data.classes', panel:'classes', label:'班级管理'},
-        {perm:'data.children', panel:'children', label:'幼儿档案管理'},
-        {perm:'data.fitness', href:'/admin/fitness', label:'体测数据管理'},
-        {perm:'data.bands', href:'/admin/bands', label:'手环健康'},
-        {perm:'data.fitness', href:'/screen', label:'数据大屏'}
-      ].filter(i => hasPerm(i.perm));
-      const roleItem = hasPerm('admin.roles') ? [{perm:'admin.roles', panel:'roles', label:'角色权限管理'}] : [];
-      const dataAll = dataItems.concat(roleItem); %>
-      <% if (dataAll.length) { %>
-      <div class="nav-group nav-group-card <%= activeGroup === 'data' ? 'active' : '' %>">
-        <a class="main-nav-link <%= activeGroup === 'data' ? 'active' : '' %>" href="/admin?panel=<%= (dataAll.find(i=>i.panel)||{}).panel || 'users' %>">
-          <span class="main-nav-title">数据管理</span>
-        </a>
-        <div class="nav-submenu always-open">
-          <% dataAll.forEach(i => { %>
-            <% if (i.href) { %><a class="sidebar-link sub-nav-link nav-link-card" href="<%= i.href %>"><span class="sub-nav-dot"></span><span><%= i.label %></span></a>
-            <% } else { %><a class="sidebar-link sub-nav-link <%= activePanel === i.panel ? 'active' : '' %>" href="/admin?panel=<%= i.panel %>"><span class="sub-nav-dot"></span><span><%= i.label %></span></a><% } %>
+        // 2. 🏃 体测与关怀
+        const careItems = [
+          {perm:'data.fitness', href:'/admin/fitness', label:'体测数据管理', icon:'🏃'},
+          {perm:'booking.attention', panel:'attention', label:'重点关注管理', icon:'❤️'}
+        ].filter(i => hasPerm(i.perm));
+
+        // 3. 🏫 基础与教务
+        const eduItems = [
+          {perm:'data.classes', panel:'classes', label:'班级管理', icon:'🏫'},
+          {perm:'data.children', panel:'children', label:'幼儿档案管理', icon:'👶'},
+          {perm:'booking.venues', href:'/admin/venues', label:'场地预约管理', icon:'📅'}
+        ].filter(i => hasPerm(i.perm));
+
+        // 4. ⚙ 系统与权限
+        const systemItems = [
+          {perm:'data.users', panel:'users', label:'用户管理', icon:'👤'},
+          ...(hasPerm('admin.roles') ? [{perm:'admin.roles', panel:'roles', label:'角色权限管理', icon:'🛡️'}] : []),
+          {perm:'ops.site', panel:'ai', label:'AI 智能接入', icon:'🤖'},
+          {perm:'ops.site', panel:'site', label:'站点配置', icon:'⚙️'},
+          {perm:'ops.logs', panel:'logs', label:'系统日志', icon:'📜'}
+        ].filter(i => hasPerm(i.perm));
+      %>
+
+      <% if (monitorItems.length) { %>
+      <div class="nav-group nav-group-card <%= activeGroup === 'monitor' ? 'active is-expanded' : '' %>" data-group="monitor">
+        <button type="button" class="main-nav-header <%= activeGroup === 'monitor' ? 'active' : '' %>" onclick="toggleNavGroup(this)">
+          <span class="main-nav-title">态势与感知</span>
+          <span class="nav-group-count"><%= monitorItems.length %></span>
+          <span class="nav-chevron"></span>
+        </button>
+        <div class="nav-submenu">
+          <% monitorItems.forEach(i => { %>
+            <% if (i.href) { %>
+              <a class="sidebar-link sub-nav-link nav-link-card <%= i.badge ? 'nav-link-badge-wrap' : '' %>" href="<%= i.href %>" <%= i.target ? 'target="' + i.target + '"' : '' %>>
+                <span class="sub-nav-dot"></span>
+                <span><%= i.label %></span>
+              </a>
+            <% } else { %>
+              <a class="sidebar-link sub-nav-link <%= activePanel === i.panel ? 'active' : '' %>" href="/admin?panel=<%= i.panel %>">
+                <span class="sub-nav-dot"></span>
+                <span><%= i.label %></span>
+              </a>
+            <% } %>
           <% }); %>
         </div>
       </div>
       <% } %>
 
-      <% const bookItems = [
-        {perm:'booking.attention', panel:'attention', label:'重点关注管理'},
-        {perm:'booking.venues', href:'/admin/venues', label:'场地预约管理'}
-      ].filter(i => hasPerm(i.perm)); %>
-      <% if (bookItems.length) { %>
-      <div class="nav-group nav-group-card <%= activeGroup === 'booking' ? 'active' : '' %>">
-        <a class="main-nav-link <%= activeGroup === 'booking' ? 'active' : '' %>" href="/admin?panel=attention">
-          <span class="main-nav-title">预约管理</span>
-        </a>
-        <div class="nav-submenu always-open">
-          <% bookItems.forEach(i => { %>
-            <% if (i.href) { %><a class="sidebar-link sub-nav-link nav-link-card" href="<%= i.href %>"><span class="sub-nav-dot"></span><span><%= i.label %></span></a>
-            <% } else { %><a class="sidebar-link sub-nav-link <%= activePanel === i.panel ? 'active' : '' %>" href="/admin?panel=<%= i.panel %>"><span class="sub-nav-dot"></span><span><%= i.label %></span></a><% } %>
+      <% if (careItems.length) { %>
+      <div class="nav-group nav-group-card <%= activeGroup === 'care' ? 'active is-expanded' : '' %>" data-group="care">
+        <button type="button" class="main-nav-header <%= activeGroup === 'care' ? 'active' : '' %>" onclick="toggleNavGroup(this)">
+          <span class="main-nav-title">体测与关怀</span>
+          <span class="nav-group-count"><%= careItems.length %></span>
+          <span class="nav-chevron"></span>
+        </button>
+        <div class="nav-submenu">
+          <% careItems.forEach(i => { %>
+            <% if (i.href) { %>
+              <a class="sidebar-link sub-nav-link nav-link-card" href="<%= i.href %>">
+                <span class="sub-nav-dot"></span>
+                <span><%= i.label %></span>
+              </a>
+            <% } else { %>
+              <a class="sidebar-link sub-nav-link <%= activePanel === i.panel ? 'active' : '' %>" href="/admin?panel=<%= i.panel %>">
+                <span class="sub-nav-dot"></span>
+                <span><%= i.label %></span>
+              </a>
+            <% } %>
+          <% }); %>
+        </div>
+      </div>
+      <% } %>
+
+      <% if (eduItems.length) { %>
+      <div class="nav-group nav-group-card <%= activeGroup === 'edu' ? 'active is-expanded' : '' %>" data-group="edu">
+        <button type="button" class="main-nav-header <%= activeGroup === 'edu' ? 'active' : '' %>" onclick="toggleNavGroup(this)">
+          <span class="main-nav-title">基础与教务</span>
+          <span class="nav-group-count"><%= eduItems.length %></span>
+          <span class="nav-chevron"></span>
+        </button>
+        <div class="nav-submenu">
+          <% eduItems.forEach(i => { %>
+            <% if (i.href) { %>
+              <a class="sidebar-link sub-nav-link nav-link-card" href="<%= i.href %>">
+                <span class="sub-nav-dot"></span>
+                <span><%= i.label %></span>
+              </a>
+            <% } else { %>
+              <a class="sidebar-link sub-nav-link <%= activePanel === i.panel ? 'active' : '' %>" href="/admin?panel=<%= i.panel %>">
+                <span class="sub-nav-dot"></span>
+                <span><%= i.label %></span>
+              </a>
+            <% } %>
+          <% }); %>
+        </div>
+      </div>
+      <% } %>
+
+      <% if (systemItems.length) { %>
+      <div class="nav-group nav-group-card <%= activeGroup === 'system' ? 'active is-expanded' : '' %>" data-group="system">
+        <button type="button" class="main-nav-header <%= activeGroup === 'system' ? 'active' : '' %>" onclick="toggleNavGroup(this)">
+          <span class="main-nav-title">系统与权限</span>
+          <span class="nav-group-count"><%= systemItems.length %></span>
+          <span class="nav-chevron"></span>
+        </button>
+        <div class="nav-submenu">
+          <% systemItems.forEach(i => { %>
+            <% if (i.href) { %>
+              <a class="sidebar-link sub-nav-link nav-link-card" href="<%= i.href %>">
+                <span class="sub-nav-dot"></span>
+                <span><%= i.label %></span>
+              </a>
+            <% } else { %>
+              <a class="sidebar-link sub-nav-link <%= activePanel === i.panel ? 'active' : '' %>" href="/admin?panel=<%= i.panel %>">
+                <span class="sub-nav-dot"></span>
+                <span><%= i.label %></span>
+              </a>
+            <% } %>
           <% }); %>
         </div>
       </div>
@@ -438,56 +511,290 @@
     </section>
 <% } else if (activePanel === 'classes') { %>
     <section id="class-panel" class="admin-panel is-active">
-      <div class="panel-heading"><div><div class="eyebrow">班级管理</div><h2>班级与多教师绑定</h2><p>支持编辑班级信息，并通过下拉选择带班教师。</p></div></div>
-      <div class="management-layout">
-        <div class="management-side">
+      <%
+        const safeClasses = Array.isArray(classes) ? classes : [];
+        const totalClasses = safeClasses.length;
+        const totalChildren = safeClasses.reduce((sum, c) => sum + (Number(c.child_count) || 0), 0);
+        const smallCount = safeClasses.filter(c => c.grade_level === 'small').length;
+        const middleCount = safeClasses.filter(c => c.grade_level === 'middle').length;
+        const largeCount = safeClasses.filter(c => c.grade_level === 'large').length;
+        const enabledCount = safeClasses.filter(c => c.enabled).length;
+      %>
+      <div class="panel-heading modern-heading">
+        <div>
+          <div class="eyebrow">教务管理 · 班级体系</div>
+          <h2>班级管理</h2>
+          <p class="heading-sub">集中管理园所年级架构、班级基础信息、容纳指标及带班教师配置（最多支持3位带班老师）。</p>
+        </div>
+        <div class="heading-actions">
           <% if (typeof hasPerm === 'function' && hasPerm('data.classes.create') && !isReadonly) { %>
-          <div class="card">
-            <div class="section-head"><h3>新增班级</h3></div>
-            <form method="post" action="/admin/classes/add" class="form-grid">
-              <label><span>班级名称</span><input type="text" name="name" placeholder="例如：大一班" required /></label>
-              <label><span>班级年级</span><select name="gradeLevel" required><option value="small">小班</option><option value="middle">中班</option><option value="large">大班</option></select></label>
-              <label><span>班级容量</span><input type="number" name="capacity" min="0" value="0" /></label>
-              <label><span>班级描述</span><textarea name="description" rows="3" placeholder="例如：幼小衔接重点班级"></textarea></label>
-              <label><span>带班教师</span><select name="teacherIds"><option value="">请选择带班教师</option><% teacherOptions.forEach(function(teacher) { %><option value="<%= teacher.id %>"><%= teacher.name %>（<%= teacher.username %>）</option><% }) %></select></label>
-              <button class="btn primary full" type="submit">新增班级</button>
-            </form>
-          </div>
+            <button type="button" class="btn primary add-class-trigger-btn" onclick="openClassModal('add')">
+              <span class="btn-icon">＋</span> 新增班级
+            </button>
           <% } %>
         </div>
-        <div class="management-main">
-          <div class="card full-height-card">
-            <div class="section-head"><h3>班级列表</h3><div class="muted no-margin">支持教师多选分配和班级启用/停用</div></div>
-            <% if (!classes.length) { %><div class="empty-state">暂无班级，请先新增班级</div><% } else { %>
-              <div class="class-card-grid admin-class-grid">
-                <% classes.forEach(function(item) { %>
-                  <div class="class-card wide-class-card">
-                    <div class="class-card-head"><div><h3><%= item.name %></h3><div class="muted"><%= gradeLabel(item.grade_level) %> · 教师：<%= item.teacher_names || '未分配' %></div></div><span class="status-badge <%= item.enabled ? 'ok' : 'off' %>"><%= item.enabled ? '启用中' : '已停用' %></span></div>
-                    <div class="class-meta"><div>容量：<%= item.capacity || 0 %></div><div>幼儿数：<%= item.child_count || 0 %></div></div>
-                    <p><%= item.description || '暂无描述' %></p>
-                    <% if (typeof hasPerm === 'function' && hasPerm('data.classes.edit') && !isReadonly) { %>
-                    <details class="inline-editor-card class-editor-card">
-                      <summary class="btn small primary">编辑班级</summary>
-                      <form method="post" action="/admin/classes/<%= item.id %>/edit" class="form-grid compact-card-form inline-edit-panel" data-teacher-ids="<%= item.teacher_ids || '' %>">
-                        <input type="hidden" name="classKeyword" value="" />
-                        <input type="hidden" name="classGradeLevel" value="" />
-                        <label><span>班级名称</span><input type="text" name="name" value="<%= item.name || '' %>" required /></label>
-                        <label><span>班级年级</span><select name="gradeLevel"><option value="small" <%= item.grade_level === 'small' ? 'selected' : '' %>>小班</option><option value="middle" <%= item.grade_level === 'middle' ? 'selected' : '' %>>中班</option><option value="large" <%= item.grade_level === 'large' ? 'selected' : '' %>>大班</option></select></label>
-                        <label><span>班级容量</span><input type="number" name="capacity" min="0" value="<%= item.capacity || 0 %>" /></label>
-                        <label><span>班级描述</span><textarea name="description" rows="3"><%= item.description || '' %></textarea></label>
-                        <label><span>带班教师</span><select name="teacherIds"><option value="">请选择带班教师</option><% const selectedTeacherIds = String(item.teacher_ids || '').split(',').filter(Boolean); %><% teacherOptions.forEach(function(teacher) { %><option value="<%= teacher.id %>" <%= selectedTeacherIds.includes(String(teacher.id)) ? 'selected' : '' %>><%= teacher.name %>（<%= teacher.username %>）</option><% }) %></select></label>
-                        <div class="tool-row"><button class="btn small primary" type="submit">保存编辑</button><button class="btn small" type="button" onclick="document.getElementById('class-toggle-<%= item.id %>').submit()"><%= item.enabled ? '停用班级' : '启用班级' %></button></div>
-                      </form>
-                    </details>
-                    <% } %>
-                    <% if (typeof hasPerm === 'function' && hasPerm('data.classes.edit') && !isReadonly) { %>
-                    <form id="class-toggle-<%= item.id %>" method="post" action="/admin/classes/<%= item.id %>/toggle" class="inline-form class-toggle-form"></form>
-                    <% } %>
-                  </div>
-                <% }) %>
-              </div>
-            <% } %>
+      </div>
+
+      <!-- 顶部统计概览指标卡 -->
+      <div class="classes-metrics-grid">
+        <div class="metric-card">
+          <div class="metric-info">
+            <span class="metric-label">班级总数</span>
+            <span class="metric-val"><%= totalClasses %><small> 个</small></span>
           </div>
+          <div class="metric-tag tag-blue">启用 <%= enabledCount %></div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-info">
+            <span class="metric-label">在册幼儿</span>
+            <span class="metric-val"><%= totalChildren %><small> 人</small></span>
+          </div>
+          <div class="metric-tag tag-green">全园总计</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-info">
+            <span class="metric-label">小班架构</span>
+            <span class="metric-val"><%= smallCount %><small> 个班</small></span>
+          </div>
+          <div class="metric-tag tag-orange">托小阶段</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-info">
+            <span class="metric-label">中大班架构</span>
+            <span class="metric-val"><%= middleCount + largeCount %><small> 个班</small></span>
+          </div>
+          <div class="metric-tag tag-purple">中班<%= middleCount %> · 大班<%= largeCount %></div>
+        </div>
+      </div>
+
+      <!-- 主卡片：含现代筛选与数据表格 -->
+      <div class="card modern-table-card">
+        <div class="table-toolbar">
+          <div class="toolbar-left">
+            <div class="search-input-wrap">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="classSearchInput" class="table-search-input" placeholder="按班级名称、教师姓名快速搜索..." oninput="filterClassesTable()" />
+            </div>
+            <div class="filter-select-wrap">
+              <select id="classGradeFilter" class="table-filter-select" onchange="filterClassesTable()">
+                <option value="">全部年级</option>
+                <option value="small">小班</option>
+                <option value="middle">中班</option>
+                <option value="large">大班</option>
+              </select>
+            </div>
+            <div class="filter-select-wrap">
+              <select id="classStatusFilter" class="table-filter-select" onchange="filterClassesTable()">
+                <option value="">全部状态</option>
+                <option value="1">启用中</option>
+                <option value="0">已停用</option>
+              </select>
+            </div>
+          </div>
+          <div class="toolbar-right" style="display:flex;align-items:center;gap:12px;">
+            <div class="page-size-selector" style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:#64748b;">
+              <span>每页</span>
+              <select id="classPageSizeSelect" class="table-filter-select" style="height:32px;padding:4px 8px;font-size:12px;" onchange="changeClassPageSize(this.value)">
+                <option value="10" selected>10 条</option>
+                <option value="15">15 条</option>
+                <option value="20">20 条</option>
+                <option value="all">全部</option>
+              </select>
+            </div>
+            <span class="filter-count-badge" id="classFilteredCount">共 <%= totalClasses %> 个班级</span>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table class="data-table modern-class-table" id="classesDataTable">
+            <thead>
+              <tr>
+                <th style="width: 140px;">班级名称</th>
+                <th style="width: 100px;">所属年级</th>
+                <th>带班教师</th>
+                <th style="width: 110px; text-align: center;">幼儿人数</th>
+                <th style="width: 100px; text-align: center;">班级容量</th>
+                <th>班级描述</th>
+                <th style="width: 90px; text-align: center;">状态</th>
+                <th style="width: 150px; text-align: right;">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% if (!safeClasses.length) { %>
+                <tr><td colspan="8"><div class="empty-state">暂无班级数据，请点击右上角新增班级</div></td></tr>
+              <% } else { %>
+                <% safeClasses.forEach(function(item) { %>
+                  <%
+                    const gradeClass = item.grade_level === 'large' ? 'grade-large' : (item.grade_level === 'middle' ? 'grade-middle' : 'grade-small');
+                    const teachers = (item.teacher_names || '').split('、').filter(Boolean);
+                  %>
+                  <tr class="class-data-row" 
+                      data-id="<%= item.id %>"
+                      data-name="<%= item.name %>"
+                      data-grade="<%= item.grade_level %>"
+                      data-capacity="<%= item.capacity || 0 %>"
+                      data-description="<%= item.description || '' %>"
+                      data-enabled="<%= item.enabled ? 1 : 0 %>"
+                      data-teachers="<%= item.teacher_names || '' %>"
+                      data-teacher-ids="<%= item.teacher_ids || '' %>">
+                    <td>
+                      <div class="class-name-cell">
+                        <span class="class-avatar-badge <%= gradeClass %>"><%= (item.name || '').slice(0, 1) %></span>
+                        <strong class="class-title"><%= item.name %></strong>
+                        <span class="grade-pill <%= gradeClass %> mobile-grade-inline" style="display:none;"><%= gradeLabel(item.grade_level) %></span>
+                      </div>
+                    </td>
+                    <td>
+                      <span class="grade-pill <%= gradeClass %>"><%= gradeLabel(item.grade_level) %></span>
+                    </td>
+                    <td>
+                      <% if (!teachers.length) { %>
+                        <span class="teacher-empty-tag">未分配教师</span>
+                      <% } else { %>
+                        <div class="teacher-tags-group">
+                          <% teachers.forEach(function(tName, idx) { %>
+                            <span class="teacher-tag"><%= idx === 0 ? '👑 ' : '' %><%= tName %></span>
+                          <% }) %>
+                        </div>
+                      <% } %>
+                    </td>
+                    <td style="text-align: center;">
+                      <span class="child-count-pill <%= Number(item.child_count) > 0 ? 'has-children' : 'no-children' %>">
+                        <%= item.child_count || 0 %> 人
+                      </span>
+                    </td>
+                    <td style="text-align: center;">
+                      <span class="capacity-pill"><%= item.capacity ? item.capacity + ' 人' : '不限' %></span>
+                    </td>
+                    <td>
+                      <span class="class-desc-cell" title="<%= item.description || '' %>">
+                        <%= item.description || '—' %>
+                      </span>
+                    </td>
+                    <td style="text-align: center;">
+                      <span class="status-badge <%= item.enabled ? 'ok' : 'off' %>">
+                        <%= item.enabled ? '启用中' : '已停用' %>
+                      </span>
+                    </td>
+                    <td style="text-align: right;">
+                      <div class="table-row-actions">
+                        <% if (typeof hasPerm === 'function' && hasPerm('data.classes.edit') && !isReadonly) { %>
+                          <button type="button" class="btn small action-btn-edit" onclick="openClassModal('edit', this)">
+                            编辑
+                          </button>
+                          <form method="post" action="/admin/classes/<%= item.id %>/toggle" class="inline-form" onsubmit="return confirm('确定要<%= item.enabled ? '停用' : '启用' %>【<%= item.name %>】吗？');">
+                            <button type="submit" class="btn small <%= item.enabled ? 'action-btn-danger' : 'action-btn-success' %>">
+                              <%= item.enabled ? '停用' : '启用' %>
+                            </button>
+                          </form>
+                        <% } else { %>
+                          <span class="muted text-small">只读权限</span>
+                        <% } %>
+                      </div>
+                    </td>
+                  </tr>
+                <% }) %>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 班级分页控制条 -->
+        <div class="table-pagination-bar" id="classPaginationBar" style="display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-top:1px solid #edf2f7;background:#fafbfc;border-radius:0 0 16px 16px;">
+          <div class="pagination-info" id="classPaginationInfo" style="font-size:13px;color:#64748b;">
+            正在计算分页...
+          </div>
+          <div class="pagination-controls" id="classPaginationControls" style="display:flex;align-items:center;gap:6px;">
+          </div>
+        </div>
+      </div>
+
+      <!-- 现代弹窗 Modal：新增 / 编辑班级 -->
+      <div id="classActionModal" class="modal-overlay" style="display: none;" onclick="if(event.target === this) closeClassModal()">
+        <div class="modal-box class-modal-dialog">
+          <div class="modal-header">
+            <div class="modal-title-wrap">
+              <h3 id="classModalTitle">编辑班级</h3>
+              <p class="modal-subtitle" id="classModalSubtitle">请完善班级档案与带班教师配置</p>
+            </div>
+            <button type="button" class="modal-close-btn" onclick="closeClassModal()" title="关闭">✕</button>
+          </div>
+          
+          <form id="classActionForm" method="post" action="/admin/classes/add" class="class-modal-form">
+            <input type="hidden" name="classKeyword" value="" />
+            <input type="hidden" name="classGradeLevel" value="" />
+            
+            <div class="modal-form-body">
+              <div class="form-row-2col">
+                <div class="form-field">
+                  <label for="modalClassName">班级名称 <span class="required-star">*</span></label>
+                  <input type="text" id="modalClassName" name="name" placeholder="例如：大一班" required class="modern-input" />
+                </div>
+                <div class="form-field">
+                  <label for="modalGradeLevel">所属年级 <span class="required-star">*</span></label>
+                  <select id="modalGradeLevel" name="gradeLevel" required class="modern-input">
+                    <option value="small">小班</option>
+                    <option value="middle">中班</option>
+                    <option value="large">大班</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-row-2col">
+                <div class="form-field">
+                  <label for="modalCapacity">班级容量限制（人）</label>
+                  <input type="number" id="modalCapacity" name="capacity" min="0" value="0" placeholder="0 表示不设上限" class="modern-input" />
+                  <span class="field-hint">填 0 为不限制幼儿容量</span>
+                </div>
+                <div class="form-field">
+                  <label for="modalDescription">班级寄语 / 描述</label>
+                  <input type="text" id="modalDescription" name="description" placeholder="例如：阳光运动示范班" class="modern-input" />
+                  <span class="field-hint">用于班级档案备注</span>
+                </div>
+              </div>
+
+              <div class="teacher-slot-section">
+                <div class="slot-section-title">
+                  <span>带班教师配置</span>
+                  <span class="slot-hint">支持绑定最多 3 位教师，第 1 位为主班主任</span>
+                </div>
+                <div class="teacher-slots-grid">
+                  <div class="slot-field">
+                    <label><span>👑 主班主任</span></label>
+                    <select name="teacherIds" class="modern-input teacher-slot-select" id="slotTeacher1">
+                      <option value="">请选择主班主任</option>
+                      <% teacherOptions.forEach(function(teacher) { %>
+                        <option value="<%= teacher.id %>"><%= teacher.name %>（<%= teacher.username %>）</option>
+                      <% }) %>
+                    </select>
+                  </div>
+                  <div class="slot-field">
+                    <label><span>班主任2（可选）</span></label>
+                    <select name="teacherIds" class="modern-input teacher-slot-select" id="slotTeacher2">
+                      <option value="">暂不设置班主任2</option>
+                      <% teacherOptions.forEach(function(teacher) { %>
+                        <option value="<%= teacher.id %>"><%= teacher.name %>（<%= teacher.username %>）</option>
+                      <% }) %>
+                    </select>
+                  </div>
+                  <div class="slot-field">
+                    <label><span>班主任3（可选）</span></label>
+                    <select name="teacherIds" class="modern-input teacher-slot-select" id="slotTeacher3">
+                      <option value="">暂不设置班主任3</option>
+                      <% teacherOptions.forEach(function(teacher) { %>
+                        <option value="<%= teacher.id %>"><%= teacher.name %>（<%= teacher.username %>）</option>
+                      <% }) %>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="modal-footer">
+              <button type="button" class="btn modern-btn-cancel" onclick="closeClassModal()">取消</button>
+              <button type="submit" class="btn primary modern-btn-submit" id="classSubmitBtn">确定保存</button>
+            </div>
+          </form>
         </div>
       </div>
     </section>
@@ -1568,3 +1875,217 @@
 </div>
 
 <%- include('partials/footer') %>
+
+<script>
+function toggleNavGroup(btn) {
+  var group = btn.closest('.nav-group-card');
+  if (!group) return;
+  group.classList.toggle('is-expanded');
+}
+</script>
+
+
+<script>
+// 班级表格实时搜索与年级/状态筛选
+var currentClassPage = 1;
+var classPageSize = 10;
+var matchingClassRows = [];
+
+function changeClassPageSize(val) {
+  if (val === 'all') {
+    classPageSize = 9999;
+  } else {
+    classPageSize = parseInt(val, 10) || 10;
+  }
+  currentClassPage = 1;
+  renderClassPagination();
+}
+
+function goToClassPage(page) {
+  currentClassPage = page;
+  renderClassPagination();
+}
+
+function filterClassesTable() {
+  var searchInput = document.getElementById('classSearchInput');
+  var gradeFilter = document.getElementById('classGradeFilter');
+  var statusFilter = document.getElementById('classStatusFilter');
+  var countBadge = document.getElementById('classFilteredCount');
+
+  var query = (searchInput ? searchInput.value : '').trim().toLowerCase();
+  var grade = gradeFilter ? gradeFilter.value : '';
+  var status = statusFilter ? statusFilter.value : '';
+
+  var allRows = Array.from(document.querySelectorAll('#classesDataTable tbody tr.class-data-row'));
+  matchingClassRows = [];
+
+  allRows.forEach(function(row) {
+    var name = (row.getAttribute('data-name') || '').toLowerCase();
+    var rowGrade = row.getAttribute('data-grade') || '';
+    var teachers = (row.getAttribute('data-teachers') || '').toLowerCase();
+    var rowEnabled = row.getAttribute('data-enabled') || '';
+
+    var matchQuery = !query || name.indexOf(query) !== -1 || teachers.indexOf(query) !== -1;
+    var matchGrade = !grade || rowGrade === grade;
+    var matchStatus = !status || rowEnabled === status;
+
+    if (matchQuery && matchGrade && matchStatus) {
+      matchingClassRows.push(row);
+    } else {
+      row.style.display = 'none';
+    }
+  });
+
+  if (countBadge) {
+    countBadge.textContent = '共 ' + matchingClassRows.length + ' 个班级';
+  }
+
+  currentClassPage = 1;
+  renderClassPagination();
+}
+
+function renderClassPagination() {
+  var total = matchingClassRows.length;
+  var totalPages = Math.max(1, Math.ceil(total / classPageSize));
+  if (currentClassPage > totalPages) currentClassPage = totalPages;
+  if (currentClassPage < 1) currentClassPage = 1;
+
+  var startIndex = (currentClassPage - 1) * classPageSize;
+  var endIndex = startIndex + classPageSize;
+
+  matchingClassRows.forEach(function(row, idx) {
+    if (idx >= startIndex && idx < endIndex) {
+      row.style.display = '';
+    } else {
+      row.style.display = 'none';
+    }
+  });
+
+  // 更新左下角信息
+  var infoEl = document.getElementById('classPaginationInfo');
+  if (infoEl) {
+    if (total === 0) {
+      infoEl.textContent = '暂无符合条件的班级';
+    } else {
+      var displayEnd = Math.min(endIndex, total);
+      infoEl.textContent = '显示第 ' + (startIndex + 1) + ' 至 ' + displayEnd + ' 项，共 ' + total + ' 个班级';
+    }
+  }
+
+  // 渲染翻页按钮
+  var controlsEl = document.getElementById('classPaginationControls');
+  if (controlsEl) {
+    if (totalPages <= 1) {
+      controlsEl.innerHTML = '';
+      return;
+    }
+
+    var html = '';
+    // 上一页
+    html += '<button type="button" class="btn small" style="padding:4px 10px;font-size:12px;border-radius:6px;" ' + (currentClassPage <= 1 ? 'disabled style="opacity:0.4;cursor:not-allowed;"' : 'onclick="goToClassPage(' + (currentClassPage - 1) + ')"') + '>上一页</button>';
+
+    // 页码
+    for (var p = 1; p <= totalPages; p++) {
+      if (p === 1 || p === totalPages || (p >= currentClassPage - 1 && p <= currentClassPage + 1)) {
+        var isCurrent = (p === currentClassPage);
+        html += '<button type="button" class="btn small ' + (isCurrent ? 'primary' : '') + '" style="min-width:30px;padding:4px 8px;font-size:12px;border-radius:6px;' + (isCurrent ? 'font-weight:bold;' : '') + '" onclick="goToClassPage(' + p + ')">' + p + '</button>';
+      } else if (p === currentClassPage - 2 || p === currentClassPage + 2) {
+        html += '<span style="color:#94a3b8;font-size:12px;padding:0 2px;">...</span>';
+      }
+    }
+
+    // 下一页
+    html += '<button type="button" class="btn small" style="padding:4px 10px;font-size:12px;border-radius:6px;" ' + (currentClassPage >= totalPages ? 'disabled style="opacity:0.4;cursor:not-allowed;"' : 'onclick="goToClassPage(' + (currentClassPage + 1) + ')"') + '>下一页</button>';
+
+    controlsEl.innerHTML = html;
+  }
+}
+
+// 页面加载完成或初始化时执行初次分页
+document.addEventListener('DOMContentLoaded', function() {
+  if (document.getElementById('classesDataTable')) {
+    filterClassesTable();
+  }
+});
+if (document.getElementById('classesDataTable')) {
+  filterClassesTable();
+}
+
+// 打开新增 / 编辑班级模态弹窗
+function openClassModal(mode, triggerBtn) {
+  var modal = document.getElementById('classActionModal');
+  var form = document.getElementById('classActionForm');
+  var title = document.getElementById('classModalTitle');
+  var subtitle = document.getElementById('classModalSubtitle');
+  var submitBtn = document.getElementById('classSubmitBtn');
+
+  if (!modal || !form) return;
+
+  var nameInput = document.getElementById('modalClassName');
+  var gradeSelect = document.getElementById('modalGradeLevel');
+  var capacityInput = document.getElementById('modalCapacity');
+  var descInput = document.getElementById('modalDescription');
+  var slot1 = document.getElementById('slotTeacher1');
+  var slot2 = document.getElementById('slotTeacher2');
+  var slot3 = document.getElementById('slotTeacher3');
+
+  if (mode === 'add') {
+    title.textContent = '新增班级';
+    subtitle.textContent = '填写班级基本信息，并可同时指派带班班主任';
+    submitBtn.textContent = '立即新增';
+    form.action = '/admin/classes/add';
+
+    nameInput.value = '';
+    gradeSelect.value = 'small';
+    capacityInput.value = '0';
+    descInput.value = '';
+    if (slot1) slot1.value = '';
+    if (slot2) slot2.value = '';
+    if (slot3) slot3.value = '';
+  } else if (mode === 'edit' && triggerBtn) {
+    var row = triggerBtn.closest('.class-data-row');
+    if (!row) return;
+
+    var classId = row.getAttribute('data-id');
+    var className = row.getAttribute('data-name') || '';
+    var grade = row.getAttribute('data-grade') || 'small';
+    var capacity = row.getAttribute('data-capacity') || '0';
+    var description = row.getAttribute('data-description') || '';
+    var teacherIds = (row.getAttribute('data-teacher-ids') || '').split(',').map(function(s){return s.trim();}).filter(Boolean);
+
+    title.textContent = '编辑班级 · ' + className;
+    subtitle.textContent = '修改班级名称、年级归属、容纳容量及带班教师配置';
+    submitBtn.textContent = '保存更改';
+    form.action = '/admin/classes/' + classId + '/edit';
+
+    nameInput.value = className;
+    gradeSelect.value = grade;
+    capacityInput.value = capacity;
+    descInput.value = description;
+
+    if (slot1) slot1.value = teacherIds[0] || '';
+    if (slot2) slot2.value = teacherIds[1] || '';
+    if (slot3) slot3.value = teacherIds[2] || '';
+  }
+
+  modal.style.display = 'flex';
+  document.body.classList.add('modal-open');
+  setTimeout(function() {
+    if (nameInput) nameInput.focus();
+  }, 100);
+}
+
+function closeClassModal() {
+  var modal = document.getElementById('classActionModal');
+  if (modal) {
+    modal.style.display = 'none';
+  }
+  document.body.classList.remove('modal-open');
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    closeClassModal();
+  }
+});
+</script>
