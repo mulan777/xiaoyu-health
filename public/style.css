@@ -8122,3 +8122,126 @@ label{
     margin-bottom: 4px !important;
   }
 }
+
+
+/* ================================================================
+   Mobile & UI Polish (v3.2 Optimization)
+   ================================================================ */
+
+/* 1. 移动端 Topbar 极致轻量化 */
+@media (max-width: 640px) {
+  .topbar {
+    padding: 8px 14px !important;
+    min-height: 46px !important;
+  }
+  .brand-logo {
+    width: 28px !important;
+    height: 28px !important;
+    font-size: 16px !important;
+  }
+  .brand-title {
+    font-size: 15px !important;
+  }
+  .nav a, .nav span {
+    font-size: 12px !important;
+    padding: 4px 8px !important;
+  }
+  .nav .user-avatar {
+    width: 24px !important;
+    height: 24px !important;
+    font-size: 11px !important;
+  }
+}
+
+/* 2. 状态徽章高对比度强化（保证强光下清晰可辨） */
+.status-badge, .status-chip, .badge {
+  font-weight: 600 !important;
+  letter-spacing: 0.02em;
+}
+.status-badge.ok, .badge-success {
+  background: #ecfdf5 !important;
+  color: #065f46 !important;
+  border: 1px solid #a7f3d0 !important;
+}
+.status-badge.off, .badge-danger {
+  background: #fef2f2 !important;
+  color: #991b1b !important;
+  border: 1px solid #fecaca !important;
+}
+.status-chip {
+  background: rgba(99, 102, 241, 0.1) !important;
+  color: #3730a3 !important;
+  border: 1px solid rgba(99, 102, 241, 0.2) !important;
+  font-weight: 600 !important;
+}
+
+/* 3. 年级胶囊颜色规范与高辨识度 */
+.badge-grade-da, .grade-badge.da {
+  background: #eff6ff !important;
+  color: #1e40af !important;
+  border: 1px solid #bfdbfe !important;
+}
+.badge-grade-zhong, .grade-badge.zhong {
+  background: #fffbeb !important;
+  color: #92400e !important;
+  border: 1px solid #fde68a !important;
+}
+.badge-grade-xiao, .grade-badge.xiao {
+  background: #f0fdf4 !important;
+  color: #166534 !important;
+  border: 1px solid #bbf7d0 !important;
+}
+
+/* 4. 二级页面顶部 admin-hero-compact 样式确保全覆盖 */
+.admin-hero.admin-hero-compact {
+  padding: 12px 20px !important;
+  margin-bottom: 16px !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 16px !important;
+  background: #ffffff !important;
+  border-radius: 16px !important;
+  border: 1px solid var(--border, #e2e8f0) !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.03) !important;
+}
+.admin-hero.admin-hero-compact h1 {
+  font-size: 18px !important;
+  margin: 0 !important;
+  line-height: 1.2 !important;
+  font-weight: 700 !important;
+}
+.admin-hero.admin-hero-compact .eyebrow {
+  font-size: 11px !important;
+  margin-bottom: 2px !important;
+  color: var(--primary, #6366f1) !important;
+  font-weight: 600 !important;
+}
+.admin-hero.admin-hero-compact p,
+.admin-hero.admin-hero-compact .hero-date {
+  display: none !important;
+}
+.admin-hero.admin-hero-compact .admin-hero-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  flex-shrink: 0 !important;
+}
+.admin-hero.admin-hero-compact .admin-hero-actions .btn {
+  padding: 6px 14px !important;
+  font-size: 13px !important;
+}
+
+@media (max-width: 640px) {
+  .admin-hero.admin-hero-compact {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+    padding: 12px 14px !important;
+  }
+  .admin-hero.admin-hero-compact .admin-hero-actions {
+    width: 100% !important;
+    justify-content: flex-start !important;
+  }
+}
