@@ -8428,3 +8428,2011 @@ label{
     padding: 12px !important;
   }
 }
+
+/* ============================================================
+   小鱼健康 · 智能手环健康感知系统 高级 UI 样式重构
+   ============================================================ */
+
+/* 1. 彻底禁用所有劣质机械跳动与跑马灯动画 */
+.lux-dashboard-grid strong,
+.lux-stats-row strong,
+.lux-auth-board-head strong,
+.vital-num,
+.chip-val {
+  animation: none !important;
+  transform: none !important;
+}
+
+.lux-hero-card svg path,
+.lux-auth-board svg path,
+.band-waveform-box svg path,
+.auth-wave-card svg path {
+  animation: none !important;
+}
+
+.lux-hero-card svg circle,
+.lux-auth-board svg circle {
+  animation: none !important;
+}
+
+/* 2. 标题与辅助标签微调 */
+.lux-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: rgba(37, 99, 235, 0.08);
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  border-radius: 999px;
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.lux-kicker-dot {
+  width: 8px;
+  height: 8px;
+  background: #10b981;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #10b981;
+}
+
+.lux-title-accent {
+  background: linear-gradient(135deg, #2563eb, #0d9488);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.lux-btn.secondary {
+  background: #ffffff;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.lux-btn.secondary:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+.lux-tags span i.lux-tag-icon.pulse {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: #ef4444;
+  border-radius: 50%;
+  margin-right: 6px;
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.8);
+}
+
+/* 3. 手环健康卡片专属样式 (Hero Visual) */
+.band-monitor-card {
+  padding: 24px 26px !important;
+  background: rgba(255, 255, 255, 0.94) !important;
+  border: 1px solid rgba(226, 232, 240, 0.95) !important;
+  box-shadow: 0 24px 50px -12px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(255, 255, 255, 0.8) inset !important;
+  backdrop-filter: blur(20px) !important;
+}
+
+.band-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f1f5f9;
+  margin-bottom: 18px;
+}
+
+.band-device-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.device-live-dot {
+  width: 9px;
+  height: 9px;
+  background: #10b981;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+}
+
+.band-gateway-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #64748b;
+  background: #f8fafc;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.gw-signal {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #0284c7;
+}
+
+.band-vitals-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.vital-item {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 14px 16px;
+  transition: all 0.2s ease;
+}
+
+.vital-item:hover {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.05);
+}
+
+.vital-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+
+.vital-hr .vital-icon { color: #ef4444; font-size: 13px; }
+.vital-activity .vital-icon { color: #f59e0b; font-size: 13px; }
+.vital-devices .vital-icon { color: #2563eb; font-size: 13px; }
+
+.vital-value-wrap {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.vital-num {
+  font-size: 26px;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.vital-unit {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.vital-status {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.status-normal { color: #059669; }
+.status-active { color: #2563eb; }
+.status-good { color: #0284c7; }
+
+/* 波形区 */
+.band-waveform-box {
+  background: #0f172a;
+  border-radius: 16px;
+  padding: 14px 16px 10px;
+  margin-bottom: 16px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.2) inset;
+}
+
+.waveform-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.stream-fps {
+  color: #38bdf8;
+  font-family: monospace;
+  background: rgba(56, 189, 248, 0.12);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.band-svg-wave {
+  width: 100%;
+  height: 90px;
+  display: block;
+}
+
+.band-svg-wave .wave-grid line {
+  stroke: rgba(255, 255, 255, 0.08);
+}
+
+.band-live-roster {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.roster-pill {
+  font-size: 11.5px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: #f1f5f9;
+  color: #475569;
+  font-weight: 500;
+  border: 1px solid #e2e8f0;
+}
+
+.roster-pill.active {
+  background: #ecfdf5;
+  color: #065f46;
+  border-color: #a7f3d0;
+  font-weight: 600;
+}
+
+/* 4. 登录页手环面板样式 */
+.band-auth-board {
+  max-width: 440px !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 20px 40px -10px rgba(15, 23, 42, 0.1) !important;
+  border-radius: 24px !important;
+  padding: 22px !important;
+}
+
+.gw-online-tag {
+  color: #10b981 !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+}
+
+.band-auth-vitals {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 14px 0 16px;
+}
+
+.auth-vital-chip {
+  background: #f8fafc;
+  border: 1px solid #f1f5f9;
+  border-radius: 12px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.chip-title {
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.chip-val {
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.chip-val small {
+  font-size: 10px;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.chip-sub {
+  font-size: 10px;
+  color: #059669;
+  font-weight: 500;
+}
+
+.auth-wave-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 12px;
+  margin-bottom: 14px;
+}
+
+.auth-wave-title {
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.auth-wave-card svg {
+  width: 100%;
+  height: 65px;
+  display: block;
+}
+
+.lux-login-foot-hint {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px dashed #e2e8f0;
+  font-size: 12px;
+  color: #64748b;
+}
+
+/* 移动端完美适配 */
+@media (max-width: 720px) {
+  .band-vitals-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .band-vitals-grid .vital-item:last-child {
+    grid-column: span 2;
+  }
+  .vital-num {
+    font-size: 22px;
+  }
+  .band-waveform-box {
+    padding: 10px;
+  }
+  .band-live-roster {
+    justify-content: center;
+  }
+  .roster-pill {
+    font-size: 11px;
+  }
+}
+
+/* ==========================================================================
+   全新 Modern SaaS 规范：彻底重构首页排版与比例，告别拥挤杂乱
+   ========================================================================== */
+
+/* 全局主容器放宽，避免强行挤在 1060px 导致双列崩溃 */
+.container:not(.admin-container) {
+  width: min(1280px, calc(100vw - 48px)) !important;
+  max-width: 1280px !important;
+  margin: 0 auto !important;
+  padding: 0 !important;
+}
+
+.lux-home-v2 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(480px, 580px);
+  align-items: center;
+  gap: 56px;
+  min-height: calc(100vh - 110px);
+  padding: 40px 0 60px;
+}
+
+/* --- 左侧 HERO 文本排版 --- */
+.lux-v2-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.lux-v2-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: rgba(37, 99, 235, 0.06);
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  border-radius: 999px;
+  color: #2563eb;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+
+.v2-badge-pulse {
+  width: 8px;
+  height: 8px;
+  background: #10b981;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+}
+
+.lux-v2-title {
+  font-size: clamp(34px, 3.2vw, 46px);
+  line-height: 1.22;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.025em;
+  margin: 0 0 18px;
+  word-break: break-word;
+}
+
+.title-gradient {
+  background: linear-gradient(135deg, #1d4ed8 0%, #0284c7 50%, #0d9488 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.lux-v2-desc {
+  font-size: 15px;
+  line-height: 1.7;
+  color: #475569;
+  max-width: 520px;
+  margin: 0 0 28px;
+}
+
+.lux-v2-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 36px;
+}
+
+.v2-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff !important;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 12px;
+  box-shadow: 0 10px 20px -5px rgba(37, 99, 235, 0.35);
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.v2-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 26px -5px rgba(37, 99, 235, 0.45);
+}
+
+.v2-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: #ffffff;
+  color: #334155 !important;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.v2-btn-ghost:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  color: #0f172a !important;
+}
+
+/* 底部指标：单行不折行，宽阔明了 */
+.lux-v2-specs {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  gap: 28px;
+  padding-top: 24px;
+  border-top: 1px solid #e2e8f0;
+  width: 100%;
+  max-width: 520px;
+}
+
+.spec-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.spec-num {
+  font-size: 22px;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+}
+
+.spec-text {
+  font-size: 12px;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+/* --- 右侧 BOARD 卡片排版 --- */
+.lux-v2-board {
+  position: relative;
+  width: 100%;
+}
+
+.v2-board-card {
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid #e2e8f0;
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: 0 20px 45px -10px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(255, 255, 255, 0.8) inset;
+  backdrop-filter: blur(20px);
+}
+
+.board-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f1f5f9;
+  margin-bottom: 18px;
+}
+
+.device-status-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #0f172a;
+}
+
+.device-status-pill .live-dot {
+  width: 8px;
+  height: 8px;
+  background: #10b981;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+}
+
+.device-status-pill .sub-split {
+  color: #cbd5e1;
+}
+
+.device-status-pill .sub-text {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.gw-status-tag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: #475569;
+  background: #f1f5f9;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.gw-icon {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #0284c7;
+}
+
+/* 三联体征卡片 */
+.board-vitals-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.vital-card {
+  background: #f8fafc;
+  border: 1px solid #f1f5f9;
+  border-radius: 14px;
+  padding: 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.vital-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.vital-icon-heart { color: #ef4444; font-size: 13px; }
+.vital-icon-load { color: #f59e0b; font-size: 13px; }
+.vital-icon-device { color: #2563eb; font-size: 13px; }
+
+.vital-data {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.vital-val {
+  font-size: 24px;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+}
+
+.vital-unit {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.vital-badge {
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 6px;
+  padding: 2px 6px;
+  width: fit-content;
+}
+
+.badge-green { background: #dcfce7; color: #15803d; }
+.badge-blue { background: #dbeafe; color: #1d4ed8; }
+.badge-cyan { background: #cffafe; color: #0e7490; }
+
+/* 波形区 */
+.board-ecg-window {
+  background: #090d16;
+  border-radius: 16px;
+  padding: 14px 16px 10px;
+  margin-bottom: 16px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25) inset;
+}
+
+.ecg-window-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11.5px;
+  color: #94a3b8;
+  font-weight: 500;
+  margin-bottom: 10px;
+}
+
+.ecg-filter {
+  color: #38bdf8;
+  font-size: 10.5px;
+  font-family: monospace;
+  background: rgba(56, 189, 248, 0.12);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.ecg-svg-container {
+  width: 100%;
+  height: 85px;
+}
+
+.ecg-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* 班级标签 */
+.board-footer-roster {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.roster-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 11.5px;
+  color: #475569;
+  font-weight: 500;
+}
+
+.roster-tag.is-active {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #065f46;
+  font-weight: 600;
+}
+
+.dot-green { width: 6px; height: 6px; border-radius: 50%; background: #10b981; }
+.dot-blue { width: 6px; height: 6px; border-radius: 50%; background: #0ea5e9; }
+
+/* 响应式平板与移动端 */
+@media (max-width: 1024px) {
+  .lux-home-v2 {
+    grid-template-columns: 1fr;
+    gap: 36px;
+    padding: 30px 0;
+  }
+  .lux-v2-hero {
+    align-items: center;
+    text-align: center;
+  }
+  .lux-v2-desc {
+    margin: 0 auto 24px;
+  }
+  .lux-v2-actions {
+    justify-content: center;
+  }
+  .lux-v2-specs {
+    justify-content: center;
+    margin: 0 auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .lux-v2-title {
+    font-size: 30px;
+  }
+  .board-vitals-row {
+    grid-template-columns: 1fr 1fr;
+  }
+  .board-vitals-row .vital-card:last-child {
+    grid-column: span 2;
+  }
+  .lux-v2-specs {
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+  }
+}
+
+/* ==========================================================================
+   登录页 V2 彻底现代化重构：左右对齐、比例协调、无杂乱错位
+   ========================================================================== */
+
+.lux-auth-shell-v2 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(380px, 440px);
+  align-items: center;
+  gap: 56px;
+  min-height: calc(100vh - 120px);
+  padding: 40px 0 60px;
+}
+
+.lux-auth-story-v2 {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.v2-auth-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: rgba(37, 99, 235, 0.06);
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  border-radius: 999px;
+  color: #2563eb;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 18px;
+}
+
+.v2-auth-title {
+  font-size: clamp(30px, 2.8vw, 40px);
+  line-height: 1.25;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 14px;
+  letter-spacing: -0.025em;
+}
+
+.v2-auth-desc {
+  font-size: 14.5px;
+  color: #475569;
+  line-height: 1.65;
+  max-width: 480px;
+  margin: 0 0 24px;
+}
+
+.v2-auth-board {
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  padding: 22px;
+  width: 100%;
+  max-width: 500px;
+  box-shadow: 0 20px 40px -10px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(20px);
+}
+
+.v2-auth-board-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.auth-gw-tag {
+  color: #10b981 !important;
+  font-size: 11.5px !important;
+  font-weight: 600;
+}
+
+.v2-auth-chips {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 14px 0;
+}
+
+.auth-chip {
+  background: #f8fafc;
+  border: 1px solid #f1f5f9;
+  border-radius: 12px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.c-title { font-size: 11px; color: #64748b; font-weight: 500; }
+.c-val { font-size: 18px; font-weight: 800; color: #0f172a; }
+.c-val small { font-size: 11px; font-weight: 600; color: #94a3b8; }
+.c-sub { font-size: 10.5px; color: #059669; font-weight: 500; }
+
+.v2-auth-wave {
+  background: #090d16;
+  border-radius: 14px;
+  padding: 12px 14px 8px;
+  margin-bottom: 14px;
+}
+
+.auth-wave-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #94a3b8;
+  margin-bottom: 6px;
+}
+
+.auth-wave-svg {
+  width: 100%;
+  height: 60px;
+  display: block;
+}
+
+.v2-auth-features {
+  display: flex;
+  gap: 8px;
+}
+
+.v2-auth-features span {
+  flex: 1;
+  text-align: center;
+  padding: 6px 8px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 11.5px;
+  color: #475569;
+  font-weight: 500;
+}
+
+/* --- 右侧登录面板 --- */
+.lux-v2-login-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 24px;
+  padding: 36px 32px;
+  box-shadow: 0 24px 50px -12px rgba(15, 23, 42, 0.12);
+  width: 100%;
+}
+
+.v2-login-mark {
+  display: inline-block;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #2563eb;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.v2-login-title {
+  font-size: 26px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 6px;
+  letter-spacing: -0.02em;
+}
+
+.v2-login-desc {
+  font-size: 13.5px;
+  color: #64748b;
+  margin: 0 0 24px;
+  line-height: 1.5;
+}
+
+.v2-login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.v2-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.v2-field label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.v2-field input {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 14px;
+  color: #0f172a;
+  background: #f8fafc;
+  outline: none;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.v2-field input:focus {
+  background: #ffffff;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.v2-submit-btn {
+  margin-top: 6px;
+  height: 46px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+  font-size: 14.5px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 10px 20px -4px rgba(37, 99, 235, 0.35);
+  transition: all 0.2s ease;
+}
+
+.v2-submit-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 26px -4px rgba(37, 99, 235, 0.45);
+}
+
+.v2-login-footer {
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px dashed #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11.5px;
+  color: #64748b;
+}
+
+@media (max-width: 960px) {
+  .lux-auth-shell-v2 {
+    grid-template-columns: 1fr;
+    gap: 32px;
+    padding: 24px 0;
+  }
+  .lux-auth-story-v2 {
+    align-items: center;
+    text-align: center;
+  }
+  .v2-auth-desc {
+    margin: 0 auto 20px;
+  }
+  .v2-auth-board {
+    margin: 0 auto;
+  }
+}
+
+/* ==========================================================================
+   V3 动效与业务深度体系：真实动态流动心电 Canvas、平滑呼吸与开阔排版
+   ========================================================================== */
+
+.lux-home-v3 {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(490px, 580px);
+  align-items: center;
+  gap: 52px;
+  min-height: calc(100vh - 110px);
+  padding: 40px 0 60px;
+}
+
+.lux-v3-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.lux-v3-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: rgba(37, 99, 235, 0.07);
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  border-radius: 999px;
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+
+.pulse-emerald {
+  width: 8px;
+  height: 8px;
+  background: #10b981;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+  display: inline-block;
+}
+
+.lux-v3-title {
+  font-size: clamp(34px, 3.2vw, 44px);
+  line-height: 1.22;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.025em;
+  margin: 0 0 18px;
+}
+
+.v3-gradient-text {
+  background: linear-gradient(135deg, #1d4ed8 0%, #0284c7 45%, #059669 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.lux-v3-desc {
+  font-size: 15px;
+  line-height: 1.7;
+  color: #475569;
+  max-width: 560px;
+  margin: 0 0 28px;
+}
+
+.lux-v3-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 32px;
+}
+
+.v3-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff !important;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 12px;
+  box-shadow: 0 10px 20px -5px rgba(37, 99, 235, 0.35);
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.v3-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 26px -5px rgba(37, 99, 235, 0.45);
+}
+
+.v3-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: #ffffff;
+  color: #334155 !important;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.v3-btn-ghost:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  color: #0f172a !important;
+}
+
+/* 矩阵三维特性 */
+.lux-v3-matrix {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 560px;
+  width: 100%;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 24px;
+}
+
+.matrix-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.matrix-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: #eff6ff;
+  border: 1px solid #dbeafe;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.matrix-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.matrix-info strong {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.matrix-info span {
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+/* --- 右侧看台卡片 --- */
+.lux-v3-board {
+  width: 100%;
+}
+
+.v3-board-card {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #e2e8f0;
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: 0 24px 50px -12px rgba(15, 23, 42, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.8) inset;
+  backdrop-filter: blur(20px);
+}
+
+.v3-board-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f1f5f9;
+  margin-bottom: 18px;
+}
+
+.v3-pulse-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.live-dot-wave {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25);
+}
+
+.status-main {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.split {
+  color: #cbd5e1;
+}
+
+.status-sub {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.v3-time-tag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-family: monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.time-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #0284c7;
+}
+
+/* 核心指标网格：佩戴 107 */
+.v3-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.v3-metric-item {
+  background: #f8fafc;
+  border: 1px solid #f1f5f9;
+  border-radius: 14px;
+  padding: 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.metric-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.m-icon.red { color: #ef4444; }
+.m-icon.blue { color: #2563eb; }
+.m-icon.amber { color: #d97706; }
+
+.metric-value-row {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.metric-num {
+  font-size: 24px;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+}
+
+.metric-unit {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.metric-badge {
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 6px;
+  padding: 2px 6px;
+  width: fit-content;
+}
+
+.metric-badge.green { background: #dcfce7; color: #15803d; }
+.metric-badge.blue { background: #dbeafe; color: #1d4ed8; }
+.metric-badge.amber { background: #fef3c7; color: #b45309; }
+
+/* 真正动态流动心电 Canvas 窗口 */
+.v3-canvas-wrap {
+  background: #090d16;
+  border-radius: 16px;
+  padding: 14px 16px 12px;
+  margin-bottom: 16px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3) inset;
+}
+
+.canvas-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.meta-stream-title {
+  font-size: 11.5px;
+  color: #cbd5e1;
+  font-weight: 600;
+  margin-right: 8px;
+}
+
+.sampling-rate {
+  font-size: 10.5px;
+  font-family: monospace;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.live-tag {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #10b981;
+  letter-spacing: 0.05em;
+}
+
+.canvas-container {
+  width: 100%;
+  height: 95px;
+}
+
+.canvas-container canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* 底部状态微调条 */
+.v3-vitals-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 10px 16px;
+}
+
+.strip-node {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.s-label {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.s-val {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.s-val small {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.green-tag {
+  color: #16a34a !important;
+}
+
+.strip-divider {
+  width: 1px;
+  height: 16px;
+  background: #cbd5e1;
+}
+
+/* ==========================================================================
+   登录页 V3 样式优化
+   ========================================================================== */
+.lux-auth-shell-v3 {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(380px, 440px);
+  align-items: center;
+  gap: 56px;
+  min-height: calc(100vh - 120px);
+  padding: 40px 0 60px;
+}
+
+.lux-auth-story-v3 {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.v3-auth-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: rgba(37, 99, 235, 0.07);
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  border-radius: 999px;
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 18px;
+}
+
+.v3-auth-title {
+  font-size: clamp(30px, 2.8vw, 40px);
+  line-height: 1.25;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 14px;
+  letter-spacing: -0.025em;
+}
+
+.v3-auth-desc {
+  font-size: 14.5px;
+  color: #475569;
+  line-height: 1.65;
+  max-width: 500px;
+  margin: 0 0 24px;
+}
+
+.v3-auth-board {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  padding: 22px;
+  width: 100%;
+  max-width: 520px;
+  box-shadow: 0 20px 40px -10px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(20px);
+}
+
+.v3-auth-board-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.auth-head-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.auth-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25);
+}
+
+.auth-gw-online {
+  color: #10b981 !important;
+  font-size: 11.5px !important;
+  font-weight: 600;
+}
+
+.v3-auth-chips {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 14px 0;
+}
+
+.v3-auth-wave-box {
+  background: #090d16;
+  border-radius: 14px;
+  padding: 12px 14px 8px;
+  margin-bottom: 14px;
+}
+
+.auth-wave-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: #94a3b8;
+  margin-bottom: 6px;
+}
+
+.wave-tag {
+  color: #10b981;
+  font-weight: 700;
+  font-size: 10px;
+}
+
+.auth-canvas {
+  width: 100%;
+  height: 70px;
+  display: block;
+}
+
+.v3-auth-capabilities {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.cap-pill {
+  text-align: center;
+  padding: 7px 4px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 11.5px;
+  color: #334155;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* 登录面板卡片 */
+.lux-v3-login-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 24px;
+  padding: 36px 32px;
+  box-shadow: 0 24px 50px -12px rgba(15, 23, 42, 0.12);
+  width: 100%;
+}
+
+.v3-login-brand {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #2563eb;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+}
+
+.v3-login-title {
+  font-size: 26px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 6px;
+  letter-spacing: -0.02em;
+}
+
+.v3-login-desc {
+  font-size: 13.5px;
+  color: #64748b;
+  margin: 0 0 24px;
+  line-height: 1.5;
+}
+
+.v3-login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.v3-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.v3-field label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.v3-field input {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 14px;
+  color: #0f172a;
+  background: #f8fafc;
+  outline: none;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.v3-field input:focus {
+  background: #ffffff;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.v3-submit-btn {
+  margin-top: 6px;
+  height: 46px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+  font-size: 14.5px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 10px 20px -4px rgba(37, 99, 235, 0.35);
+  transition: all 0.2s ease;
+}
+
+.v3-submit-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 26px -4px rgba(37, 99, 235, 0.45);
+}
+
+.v3-login-support {
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px dashed #e2e8f0;
+  font-size: 11.5px;
+  color: #64748b;
+  text-align: center;
+}
+
+/* 响应式支持 */
+@media (max-width: 1024px) {
+  .lux-home-v3, .lux-auth-shell-v3 {
+    grid-template-columns: 1fr;
+    gap: 36px;
+    padding: 30px 0;
+  }
+  .lux-v3-hero, .lux-auth-story-v3 {
+    align-items: center;
+    text-align: center;
+  }
+  .lux-v3-desc, .v3-auth-desc {
+    margin: 0 auto 24px;
+  }
+  .lux-v3-actions {
+    justify-content: center;
+  }
+  .lux-v3-matrix, .v3-auth-board {
+    margin: 0 auto;
+  }
+}
+
+/* ==========================================================================
+   Zen Minimal 规范：彻底删减繁重文字，高端降噪，纯粹洗练
+   ========================================================================== */
+
+.zen-home {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(420px, 500px);
+  align-items: center;
+  gap: 56px;
+  min-height: calc(100vh - 120px);
+  padding: 40px 0 60px;
+}
+
+.zen-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.zen-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  background: rgba(37, 99, 235, 0.06);
+  border: 1px solid rgba(37, 99, 235, 0.16);
+  border-radius: 999px;
+  color: #2563eb;
+  font-size: 12.5px;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+
+.zen-pulse {
+  width: 7px;
+  height: 7px;
+  background: #10b981;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+}
+
+.zen-title {
+  font-size: clamp(34px, 3.4vw, 48px);
+  line-height: 1.2;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.025em;
+  margin: 0 0 16px;
+}
+
+.zen-gradient {
+  background: linear-gradient(135deg, #1d4ed8 0%, #0284c7 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.zen-desc {
+  font-size: 15px;
+  color: #64748b;
+  margin: 0 0 30px;
+  font-weight: 500;
+}
+
+.zen-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 38px;
+}
+
+.zen-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 11px 22px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 10px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.zen-btn.primary {
+  background: #2563eb;
+  color: #ffffff !important;
+  box-shadow: 0 8px 16px -4px rgba(37, 99, 235, 0.35);
+}
+
+.zen-btn.primary:hover {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+.zen-btn.ghost {
+  background: #ffffff;
+  color: #334155 !important;
+  border: 1px solid #cbd5e1;
+}
+
+.zen-btn.ghost:hover {
+  background: #f8fafc;
+  color: #0f172a !important;
+}
+
+/* 极简数字行：3 个干净数字 */
+.zen-numbers {
+  display: flex;
+  gap: 36px;
+  padding-top: 24px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.num-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.num-val {
+  font-size: 26px;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+}
+
+.num-label {
+  font-size: 12px;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+/* 右侧科技动态视窗：纯黑医疗级视窗，不塞繁杂文字 */
+.zen-visual {
+  width: 100%;
+}
+
+.zen-card {
+  background: #090d16;
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);
+  border: 1px solid #1e293b;
+}
+
+.zen-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.zen-live-text {
+  font-size: 12.5px;
+  color: #38bdf8;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.zen-tag {
+  font-size: 10px;
+  color: #10b981;
+  font-weight: 700;
+  background: rgba(16, 185, 129, 0.12);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.zen-canvas-wrap {
+  width: 100%;
+  height: 110px;
+}
+
+.zen-canvas-wrap canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.zen-card-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 14px;
+  margin-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 11.5px;
+  color: #94a3b8;
+}
+
+/* ==========================================================================
+   登录页纯粹化重构：居中卡片，告别一切左侧复读内容
+   ========================================================================== */
+.zen-auth-container {
+  min-height: calc(100vh - 120px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 16px;
+}
+
+.zen-login-box {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 400px;
+  padding: 38px 32px;
+  box-shadow: 0 20px 45px -10px rgba(15, 23, 42, 0.08);
+}
+
+.zen-login-header {
+  margin-bottom: 26px;
+  text-align: center;
+}
+
+.zen-login-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #2563eb;
+  margin-bottom: 12px;
+}
+
+.zen-pulse-dot {
+  width: 7px;
+  height: 7px;
+  background: #10b981;
+  border-radius: 50%;
+}
+
+.zen-login-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 6px;
+  letter-spacing: -0.02em;
+}
+
+.zen-login-sub {
+  font-size: 13.5px;
+  color: #64748b;
+  margin: 0;
+}
+
+.zen-login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.zen-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+}
+
+.zen-form-group label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.zen-input-wrap input {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 14px;
+  color: #0f172a;
+  background: #f8fafc;
+  outline: none;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+
+.zen-input-wrap input:focus {
+  background: #ffffff;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.zen-login-btn {
+  margin-top: 6px;
+  height: 44px;
+  background: #2563eb;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  font-size: 14.5px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 8px 16px -3px rgba(37, 99, 235, 0.35);
+  transition: all 0.2s ease;
+}
+
+.zen-login-btn:hover {
+  background: #1d4ed8;
+}
+
+@media (max-width: 900px) {
+  .zen-home {
+    grid-template-columns: 1fr;
+    gap: 36px;
+    padding: 24px 0;
+  }
+  .zen-hero {
+    align-items: center;
+    text-align: center;
+  }
+  .zen-actions {
+    justify-content: center;
+  }
+  .zen-numbers {
+    justify-content: center;
+  }
+}

@@ -1,68 +1,34 @@
 <%- include('partials/header') %>
 
-<section class="lux-auth-shell">
-  <div class="lux-auth-story" aria-hidden="true">
-    <div class="lux-auth-badge">Daily Sync · 18:30</div>
-    <h1>今天的数据，已经整理成清晰工作台。</h1>
-
-    <div class="lux-auth-board">
-      <div class="lux-auth-board-head">
-        <span>今日数据</span>
-        <strong>已同步</strong>
+<section class="zen-auth-container">
+  <div class="zen-login-box">
+    <div class="zen-login-header">
+      <div class="zen-login-logo">
+        <span class="zen-pulse-dot"></span>
+        <span>智慧健康物联平台</span>
       </div>
-      <div class="lux-auth-stats" aria-label="登录页核心指标">
-        <article><strong>93%</strong><span>出勤覆盖</span></article>
-        <article><strong>128</strong><span>今日体测任务</span></article>
-        <article><strong>AI</strong><span>趋势洞察</span></article>
-      </div>
-      <svg viewBox="0 0 420 210" role="img" aria-label="登录页数据趋势">
-        <defs>
-          <linearGradient id="authBlue" x1="0" x2="1" y1="0" y2="0">
-            <stop offset="0" stop-color="#2563eb" />
-            <stop offset="1" stop-color="#06b6d4" />
-          </linearGradient>
-          <linearGradient id="authCoral" x1="0" x2="1" y1="0" y2="0">
-            <stop offset="0" stop-color="#fb7185" />
-            <stop offset="1" stop-color="#f59e0b" />
-          </linearGradient>
-        </defs>
-        <g stroke="#94a3b8" stroke-width="1" opacity=".2">
-          <line x1="28" y1="42" x2="392" y2="42" />
-          <line x1="28" y1="86" x2="392" y2="86" />
-          <line x1="28" y1="130" x2="392" y2="130" />
-          <line x1="28" y1="174" x2="392" y2="174" />
-        </g>
-        <path d="M30 168 C78 132 104 154 146 106 C188 58 220 94 262 66 C314 30 350 54 390 34" fill="none" stroke="url(#authBlue)" stroke-width="7" stroke-linecap="round" />
-        <path d="M30 154 C80 142 112 120 154 128 C204 138 226 88 274 96 C326 104 350 72 390 62" fill="none" stroke="url(#authCoral)" stroke-width="5" stroke-linecap="round" stroke-dasharray="10 10" />
-      </svg>
-      <div class="lux-auth-metrics">
-        <span>生长趋势</span>
-        <span>体测对比</span>
-        <span>AI 报告</span>
-      </div>
+      <h1 class="zen-login-title">账号登录</h1>
+      <p class="zen-login-sub">输入园所管理或教师账号进入系统</p>
     </div>
-  </div>
 
-  <div class="lux-login-card card">
-    <div class="lux-login-mark">小鱼健康平台</div>
-    <div class="eyebrow">账号登录</div>
-    <h1>进入数据工作台</h1>
-    <% if (error) { %><div class="alert error"><%= error %></div><% } %>
+    <% if (error) { %><div class="alert error" style="margin-bottom:18px;padding:10px 14px;border-radius:10px;font-size:13px;"><%= error %></div><% } %>
 
-    <form method="post" action="/login" class="lux-form" role="form" aria-label="登录表单">
-      <label>
-        <span>用户名</span>
-        <input type="text" name="username" placeholder="请输入用户名" required autocomplete="username" aria-label="用户名" />
-      </label>
-      <label>
-        <span>密码</span>
-        <input type="password" name="password" placeholder="请输入密码" required autocomplete="current-password" aria-label="密码" />
-      </label>
-      <button class="lux-submit" type="submit">登录数据工作台</button>
+    <form method="post" action="/login" class="zen-login-form" role="form" aria-label="登录表单">
+      <div class="zen-form-group">
+        <label for="login-username">用户名</label>
+        <div class="zen-input-wrap">
+          <input id="login-username" type="text" name="username" placeholder="请输入用户名" required autocomplete="username" />
+        </div>
+      </div>
+      <div class="zen-form-group">
+        <label for="login-password">密码</label>
+        <div class="zen-input-wrap">
+          <input id="login-password" type="password" name="password" placeholder="请输入密码" required autocomplete="current-password" />
+        </div>
+      </div>
+      <button class="zen-login-btn" type="submit">登 录</button>
     </form>
-
   </div>
 </section>
-
 
 <%- include('partials/footer') %>

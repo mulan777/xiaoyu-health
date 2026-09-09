@@ -1,100 +1,229 @@
 <%- include('partials/header') %>
 
-<section class="lux-home">
-  <div class="lux-home-copy">
-    <div class="lux-kicker"><%= settings.subtitle || '幼儿园体适能教研平台' %></div>
-    <h1><%= settings.heroTitle || settings.siteName %></h1>
-    <p><%= settings.heroDesc || '体测、生长、预约与 AI 分析，一站式完成。' %></p>
+<section class="lux-home-v2">
+  <!-- 左侧：利落大气的品牌叙事与核心入口 -->
+  <div class="lux-v2-hero">
+    <div class="lux-v2-badge">
+      <span class="v2-badge-pulse"></span>
+      <span>智能穿戴 · 幼儿健康物联监护</span>
+    </div>
+    
+    <h1 class="lux-v2-title">
+      全园体征连续监护<br>
+      <span class="title-gradient">AI 智能健康监测平台</span>
+    </h1>
+    
+    <p class="lux-v2-desc">
+      融合低功耗蓝牙手环传感、全园多网关覆盖与体适能教研体系，实时追踪心率异常与运动负荷，构筑幼儿健康安全成长防线。
+    </p>
 
-    <div class="lux-actions">
-      <a class="lux-btn primary" href="/login">进入平台</a>
+    <div class="lux-v2-actions">
+      <a class="v2-btn-primary" href="/login">
+        <span>进入管理工作台</span>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </a>
+      <a class="v2-btn-ghost" href="/screen" target="_blank">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        <span>开启全园大屏</span>
+      </a>
     </div>
 
-    <div class="lux-tags">
-      <span>体测管理</span>
-      <span>成长档案</span>
-      <span>预约排班</span>
-      <span>AI 分析</span>
-    </div>
-
-    <div class="lux-stats-row" aria-label="平台核心指标">
-      <div>
-        <strong>3+1</strong>
-        <span>教师、园所、家长协同</span>
+    <!-- 底部指标：单行不折行 -->
+    <div class="lux-v2-specs">
+      <div class="spec-col">
+        <span class="spec-num">24h</span>
+        <span class="spec-text">无感连续体征采集</span>
       </div>
-      <div>
-        <strong>实时</strong>
-        <span>体测与成长数据同步</span>
+      <div class="spec-col">
+        <span class="spec-num">&lt; 1s</span>
+        <span class="spec-text">网关毫秒级实时同步</span>
       </div>
-      <div>
-        <strong>AI</strong>
-        <span>自动生成分析与建议</span>
+      <div class="spec-col">
+        <span class="spec-num">AI</span>
+        <span class="spec-text">负荷与异常体征研判</span>
       </div>
     </div>
   </div>
 
-  <div class="lux-home-visual">
-    <div class="lux-blob blob-a"></div>
-    <div class="lux-blob blob-b"></div>
-    <div class="lux-blob blob-c"></div>
-    <div class="lux-hero-card">
-      <div class="lux-card-top">
-        <span>Health Intelligence</span>
-        <em>Live</em>
+  <!-- 右侧：完整饱满的原版手环体征监测面板（极慢速平稳流动） -->
+  <div class="lux-v2-board">
+    <div class="v2-board-card">
+      <!-- 顶部设备与网关状态 -->
+      <div class="board-topbar">
+        <div class="device-status-pill">
+          <span class="live-dot"></span>
+          <strong>智能手环实时感知中</strong>
+        </div>
+        <div class="gw-status-tag">
+          <span class="gw-icon"></span>
+          <span>蓝牙网关正常接收 · 2.4G BLE</span>
+        </div>
       </div>
-      <div class="lux-dashboard-grid">
-        <article>
-          <strong>93%</strong>
-          <span>出勤覆盖</span>
-        </article>
-        <article>
-          <strong>128</strong>
-          <span>今日体测任务</span>
-        </article>
-        <article>
-          <strong>AI</strong>
-          <span>趋势洞察</span>
-        </article>
+
+      <!-- 核心指标卡：真实在佩 107 台、心率、体动负荷 -->
+      <div class="board-vitals-row">
+        <div class="vital-card">
+          <div class="vital-meta">
+            <span class="vital-icon-heart">♥</span>
+            <span>当前全园平均心率</span>
+          </div>
+          <div class="vital-data">
+            <span class="vital-val" id="board-hr-val">88</span>
+            <span class="vital-unit">BPM</span>
+          </div>
+          <div class="vital-badge badge-green">适中区间 (75~115)</div>
+        </div>
+
+        <div class="vital-card">
+          <div class="vital-meta">
+            <span class="vital-icon-load">⚡</span>
+            <span>全园平均体动负荷</span>
+          </div>
+          <div class="vital-data">
+            <span class="vital-val">中高强</span>
+            <span class="vital-unit">负荷</span>
+          </div>
+          <div class="vital-badge badge-blue">户外操 · 活跃度 84%</div>
+        </div>
+
+        <div class="vital-card">
+          <div class="vital-meta">
+            <span class="vital-icon-device">⌚</span>
+            <span>手环在佩</span>
+          </div>
+          <div class="vital-data">
+            <span class="vital-val">107</span>
+            <span class="vital-unit">台</span>
+          </div>
+          <div class="vital-badge badge-cyan">全园在线互联</div>
+        </div>
       </div>
-      <svg viewBox="0 0 760 360" role="img" aria-label="平台趋势视觉">
-        <defs>
-          <linearGradient id="luxBlue" x1="0" x2="1" y1="0" y2="0">
-            <stop offset="0" stop-color="#2563eb" />
-            <stop offset="1" stop-color="#06b6d4" />
-          </linearGradient>
-          <linearGradient id="luxWarm" x1="0" x2="1" y1="0" y2="0">
-            <stop offset="0" stop-color="#fb7185" />
-            <stop offset="1" stop-color="#f59e0b" />
-          </linearGradient>
-          <filter id="luxGlow" x="-30%" y="-30%" width="160%" height="160%">
-            <feGaussianBlur stdDeviation="6" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-        </defs>
-        <g opacity=".22" stroke="#94a3b8" stroke-width="1">
-          <line x1="60" y1="64" x2="704" y2="64" />
-          <line x1="60" y1="128" x2="704" y2="128" />
-          <line x1="60" y1="192" x2="704" y2="192" />
-          <line x1="60" y1="256" x2="704" y2="256" />
-        </g>
-        <path d="M64 272 C132 232 186 238 250 188 C320 134 386 160 456 114 C540 58 616 74 702 42" fill="none" stroke="url(#luxBlue)" stroke-width="9" stroke-linecap="round" filter="url(#luxGlow)" />
-        <path d="M64 292 C144 256 200 258 274 226 C346 196 414 214 494 166 C570 120 628 126 702 96" fill="none" stroke="url(#luxWarm)" stroke-width="6" stroke-linecap="round" stroke-dasharray="12 12" opacity=".95" />
-        <g fill="#fff" stroke="#2563eb" stroke-width="5">
-          <circle cx="250" cy="188" r="8" />
-          <circle cx="456" cy="114" r="8" />
-          <circle cx="702" cy="42" r="8" />
-        </g>
-      </svg>
-      <div class="lux-inline-notes">
-        <span>体测</span>
-        <span>成长曲线</span>
-        <span>AI 报告</span>
+
+      <!-- 医疗级心率脉冲波形窗口：极慢流动，宁静舒展 -->
+      <div class="board-ecg-window">
+        <div class="ecg-window-title">
+          <span>实时心率图谱 (Real-time ECG Stream)</span>
+          <span class="ecg-filter">滤波降噪 · 100Hz</span>
+        </div>
+        <div class="ecg-svg-container" style="height:85px;">
+          <canvas id="luxEcgCanvas" width="520" height="85" style="width:100%;height:100%;display:block;"></canvas>
+        </div>
+      </div>
+
+      <!-- 底部状态指示 -->
+      <div class="board-footer-roster">
+        <div class="roster-tag is-active">
+          <span class="dot-green"></span>
+          <span>全园体征连续监护中</span>
+        </div>
+        <div class="roster-tag">
+          <span class="dot-blue"></span>
+          <span>异常体征 0 项告警</span>
+        </div>
+        <div class="roster-tag">
+          <span class="dot-blue"></span>
+          <span>数据已实时归档</span>
+        </div>
       </div>
     </div>
   </div>
 </section>
+
+<!-- 极慢、极稳、极平缓的流动波形脚本 -->
+<script>
+(function() {
+  var canvas = document.getElementById('luxEcgCanvas');
+  if (canvas) {
+    var ctx = canvas.getContext('2d');
+    var w = canvas.width;
+    var h = canvas.height;
+    var step = 0;
+
+    function getWaveY(x) {
+      var phase = (x % 140);
+      var mid = h * 0.58;
+      if (phase >= 30 && phase < 45) {
+        return mid - Math.sin((phase - 30) / 15 * Math.PI) * 6; // P波
+      } else if (phase >= 55 && phase < 58) {
+        return mid + 5; // Q
+      } else if (phase >= 58 && phase < 66) {
+        return mid - 30; // R尖峰
+      } else if (phase >= 66 && phase < 72) {
+        return mid + 14; // S
+      } else if (phase >= 85 && phase < 110) {
+        return mid - Math.sin((phase - 85) / 25 * Math.PI) * 9; // T波
+      }
+      return mid + (Math.sin(x * 0.12) * 1.2);
+    }
+
+    function render() {
+      ctx.clearRect(0, 0, w, h);
+
+      // 背景微网格
+      ctx.strokeStyle = 'rgba(51, 65, 85, 0.35)';
+      ctx.lineWidth = 0.8;
+      ctx.setLineDash([2, 3]);
+      for (var y = 20; y < h; y += 22) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+      }
+      for (var x = 30; x < w; x += 65) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, h);
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+
+      // 渐变主线
+      var grad = ctx.createLinearGradient(0, 0, w, 0);
+      grad.addColorStop(0, '#0284c7');
+      grad.addColorStop(0.4, '#3b82f6');
+      grad.addColorStop(0.75, '#10b981');
+      grad.addColorStop(1, '#38bdf8');
+
+      ctx.beginPath();
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = 2.2;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+
+      for (var i = 0; i < w; i++) {
+        var yVal = getWaveY(i + step);
+        if (i === 0) ctx.moveTo(i, yVal);
+        else ctx.lineTo(i, yVal);
+      }
+      ctx.stroke();
+
+      // 尾端呼吸流式亮点
+      var lastY = getWaveY(w - 1 + step);
+      ctx.beginPath();
+      ctx.arc(w - 4, lastY, 3.5, 0, Math.PI * 2);
+      ctx.fillStyle = '#38bdf8';
+      ctx.shadowColor = '#38bdf8';
+      ctx.shadowBlur = 8;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // 步进放慢到 0.45（原来是 1.8，慢了整整 4 倍，平缓优雅像真实医用监护仪）
+      step += 0.45;
+      requestAnimationFrame(render);
+    }
+    requestAnimationFrame(render);
+  }
+
+  // 心率自然呼吸跳变（每 4.5 秒微动一下）
+  var hrEl = document.getElementById('board-hr-val');
+  if (hrEl) {
+    setInterval(function() {
+      var d = Math.random() > 0.5 ? 1 : -1;
+      var current = 88 + (Math.random() > 0.6 ? d : 0);
+      hrEl.innerText = current;
+    }, 4500);
+  }
+})();
+</script>
 
 <%- include('partials/footer') %>
