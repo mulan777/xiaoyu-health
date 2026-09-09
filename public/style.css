@@ -8245,3 +8245,186 @@ label{
     justify-content: flex-start !important;
   }
 }
+
+/* ================================================================
+   Mobile Class Card Full Fix (彻底解决手机端显示不全/排版挤压)
+   ================================================================ */
+
+@media (max-width: 860px) {
+  /* 破除外部容器水平滚动和表格强制 820px 最小宽度的限制 */
+  .classes-table-wrap,
+  #class-panel .table-wrap {
+    overflow-x: visible !important;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  table.modern-class-table {
+    min-width: 0 !important;
+    width: 100% !important;
+    display: block !important;
+    border: none !important;
+  }
+
+  table.modern-class-table thead {
+    display: none !important;
+  }
+
+  table.modern-class-table tbody {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    width: 100% !important;
+  }
+
+  /* 每一行彻底转为独立的立体卡片 */
+  table.modern-class-table tr.class-data-row {
+    display: block !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 14px !important;
+    padding: 14px 16px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+    margin-bottom: 0 !important;
+  }
+
+  /* 单元格全部改为块级自适应布局，杜绝任何宽度挤压 */
+  table.modern-class-table td {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 7px 0 !important;
+    border: none !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    font-size: 13px !important;
+    line-height: 1.4 !important;
+  }
+
+  /* 班级名称与头像栏 */
+  table.modern-class-table td:nth-child(1) {
+    padding-bottom: 10px !important;
+    margin-bottom: 8px !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+    justify-content: flex-start !important;
+    gap: 10px !important;
+  }
+  table.modern-class-table td:nth-child(1) .class-name-cell {
+    width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+  }
+  table.modern-class-table td:nth-child(1) .mobile-grade-inline {
+    display: inline-block !important;
+  }
+
+  /* 年级列在卡片内部已经并在第一行，隐去冗余的单独年级行 */
+  table.modern-class-table td:nth-child(2) {
+    display: none !important;
+  }
+
+  /* 带班教师行 */
+  table.modern-class-table td:nth-child(3)::before {
+    content: "带班教师" !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    color: #64748b !important;
+    flex-shrink: 0 !important;
+    margin-right: 12px !important;
+  }
+  table.modern-class-table td:nth-child(3) {
+    align-items: flex-start !important;
+  }
+  table.modern-class-table td:nth-child(3) .teacher-tags-group {
+    justify-content: flex-end !important;
+    max-width: 70% !important;
+  }
+
+  /* 幼儿人数行 */
+  table.modern-class-table td:nth-child(4)::before {
+    content: "在册幼儿" !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    color: #64748b !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* 班级容量行 */
+  table.modern-class-table td:nth-child(5)::before {
+    content: "容量上限" !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    color: #64748b !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* 班级描述/寄语行 */
+  table.modern-class-table td:nth-child(6)::before {
+    content: "班级寄语" !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    color: #64748b !important;
+    flex-shrink: 0 !important;
+    margin-right: 12px !important;
+  }
+  table.modern-class-table td:nth-child(6) {
+    align-items: flex-start !important;
+  }
+  table.modern-class-table td:nth-child(6) .class-desc-cell {
+    text-align: right !important;
+    max-width: 65% !important;
+    word-break: break-word !important;
+    white-space: normal !important;
+    color: #475569 !important;
+  }
+
+  /* 班级状态行 */
+  table.modern-class-table td:nth-child(7)::before {
+    content: "状态" !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    color: #64748b !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* 操作按钮栏：横向拉伸占满底部，大圆角好点击 */
+  table.modern-class-table td:nth-child(8) {
+    margin-top: 10px !important;
+    padding-top: 10px !important;
+    border-top: 1px dashed #e2e8f0 !important;
+    justify-content: flex-end !important;
+  }
+  table.modern-class-table td:nth-child(8) .table-row-actions {
+    width: 100% !important;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+  table.modern-class-table td:nth-child(8) .table-row-actions .btn,
+  table.modern-class-table td:nth-child(8) .table-row-actions button {
+    width: 100% !important;
+    text-align: center !important;
+    justify-content: center !important;
+    padding: 8px 12px !important;
+    font-size: 13px !important;
+    border-radius: 8px !important;
+  }
+  table.modern-class-table td:nth-child(8) .table-row-actions form.inline-form {
+    width: 100% !important;
+  }
+
+  /* 分页条在手机端居中对齐、上下紧凑 */
+  .pagination-bar {
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 10px !important;
+    padding: 12px !important;
+  }
+}
