@@ -177,7 +177,7 @@
         <div>
           <div class="eyebrow">概览</div>
           <h2>工作台概览</h2>
-          <p>系统当前运行状态与核心数据。</p>
+          
         </div>
       </div>
 
@@ -210,31 +210,12 @@
         </div>
       </section>
 
-      <div class="panel-grid overview-grid">
-        <div class="card">
-          <h3>当前可做的管理操作</h3>
-          <div class="feature-list compact-list">
-            <div class="feature-item"><h3>站点管理</h3><p>维护站点名称、副标题、首页主标题和移动端提示。</p></div>
-            <div class="feature-item"><h3>用户 / 班级</h3><p>支持教师账号、班级信息、多教师绑定与批量处理。</p></div>
-            <div class="feature-item"><h3>幼儿档案</h3><p>支持性别、出生日期、重点关注对象与原因。</p></div>
-            <div class="feature-item"><h3>体测 + 场地预约</h3><p>体测数据全流程 + 小班独立 / 中大班共享的预约场地体系。</p></div>
-          </div>
-        </div>
-
-        <div class="card">
-          <h3>使用提醒</h3>
-          <div class="tips compact">
-            <div>1. 左侧先按三类管理切换，展开后再进入对应子功能。</div>
-            <div>2. 重点关注幼儿由管理员统一维护，教师端只读提醒。</div>
-            <div>3. 场地预约开放时间统一配置，教师端自动倒计时。</div>
-            <div>4. 小班独立显示玩法；中班和大班共用同一显示与玩法入口。</div>
-          </div>
-        </div>
+      
       </div>
     </section>
 <% } else if (activePanel === 'site') { %>
     <section id="site-panel" class="admin-panel is-active">
-      <div class="panel-heading"><div><div class="eyebrow">站点管理</div><h2>站点名称与首页内容</h2><p>维护站点基础信息与首页展示内容。</p></div></div>
+      <div class="panel-heading"><div><div class="eyebrow">站点管理</div><h2>站点名称与首页内容</h2></div></div>
       <div class="panel-grid">
         <div class="card">
           <h3>站点设置</h3>
@@ -276,7 +257,7 @@
         <div>
           <div class="eyebrow">AI 接入</div>
           <h2>大模型服务配置</h2>
-          <p>支持 OpenAI 兼容协议的国产大模型（DeepSeek、通义、智谱、Kimi、豆包等），随时可替换 URL、密钥与模型。密钥仅服务端保存，页面仅显示掩码。</p>
+          
         </div>
       </div>
       <% const ai = aiSettings || {}; %>
@@ -367,7 +348,7 @@
       <% const userPageSize = userPaginationData.pageSize || 10; %>
       <% const pagedUsers = filteredUsers.slice((userPaginationData.currentPage - 1) * userPageSize, userPaginationData.currentPage * userPageSize); %>
       <% const userPageQueryBase = 'panel=users' + (userKeywordRaw ? '&userKeyword=' + encodeURIComponent(userKeywordRaw) : '') + (userClassFilter ? '&userClassId=' + encodeURIComponent(userClassFilter) : '') + '&pageSize=' + encodeURIComponent(String(userPageSize)); %>
-      <div class="panel-heading"><div><div class="eyebrow">用户管理</div><h2>教师与管理员账号管理</h2><p>支持单个新增、模板下载、Excel 导入导出和批量操作。</p></div></div>
+      <div class="panel-heading"><div><div class="eyebrow">用户管理</div><h2>教师与管理员账号管理</h2></div></div>
       <div class="management-layout">
         <div class="management-side">
           <% if (typeof hasPerm === 'function' && hasPerm('data.users.create') && !isReadonly) { %>
@@ -814,7 +795,7 @@
       <% const childPageSize = childPaginationData.pageSize || 10; %>
       <% const pagedChildren = filteredChildren.slice((childPaginationData.currentPage - 1) * childPageSize, childPaginationData.currentPage * childPageSize); %>
       <% const childPageQueryBase = 'panel=children' + (childKeywordRaw ? '&childKeyword=' + encodeURIComponent(childKeywordRaw) : '') + (childClassFilter ? '&childClassId=' + encodeURIComponent(childClassFilter) : '') + '&pageSize=' + encodeURIComponent(String(childPageSize)); %>
-      <div class="panel-heading"><div><div class="eyebrow">幼儿档案管理</div><h2>幼儿基础档案</h2><p>这里维护班级归属、姓名、性别、出生日期等基础信息。动态的临时关注状态请到“重点关注管理”里维护。</p></div></div>
+      <div class="panel-heading"><div><div class="eyebrow">幼儿档案管理</div><h2>幼儿基础档案</h2></div></div>
       <div class="management-layout">
         <div class="management-side">
           <% if (typeof hasPerm === 'function' && hasPerm('data.children.create') && !isReadonly) { %>
@@ -932,7 +913,7 @@
     </section>
 <% } else if (activePanel === 'logs') { %>
     <section id="log-panel" class="admin-panel is-active" data-ajax-panel="logs">
-      <div class="panel-heading"><div><div class="eyebrow">日志记录</div><h2>关键操作审计日志</h2><p>所有时间统一按北京时间展示。支持按操作人、动作类型、日期筛选，并按每页 10 条分页。</p></div></div>
+      <div class="panel-heading"><div><div class="eyebrow">日志记录</div><h2>关键操作审计日志</h2></div></div>
       <div class="logs-grid">
         <div class="card log-card-main">
           <div class="section-head"><h3>关键操作审计</h3><div class="muted no-margin">当前共 <%= logs && logs.pagination ? logs.pagination.total : 0 %> 条</div></div>
@@ -1027,7 +1008,7 @@
       <% const quickAttentionTags = ['咳嗽', '感冒恢复期', '扭伤擦伤', '情绪波动', '减少跑跳', '避免对抗', '观察体力', '补水提醒']; %>
       <% const selectedAttentionTags = selectedAttentionChild ? String(selectedAttentionChild.attention_tags || '').split(',').map(function(item) { return item.trim(); }).filter(Boolean) : []; %>
       <% const selectedAttentionExtraTags = selectedAttentionTags.filter(function(tag) { return !quickAttentionTags.includes(tag); }).join(','); %>
-      <div class="panel-heading"><div><div class="eyebrow">重点关注管理</div><h2>动态重点关注提醒</h2><p>这里单独维护当天或近期需要重点照看的幼儿，例如咳嗽、扭伤、情绪不稳、刚恢复运动等。情况恢复后可随时取消。</p></div></div>
+      <div class="panel-heading"><div><div class="eyebrow">重点关注管理</div><h2>动态重点关注提醒</h2></div></div>
       <div class="panel-grid">
         <div class="card stat-card">
           <div class="stat-label">当前生效中的重点关注人数</div>
@@ -1200,7 +1181,7 @@
 
 <% } else if (activePanel === 'roles') { %>
     <section id="roles-panel" class="admin-panel is-active">
-      <div class="panel-heading"><div><div class="eyebrow">角色权限管理</div><h2>角色与权限配置</h2><p>管理系统角色、分配权限、复制已有角色快速创建新角色。系统内置角色不可删除。</p></div></div>
+      <div class="panel-heading"><div><div class="eyebrow">角色权限管理</div><h2>角色与权限配置</h2></div></div>
 
       <div class="management-layout">
         <div class="management-side">
