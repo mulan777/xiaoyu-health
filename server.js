@@ -41,6 +41,8 @@ const mountVenueRoutes = require('./routes/venue');
 const mountUserRoutes = require('./routes/user');
 const mountBandRoutes = require('./routes/bands');
 const mountScreenRoutes = require('./routes/screen');
+const mountWxRoutes = require('./routes/wx');
+const { initBandJobs } = require('./lib/band-jobs');
 
 const app = express();
 const ALLOWED_MIMETYPES = new Set([
@@ -398,7 +400,7 @@ async function bootstrap() {
 
   app.get('/login', (req, res) => {
     if (req.session.user) return res.redirect(req.session.user.role === 'user' ? '/user' : '/admin');
-    res.render('login', { error: '' });
+    res.render('login', { error: '', wxbind: req.query.wxbind ? '1' : '', wxname: req.query.name ? String(req.query.name) : '', wxdup: req.query.dup ? '1' : '' });
   });
 
   app.post('/login', loginLimiter, asyncHandler(async (req, res) => {
@@ -411,7 +413,7 @@ async function bootstrap() {
     );
     const user = rows[0];
     if (!user || !user.enabled || !bcrypt.compareSync(password, user.password_hash)) {
-      return res.status(401).render('login', { error: '用户名或密码错误' });
+      return res.status(401).render('login', { error: '用户名或密码错误', wxbind: '', wxname: '', wxdup: '' });
     }
     // 加载角色权限
     const roleInfo = await getUserPermissions(user.role);
@@ -422,6 +424,12 @@ async function bootstrap() {
       isReadonly: roleInfo.isReadonly,
       roleDisplayName: roleInfo.roleDisplayName
     };
+    // 2026-09-09 企微无感登录：账号密码登录成功后完成 wx_userid 绑定
+    if (req.session.wxPendingUserid) {
+      await dbQuery('UPDATE users SET wx_userid = ? WHERE id = ?', [req.session.wxPendingUserid, user.id]);
+      req.session.wxPendingUserid = null;
+      req.session.wxPendingName = null;
+    }
     // 非 user 角色都跳转到 admin 面板
     res.redirect(user.role === 'user' ? '/user' : '/admin');
   }));
@@ -488,6 +496,7 @@ async function bootstrap() {
 
   // ========== 数据大屏路由 ==========
   mountScreenRoutes(app);
+  mountWxRoutes(app);
 
   // 教师端 /user 路由(从server.js抽取, 依赖注入)
   const userRouteCtx = {
@@ -524,7 +533,11 @@ async function bootstrap() {
     res.status(500).render('error', { message: '服务暂时不可用，请稍后再试', errorId: errId });
   });
 
-  app.listen(PORT, '0.0.0.0', () => { console.log(`Server listening on http://0.0.0.0:${PORT}`); });
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server listening on http://0.0.0.0:${PORT}`);
+    // 手环定时任务: 心率超标报警 + 每日健康日报(企微推送)
+    initBandJobs().catch((e) => console.error('[band-jobs] 启动失败:', e));
+  });
 }
 
 bootstrap().catch((err) => { console.error('Bootstrap failed:', err); process.exit(1); });

@@ -13,6 +13,14 @@
 
     <% if (error) { %><div class="alert error" style="margin-bottom:18px;padding:10px 14px;border-radius:10px;font-size:13px;"><%= error %></div><% } %>
 
+    <% if (wxbind) { %>
+    <div style="margin-bottom:18px;padding:10px 14px;border-radius:10px;font-size:13px;background:#eef7ff;border:1px solid #b9dcff;color:#1a5c9e;line-height:1.6;">
+      检测到企业微信账号：<strong><%= wxname %></strong>
+      <% if (wxdup) { %>（平台存在同名账号，请确认后登录绑定）<% } else { %>（该账号尚未绑定平台）<% } %>
+      请用<strong>平台账号密码</strong>登录一次完成绑定，之后从企业微信工作台进入将自动免登录。
+    </div>
+    <% } %>
+
     <form method="post" action="/login" class="zen-login-form" role="form" aria-label="登录表单">
       <div class="zen-form-group">
         <label for="login-username">用户名</label>
@@ -28,6 +36,14 @@
       </div>
       <button class="zen-login-btn" type="submit">登 录</button>
     </form>
+
+    <div style="display:flex;align-items:center;gap:10px;margin:16px 0 0;color:#b8c2cc;font-size:12px;">
+      <span style="flex:1;height:1px;background:#e7edf3;"></span>
+      <span>或</span>
+      <span style="flex:1;height:1px;background:#e7edf3;"></span>
+    </div>
+
+    <a href="https://www.jiangxiyey.cn/wxoauth" class="zen-login-btn" style="display:block;text-align:center;margin-top:14px;background:#fff;color:#0071e3;border:1px solid #0071e3;">企业微信一键登录</a>
   </div>
 </section>
 

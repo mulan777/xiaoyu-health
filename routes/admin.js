@@ -28,7 +28,8 @@ module.exports = function mountAdminRoutes(app, upload, ctx = {}) {
   const PANEL_PERMISSIONS = {
     overview: 'ops.overview', site: 'ops.site', ai: 'ops.site', logs: 'ops.logs',
     users: 'data.users', classes: 'data.classes', children: 'data.children',
-    attention: 'booking.attention', roles: 'admin.roles'
+    attention: 'booking.attention', roles: 'admin.roles', push: 'ops.site',
+    alert: 'data.bands', report: 'data.bands'
   };
   function buildVisiblePanels(user) {
     return Object.keys(PANEL_PERMISSIONS).filter(p => hasPermission(user, PANEL_PERMISSIONS[p]));
@@ -786,6 +787,18 @@ module.exports = function mountAdminRoutes(app, upload, ctx = {}) {
     const activePanel = allowedPanels.has(requestedPanel) ? requestedPanel : (visiblePanels[0] || 'overview');
     const data = await fetchAdminData(activePanel, req.query);
     const aiSettings = activePanel === 'ai' ? await getAiSettings(false) : null;
+    const pushLogs = activePanel === 'push' ? await dbQuery('SELECT push_type, ref_id, mac, tousers, title, wx_errcode, wx_errmsg, created_at FROM push_logs ORDER BY id DESC LIMIT 8') : [];
+    const dailyReports = activePanel === 'report' ? await dbQuery('SELECT id, ref_id, tousers, title, content, wx_errcode, wx_errmsg, created_at FROM push_logs WHERE push_type="daily_report" ORDER BY id DESC LIMIT 30') : [];
+    const alertLogs = activePanel === 'alert' ? await dbQuery('SELECT id, ref_id, mac, title, content, wx_errcode, wx_errmsg, created_at FROM push_logs WHERE push_type="hr_alert" ORDER BY id DESC LIMIT 30') : [];
+    // 卡片带 ?id= 时: 把指定那条警报提到最前(不在最近30条也查出来), 点卡片直达对应警报
+    // id 参数来自卡片url(携带 band_records.id), 同时按 push_logs.id 与 ref_id 匹配
+    if (activePanel === 'alert' && req.query.id) {
+      const alertId = Number.parseInt(req.query.id, 10);
+      if (Number.isFinite(alertId) && alertId > 0 && !alertLogs.some((x) => x.id === alertId)) {
+        const special = await dbQuery('SELECT id, ref_id, mac, title, content, wx_errcode, wx_errmsg, created_at FROM push_logs WHERE push_type="hr_alert" AND (id=? OR ref_id=?) LIMIT 1', [alertId, String(alertId)]);
+        if (special.length) alertLogs.unshift(special[0]);
+      }
+    }
     const roles = await getRoles();
     const activeGroup = ['overview'].includes(activePanel) ? 'monitor' : (['attention'].includes(activePanel) ? 'care' : (['classes', 'children'].includes(activePanel) ? 'edu' : 'system'));
     const logs = activePanel === 'logs' ? (() => {
@@ -829,11 +842,15 @@ module.exports = function mountAdminRoutes(app, upload, ctx = {}) {
       ...data,
       logs,
       aiSettings,
+      pushLogs,
+      dailyReports,
+      alertLogs,
       activePanel,
       activeGroup,
       message: normalizeText(req.query.message),
       query: req.query || {},
       today: fmtLocalDate(new Date()),
+      focusMode: req.query.focus === '1',
       visiblePanels,
       roles,
       hasPerm: (perm) => hasPermission(req.session.user, perm),
@@ -885,6 +902,41 @@ module.exports = function mountAdminRoutes(app, upload, ctx = {}) {
     await saveHomeContent(features, quickLinks);
     audit('home_content_updated', { actor: req.session.user, action: '修改首页内容', target: '首页内容', ip: req.ip, featureCount: features.length, quickLinkCount: quickLinks.length });
     res.redirect(buildAdminMessageUrl('首页展示内容已更新'));
+  }));
+
+  // ========== 消息推送设置（企微应用消息: 心率报警 + 每日日报） ==========
+  app.post('/admin/settings/push', adminOnly, requirePermission('ops.site.edit'), requireWritable(), asyncHandler(async (req, res) => {
+    const hrEnabled = req.body.bandHrEnabled === '1' ? '1' : '0';
+    const dailyEnabled = req.body.bandDailyEnabled === '1' ? '1' : '0';
+    let hrAlert = Number.parseInt(req.body.bandHrAlert, 10);
+    if (!Number.isFinite(hrAlert)) hrAlert = 180;
+    hrAlert = Math.min(260, Math.max(60, hrAlert));
+    let dailyTime = String(req.body.bandDailyTime || '').trim();
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(dailyTime)) dailyTime = '10:30';
+    await saveSettings({
+      bandHrEnabled: hrEnabled,
+      bandHrAlert: String(hrAlert),
+      bandDailyEnabled: dailyEnabled,
+      bandDailyTime: dailyTime
+    });
+    audit('push_settings_updated', {
+      actor: req.session.user, action: '修改消息推送设置', target: '推送设置',
+      ip: req.ip, bandHrEnabled: hrEnabled, bandHrAlert: hrAlert, bandDailyEnabled: dailyEnabled, bandDailyTime: dailyTime
+    });
+    res.redirect(buildAdminMessageUrl(`推送设置已保存（心率阈值 ${hrAlert} · 日报时间 ${dailyTime}）`));
+  }));
+
+  // 立即推送今日日报（真实链路, 结果回显到后台）
+  app.post('/admin/settings/push/now', adminOnly, requirePermission('ops.site.edit'), requireWritable(), asyncHandler(async (req, res) => {
+    const bandJobs = require('../lib/band-jobs');
+    const result = await bandJobs.dailyReportOnce({ force: true });
+    if (result.skipped) {
+      await audit('push_daily_report', { actor: req.session.user, action: '手动推送日报', target: '推送设置', ip: req.ip, result: JSON.stringify(result) });
+      return res.redirect(buildAdminMessageUrl('日报未推送：' + (result.reason || '未知原因')));
+    }
+    const ok = result.errcode === 0;
+    await audit('push_daily_report', { actor: req.session.user, action: '手动推送日报', target: '推送设置', ip: req.ip, errcode: result.errcode, errmsg: result.errmsg, receivers: result.tousers || 0 });
+    res.redirect(buildAdminMessageUrl(ok ? `✅ 今日日报已推送给 ${result.tousers || ''} 位管理员/保健老师` : `推送失败：${result.errmsg || result.errcode}`));
   }));
 
   // ========== 用户管理 ==========
@@ -1038,7 +1090,8 @@ module.exports = function mountAdminRoutes(app, upload, ctx = {}) {
     const authChanged = current.role !== role
       || Number(current.class_id || 0) !== Number(classId || 0)
       || !!password;
-    if (authChanged && kickUserSessions && Number(userId) !== Number(req.session.user.id)) {
+    // 2026-09-10 补充：改自己角色也要踢（降权自己旧权限即时失效，避免残留 8 小时）
+    if (authChanged && kickUserSessions) {
       await kickUserSessions(userId);
     }
     const targetClassRows = classId ? await dbQuery('SELECT name FROM classes WHERE id = ? LIMIT 1', [classId]) : [];

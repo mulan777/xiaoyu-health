@@ -82,6 +82,7 @@ module.exports = function mountBandRoutes(app, upload) {
       children,
       bandList,
       latestRecords,
+      focusMode: req.query.focus === '1',
       message: normalizeText(req.query.message),
       query: req.query || {},
       today: (function(){ const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })(),

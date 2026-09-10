@@ -1,4 +1,18 @@
-<%- include('partials/header', { pageClass: isReadonly ? 'admin-page readonly-mode' : 'admin-page' }) %>
+<%- include('partials/header', { pageClass: (isReadonly ? 'admin-page readonly-mode' : 'admin-page') + (typeof focusMode !== 'undefined' && focusMode ? ' focus-mode' : '') }) %>
+<% if (typeof focusMode !== 'undefined' && focusMode) { %>
+<style>
+  /* ========== 手环页专注模式: 隐藏后台顶栏, 只留手环看板 ========== */
+  body.focus-mode .topbar { display: none !important; }
+  .focus-exit { position: fixed; top: 14px; right: 16px; z-index: 999; }
+  .focus-exit a {
+    display: inline-block; background: #fff; border: 1px solid #e2e8f0; color: #475569;
+    border-radius: 999px; padding: 7px 14px; font-size: 12.5px; text-decoration: none;
+    box-shadow: 0 2px 8px rgba(15,23,42,.08);
+  }
+  .focus-exit a:hover { color: #6366f1; border-color: #c7d2fe; }
+</style>
+<div class="focus-exit"><a href="/logout">退出</a></div>
+<% } %>
 <script src="/static/echarts.min.js"></script>
 
 <%
@@ -101,18 +115,18 @@
   .refresh-note { font-size: 12px; color: #94a3b8; font-weight: 400; }
 
   /* —— 班级配置 chips —— */
-  .band-class-grid { display: flex; flex-wrap: wrap; gap: 10px; }
+  .band-class-grid { display: flex; flex-wrap: wrap; gap: 8px; }
   .band-class-chip {
-    display: inline-flex; align-items: center; gap: 8px;
-    padding: 9px 14px; border-radius: 14px;
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 11px; border-radius: 10px;
     border: 1.5px solid #e2e8f0; background: #f8fafc;
-    cursor: pointer; font-size: 13px; font-weight: 600; color: #334155;
+    cursor: pointer; font-size: 12.5px; font-weight: 600; color: #334155;
     transition: all .16s ease; user-select: none;
   }
   .band-class-chip:hover { border-color: #c7d2fe; background: #eef2ff; transform: translateY(-1px); }
   .band-class-chip input { display: none; }
   .band-class-chip .ck {
-    width: 18px; height: 18px; border-radius: 6px; flex: 0 0 18px;
+    width: 16px; height: 16px; border-radius: 5px; flex: 0 0 16px;
     border: 2px solid #cbd5e1; background: #fff;
     display: inline-flex; align-items: center; justify-content: center;
     font-size: 11px; color: transparent; transition: all .15s ease;
@@ -124,7 +138,7 @@
   .band-class-chip.active .ck { border-color: #fff; background: #fff; color: #4f46e5; }
   .band-class-chip.active .bg { color: #dbe1ff; border-color: rgba(255,255,255,.35); }
   .band-class-chip .bg {
-    font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px;
+    font-size: 10px; font-weight: 700; padding: 0 7px; border-radius: 999px;
     border: 1px solid #e2e8f0; color: #64748b;
   }
   .band-class-chip .bg.g-s { color: #059669; border-color: #a7f3d0; background: #ecfdf5; }
@@ -195,6 +209,16 @@
   .rec-filter { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
   .rec-filter .lbl { font-size: 12.5px; color: #64748b; font-weight: 600; }
   .band-tbl-wrap { overflow-x: auto; border: 1px solid #eef0f6; border-radius: 16px; background: #fff; }
+  .rec-pager { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .rec-pager .pg-info { font-size: 12.5px; color: #64748b; margin-right: 4px; }
+  .rec-pager .pg-info b { color: #4338ca; }
+  .rec-pager .pg-btn {
+    border: 1.5px solid #e2e8f0; background: #fff; color: #475569;
+    padding: 5px 14px; border-radius: 999px; font-size: 12.5px; font-weight: 600; cursor: pointer;
+    transition: all .15s ease;
+  }
+  .rec-pager .pg-btn:hover:not(:disabled) { border-color: #818cf8; color: #4f46e5; background: #eef2ff; }
+  .rec-pager .pg-btn:disabled { opacity: .45; cursor: not-allowed; }
   .band-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 860px; }
   .band-table th {
     text-align: left; padding: 10px 14px; color: #475569; font-weight: 700;
@@ -368,7 +392,7 @@
 
 <div class="card band-card">
   <div class="band-title"><span class="bar"></span><h3>最近上报记录 <span class="refresh-note">· 每30秒自动刷新<span id="recRefreshNote"></span></span></h3></div>
-  <div class="sub">实时显示最近 30 条手环健康上报记录，可按班级筛选；历史趋势请看上方健康曲线。</div>
+  <div class="sub">实时显示最近 30 条手环健康上报记录，每页 10 条，可按班级筛选；历史趋势请看上方健康曲线。</div>
   <div class="rec-filter">
     <span class="lbl">班级筛选</span>
     <select id="recClassFilter" onchange="filterRecords()">
@@ -402,7 +426,9 @@
     </tbody>
   </table>
   </div>
+  <div class="rec-pager" id="recPager"></div>
   <% if (!latestRecords.length) { %><div class="band-empty"><span class="ic">📋</span>暂无记录</div><% } %>
+  <script>window.__bandInitRecs = <%- JSON.stringify(latestRecords || []).replace(/</g, '\\u003c') %>;</script>
 </div>
 
 <div class="card band-card">
@@ -467,11 +493,61 @@
     return p(d.getHours()) + ':' + p(d.getMinutes());
   }
 
+  /* ===== 上报记录：班级筛选 + 前端分页（2026-09-10 优化，30行→每页10行） ===== */
+  var REC_ALL_ROWS = window.__bandInitRecs || [];
+  var REC_PAGE = 0;
+  var REC_PAGE_SIZE = 10;
+
   function filterRecords() {
-    const clazz = document.getElementById('recClassFilter').value;
-    document.querySelectorAll('#recBody tr').forEach(function(tr) {
-      tr.style.display = (!clazz || tr.getAttribute('data-class') === clazz) ? '' : 'none';
-    });
+    REC_PAGE = 0; // 切换班级筛选回到第一页
+    applyRecView();
+  }
+
+  function applyRecView() {
+    const tbody = document.getElementById('recBody');
+    if (!tbody) return;
+    const clazz = document.getElementById('recClassFilter') ? document.getElementById('recClassFilter').value : '';
+    const rows = REC_ALL_ROWS.filter(function(r) { return !clazz || String(r.class_name || '') === clazz; });
+    const totalPages = Math.max(1, Math.ceil(rows.length / REC_PAGE_SIZE));
+    if (REC_PAGE >= totalPages) REC_PAGE = totalPages - 1;
+    const fromIdx = REC_PAGE * REC_PAGE_SIZE;
+    const pageRows = rows.slice(fromIdx, fromIdx + REC_PAGE_SIZE);
+    const na = '<span class="t-na">—</span>';
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#94a3b8;padding:14px">暂无记录</td></tr>';
+    } else {
+      tbody.innerHTML = pageRows.map(function(r) {
+        const sos = Number(r.sos) === 1 ? '<span class="pill sos">SOS</span>' : '<span class="pill ok">正常</span>';
+        return '<tr>'
+          + '<td class="t-time">' + escHtml(fmtT(r.bp_time)) + '</td>'
+          + '<td class="t-mac">' + escHtml(r.band_mac) + '</td>'
+          + '<td class="t-child">' + (r.child_name ? escHtml(r.child_name) : '<span class="t-na">未绑定</span>') + '</td>'
+          + '<td>' + (r.class_name ? escHtml(r.class_name) : na) + '</td>'
+          + '<td class="v-hr">' + (r.heart_rate != null ? escHtml(r.heart_rate) : na) + '</td>'
+          + '<td class="v-tp">' + (r.body_temp != null ? escHtml(r.body_temp) + '℃' : na) + '</td>'
+          + '<td class="v-bp">' + (r.systolic && r.diastolic ? escHtml(r.systolic) + '/' + escHtml(r.diastolic) : na) + '</td>'
+          + '<td class="v-sp">' + (r.spo2 != null ? escHtml(r.spo2) + '%' : na) + '</td>'
+          + '<td class="v-st">' + (r.steps != null ? escHtml(r.steps) : na) + '</td>'
+          + '<td class="v-bt">' + (r.battery != null ? escHtml(r.battery) + '%' : na) + '</td>'
+          + '<td>' + sos + '</td></tr>';
+      }).join('');
+    }
+    const pager = document.getElementById('recPager');
+    if (pager) {
+      pager.innerHTML =
+        '<span class="pg-info">共 <b>' + rows.length + '</b> 条 · 第 ' + (REC_PAGE + 1) + '/' + totalPages + ' 页</span>'
+        + '<button type="button" class="pg-btn" onclick="gotoRecPage(' + (REC_PAGE - 1) + ')" ' + (REC_PAGE <= 0 ? 'disabled' : '') + '>上一页</button>'
+        + '<button type="button" class="pg-btn" onclick="gotoRecPage(' + (REC_PAGE + 1) + ')" ' + (REC_PAGE >= totalPages - 1 ? 'disabled' : '') + '>下一页</button>';
+    }
+  }
+
+  function gotoRecPage(p) {
+    const clazz = document.getElementById('recClassFilter') ? document.getElementById('recClassFilter').value : '';
+    const filtered = REC_ALL_ROWS.filter(function(r) { return !clazz || String(r.class_name || '') === clazz; });
+    const totalPages = Math.max(1, Math.ceil(filtered.length / REC_PAGE_SIZE));
+    if (p < 0 || p >= totalPages) return;
+    REC_PAGE = p;
+    applyRecView();
   }
 
   function setHourTab(btn) {
@@ -631,32 +707,14 @@
     });
   }
   function renderRecentRows(rows) {
-    const tbody = document.getElementById('recBody');
-    if (!tbody) return;
-    if (!rows || !rows.length) {
-      tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#94a3b8;padding:14px">暂无记录</td></tr>';
-    } else {
-      tbody.innerHTML = rows.map(function(r) {
-        const sos = Number(r.sos) === 1 ? '<span class="pill sos">SOS</span>' : '<span class="pill ok">正常</span>';
-        const na = '<span class="t-na">—</span>';
-        return '<tr data-class="' + escHtml(r.class_name) + '">'
-          + '<td class="t-time">' + escHtml(fmtT(r.bp_time)) + '</td>'
-          + '<td class="t-mac">' + escHtml(r.band_mac) + '</td>'
-          + '<td class="t-child">' + (r.child_name ? escHtml(r.child_name) : '<span class="t-na">未绑定</span>') + '</td>'
-          + '<td>' + (r.class_name ? escHtml(r.class_name) : na) + '</td>'
-          + '<td class="v-hr">' + (r.heart_rate != null ? escHtml(r.heart_rate) : na) + '</td>'
-          + '<td class="v-tp">' + (r.body_temp != null ? escHtml(r.body_temp) + '℃' : na) + '</td>'
-          + '<td class="v-bp">' + (r.systolic && r.diastolic ? escHtml(r.systolic) + '/' + escHtml(r.diastolic) : na) + '</td>'
-          + '<td class="v-sp">' + (r.spo2 != null ? escHtml(r.spo2) + '%' : na) + '</td>'
-          + '<td class="v-st">' + (r.steps != null ? escHtml(r.steps) : na) + '</td>'
-          + '<td class="v-bt">' + (r.battery != null ? escHtml(r.battery) + '%' : na) + '</td>'
-          + '<td>' + sos + '</td></tr>';
-      }).join('');
-    }
-    filterRecords(); // 刷新后重新应用班级筛选，保持当前筛选状态
+    REC_ALL_ROWS = rows || [];
+    applyRecView(); // 刷新后应用筛选并保持当前分页位置
     const note = document.getElementById('recRefreshNote');
     if (note) note.textContent = ' · 已更新 ' + new Date().toLocaleTimeString('zh-CN', { hour12: false });
   }
+  // 首屏立即应用分页（覆盖服务端直出的 30 行，显示第 1 页 10 条）
+  applyRecView();
+
   setInterval(function() {
     fetch('/admin/bands/api/recent')
       .then(function(r) { return r.json(); })

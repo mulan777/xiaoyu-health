@@ -1,4 +1,24 @@
-<%- include('partials/header', { pageClass: 'admin-page' + (isReadonly ? ' readonly-mode' : '') }) %>
+<%- include('partials/header', { pageClass: 'admin-page' + (isReadonly ? ' readonly-mode' : '') + (typeof focusMode !== 'undefined' && focusMode ? ' focus-mode' : '') }) %>
+
+<% if (typeof focusMode !== 'undefined' && focusMode) { %>
+<style>
+  /* ========== 专注模式: 卡片直入日报/警报, 隐藏后台导航 ========== */
+  body.focus-mode .topbar { display: none !important; }
+  body.focus-mode .admin-sidebar { display: none !important; }
+  body.focus-mode .admin-hero { display: none !important; }
+  body.focus-mode .admin-layout.shell-layout { display: block !important; margin: 0 !important; padding: 16px; }
+  body.focus-mode .admin-main { margin-left: 0 !important; width: 100% !important; }
+  body.focus-mode .admin-panel { max-width: 980px; margin: 0 auto; }
+  .focus-exit { position: fixed; top: 14px; right: 16px; z-index: 999; }
+  .focus-exit a {
+    display: inline-block; background: #fff; border: 1px solid #e2e8f0; color: #475569;
+    border-radius: 999px; padding: 7px 14px; font-size: 12.5px; text-decoration: none;
+    box-shadow: 0 2px 8px rgba(15,23,42,.08);
+  }
+  .focus-exit a:hover { color: #6366f1; border-color: #c7d2fe; }
+</style>
+<div class="focus-exit"><a href="/logout">退出</a></div>
+<% } %>
 
 <section class="admin-hero card shell-hero <%= activePanel !== 'overview' ? 'admin-hero-compact' : '' %>">
   <div>
@@ -42,7 +62,9 @@
         const monitorItems = [
           {perm:'ops.overview', panel:'overview', label:'工作台概览', icon:'📊'},
           {perm:'data.fitness', href:'/screen', target:'_blank', label:'全园感知大屏 ↗', icon:'🖥️', badge:'新窗口'},
-          {perm:'data.bands', href:'/admin/bands', label:'手环健康监测', icon:'⌚'}
+          {perm:'data.bands', href:'/admin/bands', label:'手环健康监测', icon:'⌚'},
+          {perm:'data.bands', panel:'alert', label:'心率警报', icon:'🚨'},
+          {perm:'data.bands', panel:'report', label:'健康日报', icon:'📋'}
         ].filter(i => hasPerm(i.perm));
 
         // 2. 🏃 体测与关怀
@@ -63,6 +85,7 @@
           {perm:'data.users', panel:'users', label:'用户管理', icon:'👤'},
           ...(hasPerm('admin.roles') ? [{perm:'admin.roles', panel:'roles', label:'角色权限管理', icon:'🛡️'}] : []),
           {perm:'ops.site', panel:'ai', label:'AI 智能接入', icon:'🤖'},
+          {perm:'ops.site', panel:'push', label:'消息推送', icon:'📣'},
           {perm:'ops.site', panel:'site', label:'站点配置', icon:'⚙️'},
           {perm:'ops.logs', panel:'logs', label:'系统日志', icon:'📜'}
         ].filter(i => hasPerm(i.perm));
@@ -332,6 +355,141 @@
           });
         })();
       </script>
+    </section>
+<% } else if (activePanel === 'push') { %>
+    <section id="push-panel" class="admin-panel is-active">
+      <div class="panel-heading">
+        <div>
+          <div class="eyebrow">企业微信推送</div>
+          <h2>消息推送设置</h2>
+          <p class="muted">通过企业微信自建应用向老师/保健老师主动推送消息（企微链路统一走 www.jiangxiyey.cn，与企微 OAuth 回调域名一致）。</p>
+        </div>
+      </div>
+      <div class="panel-grid">
+        <div class="card">
+          <h3>🚨 心率超标报警</h3>
+          <form method="post" action="/admin/settings/push" class="form-grid">
+            <label class="setting-check-row">
+              <input type="checkbox" name="bandHrEnabled" value="1" <%= String(settings.bandHrEnabled || '1') === '1' ? 'checked' : '' %> />
+              <span>启用心率超标报警</span>
+              <small>每 60 秒扫描最近 3 分钟手环数据，心率超过阈值时企微推送提醒给孩子班级老师（未绑定手环则推给管理员）。</small>
+            </label>
+            <label>
+              <span>心率报警阈值（次/分）</span>
+              <input type="number" name="bandHrAlert" min="60" max="260" value="<%= Number(settings.bandHrAlert || 180) %>" />
+              <small class="muted">建议 170~190；越小越敏感。幼儿剧烈运动心率约 170~190。</small>
+            </label>
+            <h3 style="margin-top:18px">📊 每日健康日报</h3>
+            <label class="setting-check-row">
+              <input type="checkbox" name="bandDailyEnabled" value="1" <%= String(settings.bandDailyEnabled || '1') === '1' ? 'checked' : '' %> />
+              <span>启用每日健康日报</span>
+              <small>每天定时汇总当日手环数据，推送给管理员与保健老师；当日无数据自动跳过。</small>
+            </label>
+            <label>
+              <span>日报推送时间</span>
+              <input type="time" name="bandDailyTime" value="<%= String(settings.bandDailyTime || '10:30') %>" />
+              <small class="muted">每天到这个时间后自动推送一次。</small>
+            </label>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">保存设置</button>
+            </div>
+          </form>
+          <form method="post" action="/admin/settings/push/now" style="margin-top:18px;display:flex;align-items:center;gap:10px">
+            <button type="submit" class="btn">🚀 立即推送今日日报</button>
+            <small class="muted">手动触发一次，推送给管理员 + 保健老师（不改变定时计划）</small>
+          </form>
+        </div>
+        <div class="card">
+          <h3>🕐 最近推送记录</h3>
+          <% if (pushLogs && pushLogs.length) { %>
+          <div style="overflow-x:auto">
+          <table class="data-table admin-table">
+            <thead><tr><th>时间</th><th>类型</th><th>结果</th><th>标题</th></tr></thead>
+            <tbody>
+              <% pushLogs.forEach(function(l) { %>
+              <tr>
+                <td><%= l.created_at %></td>
+                <td><%= l.push_type === 'hr_alert' ? '心率报警' : (l.push_type === 'daily_report' ? '每日日报' : l.push_type) %></td>
+                <td><%= l.wx_errcode === 0 ? '✅ 成功' : ('❌ ' + String(l.wx_errmsg || l.wx_errcode).slice(0, 40)) %></td>
+                <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="<%= l.title %>"><%= l.title %></td>
+              </tr>
+              <% }); %>
+            </tbody>
+          </table>
+          </div>
+          <% } else { %>
+          <p class="muted">暂无推送记录。配置保存后，心率报警与每日日报会自动在这里留档。</p>
+          <% } %>
+        </div>
+      </div>
+    </section>
+<% } else if (activePanel === 'alert') { %>
+    <section id="alert-panel" class="admin-panel is-active">
+      <div class="panel-heading">
+        <div>
+          <div class="eyebrow">心率超标报警</div>
+          <h2>心率警报</h2>
+          <p class="muted">心率超过阈值（<%= Number(settings.bandHrAlert || 180) %> 次/分）时自动企微推送给班级老师/管理员（<%= String(settings.bandHrEnabled || '1') === '1' ? '当前已开启' : '当前已关闭' %>）。警报记录同步留档在这里。</p>
+        </div>
+      </div>
+      <div class="panel-grid">
+        <div class="card" style="min-width:0">
+          <h3>⚠️ 最新警报</h3>
+          <% if (alertLogs && alertLogs.length) { var last = alertLogs[0]; %>
+          <p class="muted"><%= last.created_at %> · <%= last.wx_errcode === 0 ? '✅ 推送成功' : ('❌ ' + String(last.wx_errmsg || last.wx_errcode)) %></p>
+          <pre style="background:#fff6f6;border:1px solid #ffd7d7;padding:14px;border-radius:10px;white-space:pre-wrap;word-break:break-all;overflow-wrap:anywhere;font-size:13px;line-height:1.7;margin-top:10px"><%= last.content || '' %></pre>
+          <% } else { %>
+          <p class="muted">暂无警报记录。心率超标时自动推送并留档在这里。</p>
+          <% } %>
+        </div>
+        <div class="card" style="min-width:0">
+          <h3>🗂️ 历史警报</h3>
+          <% if (alertLogs && alertLogs.length > 1) { %>
+            <% alertLogs.slice(1).forEach(function(r) { %>
+            <details style="border:1px solid #e5eaf0;border-radius:10px;padding:10px 14px;margin-bottom:10px;word-break:break-all">
+              <summary style="cursor:pointer;font-weight:600"><%= r.created_at %> · <%= r.wx_errcode === 0 ? '✅' : '❌' %> <%= r.title %></summary>
+              <pre style="background:#f6f8fa;padding:12px;border-radius:8px;white-space:pre-wrap;word-break:break-all;overflow-wrap:anywhere;font-size:12.5px;line-height:1.6;margin-top:8px"><%= r.content || '' %></pre>
+            </details>
+            <% }); %>
+          <% } else { %>
+          <p class="muted">暂无历史警报。</p>
+          <% } %>
+        </div>
+      </div>
+    </section>
+<% } else if (activePanel === 'report') { %>
+    <section id="report-panel" class="admin-panel is-active">
+      <div class="panel-heading">
+        <div>
+          <div class="eyebrow">每日健康日报</div>
+          <h2>健康日报</h2>
+          <p class="muted">每天 <%= String(settings.bandDailyTime || '10:30') %> 自动生成并企微推送给管理员与保健老师（<%= String(settings.bandDailyEnabled || '1') === '1' ? '当前已开启' : '当前已关闭' %>）。日报内容同步留档在这里，不再担心错过推送。</p>
+        </div>
+      </div>
+      <div class="panel-grid">
+        <div class="card" style="min-width:0">
+          <h3>📄 最新日报</h3>
+          <% if (dailyReports && dailyReports.length) { var last = dailyReports[0]; %>
+          <p class="muted"><%= last.ref_id %> · <%= last.created_at %> · <%= last.wx_errcode === 0 ? '✅ 推送成功' : ('❌ ' + String(last.wx_errmsg || last.wx_errcode)) %></p>
+          <pre style="background:#f6f8fa;padding:14px;border-radius:10px;white-space:pre-wrap;word-break:break-all;overflow-wrap:anywhere;font-size:13px;line-height:1.7;margin-top:10px"><%= last.content || '' %></pre>
+          <% } else { %>
+          <p class="muted">暂无日报记录。到推送时间后会自动生成并留档在这里。</p>
+          <% } %>
+        </div>
+        <div class="card" style="min-width:0">
+          <h3>🗂️ 历史日报</h3>
+          <% if (dailyReports && dailyReports.length > 1) { %>
+            <% dailyReports.slice(1).forEach(function(r) { %>
+            <details style="border:1px solid #e5eaf0;border-radius:10px;padding:10px 14px;margin-bottom:10px;word-break:break-all">
+              <summary style="cursor:pointer;font-weight:600"><%= r.ref_id %> · <%= r.wx_errcode === 0 ? '✅' : '❌' %> <%= r.wx_errmsg || r.wx_errcode %></summary>
+              <pre style="background:#f6f8fa;padding:12px;border-radius:8px;white-space:pre-wrap;word-break:break-all;overflow-wrap:anywhere;font-size:12.5px;line-height:1.6;margin-top:8px"><%= r.content || '' %></pre>
+            </details>
+            <% }); %>
+          <% } else { %>
+          <p class="muted">暂无历史日报。</p>
+          <% } %>
+        </div>
+      </div>
     </section>
 <% } else if (activePanel === 'users') { %>
     <section id="user-panel" class="admin-panel is-active" data-ajax-panel="users">
