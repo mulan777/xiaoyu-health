@@ -6,7 +6,7 @@ const bcrypt = require('bcryptjs');
 const fs = require('fs');
 const path = require('path');
 const { normalizeText, normalizeFlexibleDate, toNullableInt, normalizeAttentionVest, uniqueNumberIds, buildPlaceholders, buildAdminMessageUrl, requireRole, asyncHandler, normalizeRole, pickValue, requirePermission, requireAnyPermission, requireWritable, hasPermission, hasAnyPermission, gradeLabel, calculateMonthAge } = require('../lib/helpers');
-const { dbQuery, getSettings, saveSettings, getHomeFeatures, getQuickLinks, saveHomeContent, ensureClassByName, syncClassTeachers, fetchAdminData, paginateItems, getRoles, createRole, updateRole, deleteRole, getRoleById, cloneRole, getAiSettings, saveAiSettings, clearAiApiKey } = require('../lib/db');
+const { dbQuery, getSettings, saveSettings, ensureClassByName, syncClassTeachers, fetchAdminData, paginateItems, getRoles, createRole, updateRole, deleteRole, getRoleById, cloneRole, getAiSettings, saveAiSettings, clearAiApiKey } = require('../lib/db');
 const aiClient = require('../lib/ai-client');
 const aiFitnessReport = require('../lib/ai-fitness-report');
 const { parseWorkbookRows, sendWorkbook, buildUserTemplateWorkbook, importUsersFromRows, buildUserExportWorkbook, buildChildTemplateWorkbook, importChildrenFromRows, buildChildExportWorkbook, buildFitnessTemplateWorkbook } = require('../lib/excel');
@@ -58,7 +58,6 @@ module.exports = function mountAdminRoutes(app, upload, ctx = {}) {
       else if ((item.path || '').includes('/admin/children/') && (item.path || '').includes('/toggle')) target = body.childName || '幼儿档案状态';
       else if ((item.path || '').includes('/admin/children/') && (item.path || '').includes('/attention')) target = body.childName || body.childId || '重点关注';
       else if ((item.path || '').includes('/admin/settings')) target = '站点设置';
-      else if ((item.path || '').includes('/admin/content')) target = '首页内容';
       else if ((item.path || '').includes('/admin/fitness/add')) target = body.childName || '体测记录';
       else if ((item.path || '').includes('/admin/fitness/import')) target = '体测数据';
       else if ((item.path || '').includes('/admin/venues')) target = body.venueName || item.venueName || '场地预约';
@@ -66,7 +65,6 @@ module.exports = function mountAdminRoutes(app, upload, ctx = {}) {
 
     if (item.event === 'fitness_record_deleted') actionText = '删除体测记录';
     else if ((item.path || '').includes('/admin/settings')) actionText = '修改站点设置';
-    else if ((item.path || '').includes('/admin/content')) actionText = '修改首页内容';
     else if ((item.path || '').includes('/admin/users/add')) actionText = '新增用户';
     else if ((item.path || '').includes('/admin/users/import')) actionText = '导入用户';
     else if ((item.path || '').includes('/admin/users/batch')) actionText = '批量处理用户';
@@ -154,26 +152,6 @@ module.exports = function mountAdminRoutes(app, upload, ctx = {}) {
       timeLabel: item.time ? new Date(item.time).toLocaleString('zh-CN', { hour12: false, timeZone: 'Asia/Shanghai' }) : '-',
       detailLabel: `操作人：${actorName}\n路径：${pathText}\n方式：${item.method || '-'}\n状态：${statusLabel}\nHTTP状态码：${item.status || '-'}\n耗时：${item.durationMs == null ? '-' : item.durationMs + 'ms'}`
     };
-  }
-
-  function extractFeaturesFromBody(body) {
-    const items = [];
-    for (let i = 1; i <= 8; i++) {
-      const title = normalizeText(body[`featureTitle${i}`]);
-      const desc = normalizeText(body[`featureDesc${i}`]);
-      if (title || desc) items.push({ title, desc });
-    }
-    return items;
-  }
-
-  function extractQuickLinksFromBody(body) {
-    const items = [];
-    for (let i = 1; i <= 6; i++) {
-      const name = normalizeText(body[`quickLinkName${i}`]);
-      const path = normalizeText(body[`quickLinkPath${i}`]);
-      if (name && path) items.push({ name, path });
-    }
-    return items;
   }
 
   function normalizeDateInput(value) {
@@ -885,23 +863,10 @@ module.exports = function mountAdminRoutes(app, upload, ctx = {}) {
     await saveSettings({
       siteName: normalizeText(req.body.siteName),
       subtitle: normalizeText(req.body.subtitle),
-      heroTitle: normalizeText(req.body.heroTitle),
-      heroDesc: normalizeText(req.body.heroDesc),
-      mobileHint: normalizeText(req.body.mobileHint),
-      adminNotice: normalizeText(req.body.adminNotice),
       venueRecommendationEnabled: req.body.venueRecommendationEnabled === '1' ? '1' : '0'
     });
     audit('site_settings_updated', { actor: req.session.user, action: '修改站点设置', target: '站点设置', ip: req.ip });
     res.redirect(buildAdminMessageUrl('站点设置已更新'));
-  }));
-
-  app.post('/admin/content', adminOnly, requirePermission('ops.site.edit'), requireWritable(), asyncHandler(async (req, res) => {
-    const features = extractFeaturesFromBody(req.body);
-    const quickLinks = extractQuickLinksFromBody(req.body);
-    if (!features.length || !quickLinks.length) return res.redirect(buildAdminMessageUrl('首页内容保存失败：请至少保留 1 个亮点和 1 个快捷入口'));
-    await saveHomeContent(features, quickLinks);
-    audit('home_content_updated', { actor: req.session.user, action: '修改首页内容', target: '首页内容', ip: req.ip, featureCount: features.length, quickLinkCount: quickLinks.length });
-    res.redirect(buildAdminMessageUrl('首页展示内容已更新'));
   }));
 
   // ========== 消息推送设置（企微应用消息: 心率报警 + 每日日报） ==========

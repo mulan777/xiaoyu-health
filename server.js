@@ -11,6 +11,7 @@
 
 require('dotenv').config();
 const express = require('express');
+const compression = require('compression');
 const session = require('express-session');
 const path = require('path');
 const https = require('https');
@@ -20,6 +21,7 @@ const { RedisStore } = require('connect-redis');
 const multer = require('multer');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
+const crypto = require('crypto');
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -32,7 +34,7 @@ const loginLimiter = rateLimit({
 const { requestLogger, audit, errorLog, ensureLogDir, buildAuditChanges, buildAuditSnapshot } = require('./lib/logger');
 
 const { gradeLabel, calculateAge, asyncHandler, normalizeText, normalizeFlexibleDate, calculateMonthAge, requireRole, expandPermissions, chinaNowText, toNullableInt, pickValue } = require('./lib/helpers');
-const { initDatabase, getSettings, getHomeFeatures, getQuickLinks, buildUserDashboard, dbQuery, paginateItems, normalizePageNumber, getUserPermissions } = require('./lib/db');
+const { initDatabase, getSettings, buildUserDashboard, dbQuery, paginateItems, normalizePageNumber, getUserPermissions } = require('./lib/db');
 const { computeFitnessResult } = require('./lib/fitness-scoring');
 const { buildFitnessSummaries, buildRadarChartData } = require('./lib/fitness-analytics');
 const { parseWorkbookRows, sendWorkbook, buildFitnessTemplateWorkbook } = require('./lib/excel');
@@ -45,6 +47,7 @@ const mountWxRoutes = require('./routes/wx');
 const { initBandJobs } = require('./lib/band-jobs');
 
 const app = express();
+app.use(compression({ threshold: 1024 })); // gzip: >1KB 文本响应压缩
 const ALLOWED_MIMETYPES = new Set([
   'image/jpeg', 'image/png', 'image/gif', 'image/webp',
   'video/mp4', 'video/webm', 'video/ogg', 'video/quicktime', 'video/x-m4v',
@@ -63,7 +66,12 @@ const upload = multer({
   limits: { fileSize: 60 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const extension = (path.extname(file.originalname || '') || '').toLowerCase();
-    if (ALLOWED_MIMETYPES.has(file.mimetype) || ALLOWED_UPLOAD_EXTENSIONS.has(extension)) {
+    const extByMime = {
+      'image/jpeg': ['.jpg', '.jpeg'], 'image/png': ['.png'], 'image/gif': ['.gif'], 'image/webp': ['.webp'],
+      'video/mp4': ['.mp4'], 'video/webm': ['.webm'], 'video/ogg': ['.ogg'], 'video/quicktime': ['.mov'], 'video/x-m4v': ['.m4v'],
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'], 'application/vnd.ms-excel': ['.xls'], 'application/pdf': ['.pdf']
+    };
+    if (ALLOWED_MIMETYPES.has(file.mimetype) && (extByMime[file.mimetype] || []).includes(extension)) {
       cb(null, true);
     } else {
       cb(new Error('不允许上传该类型的文件: ' + file.originalname));
@@ -80,7 +88,7 @@ let weatherCareCache = { expiresAt: 0, data: null };
 function getWeatherCareFallback() {
   return {
     city: WEATHER_CITY,
-    summary: '今天也辛苦啦，记得课间喝口水。',
+    summary: `${greetingByHour()}，今天也辛苦啦，记得课间喝口水。`,
     detail: '天气信息暂时获取不到，户外活动前可以再看一眼窗外和场地情况。',
     temperature: '',
     rainHint: '出门前留意天气变化',
@@ -108,6 +116,14 @@ function fetchJson(url, timeoutMs = 2500) {
   });
 }
 
+function greetingByHour() {
+  const h = new Date().getHours();
+  if (h >= 5 && h < 11) return '早上好';
+  if (h >= 11 && h < 13) return '中午好';
+  if (h >= 13 && h < 18) return '下午好';
+  return '晚上好';
+}
+
 function buildWeatherCare(data) {
   const current = data && data.current_condition && data.current_condition[0] ? data.current_condition[0] : {};
   const today = data && data.weather && data.weather[0] ? data.weather[0] : {};
@@ -120,8 +136,8 @@ function buildWeatherCare(data) {
   const willRain = maxRainChance >= 50 || /雨|rain|shower/i.test(desc);
   const temperature = minTemp && maxTemp ? `${minTemp}–${maxTemp}℃` : (temp ? `${temp}℃` : '温度暂无');
   const summary = willRain
-    ? `早上好，今天无锡约 ${temperature}，可能有雨，户外体能活动建议准备室内备选方案。`
-    : `早上好，今天无锡约 ${temperature}，天气整体适合活动，记得提醒孩子们及时补水。`;
+    ? `${greetingByHour()}，今天无锡约 ${temperature}，可能有雨，户外体能活动建议准备室内备选方案。`
+    : `${greetingByHour()}，今天无锡约 ${temperature}，天气整体适合活动，记得提醒孩子们及时补水。`;
   return {
     city: WEATHER_CITY,
     summary,
@@ -354,6 +370,21 @@ async function bootstrap() {
   app.use(express.urlencoded({ extended: true }));
   app.use(express.json());
   app.use(createSessionMiddleware());
+  app.use((req, res, next) => {
+    if (!req.session.csrfToken) req.session.csrfToken = crypto.randomBytes(32).toString('hex');
+    res.locals.csrfToken = req.session.csrfToken;
+    if (req.method === 'POST' && req.path !== '/login') {
+      const token = req.body && (req.body._csrf || req.body.csrfToken) || req.get('X-CSRF-Token');
+      const got = Buffer.from(String(token || '')), expected = Buffer.from(String(req.session.csrfToken));
+      if (got.length !== expected.length || !crypto.timingSafeEqual(got, expected)) {
+        if (!res.locals.settings) res.locals.settings = { siteName: '小鱼健康平台', subtitle: '' };
+        if (!res.locals.currentUser) res.locals.currentUser = req.session && req.session.user ? req.session.user : null;
+        if (!res.locals.cssVersion) res.locals.cssVersion = APP_START_TIME;
+        return res.status(403).render('error', { message: '请求已过期，请刷新页面后重试' });
+      }
+    }
+    next();
+  });
   // Flash message — merges session flash + URL query, templates use res.locals.message
   app.use((req, res, next) => {
     const flash = req.session._flashMessage || '';
@@ -393,9 +424,7 @@ async function bootstrap() {
   // ========== 公共路由 ==========
   app.get('/', asyncHandler(async (req, res) => {
     const settings = await getSettings();
-    const features = await getHomeFeatures();
-    const quickLinks = await getQuickLinks();
-    res.render('index', { settings, content: { features, quickLinks } });
+    res.render('index', { settings });
   }));
 
   app.get('/login', (req, res) => {

@@ -16,12 +16,6 @@
 <script src="/static/echarts.min.js"></script>
 
 <%
-  var bandList = bandList || [];
-  var classes = classes || [];
-  var enabledClassIds = enabledClassIds || [];
-  var mappings = mappings || [];
-  var children = children || [];
-  var latestRecords = latestRecords || [];
   var nowIso = (function () {
     var d = new Date(); function p(n) { return String(n).padStart(2, '0'); }
     return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
@@ -435,7 +429,7 @@
   <div class="band-title"><span class="bar"></span><h2>手环绑定管理</h2></div>
   <div class="sub">将手环 MAC 与幼儿档案绑定，绑定后页面自动显示孩子姓名与班级。绑定数据入库后展示即生效。学生下拉仅显示「展示班级配置」中勾选启用班级的幼儿。</div>
   <form method="POST" action="/admin/bands/mapping/save" class="band-form" style="margin-bottom:16px;">
-    <div class="fld"><label>手环 MAC（12位hex）</label><input name="bandMac" placeholder="如 d612d9003502" required pattern="[0-9a-fA-F]{12}" style="width:170px;font-family:ui-monospace,Menlo,Consolas,monospace"></div>
+    <div class="fld"><label>手环 MAC（12位hex，可带冒号）</label><input name="bandMac" placeholder="如 D6:12:D9:00:37:FE 或 d612d9003502" required pattern="[0-9a-fA-F]{2}([:\-\s]?[0-9a-fA-F]{2}){5}" title="两种写法都支持：D6:12:D9:00:37:FE 或 d612d9003502" style="width:170px;font-family:ui-monospace,Menlo,Consolas,monospace"></div>
     <div class="fld"><label>绑定幼儿</label>
       <% if (children.length) { %>
       <select name="childId" style="min-width:180px">

@@ -32,6 +32,23 @@
 </div>
 <script>
 (function(){
+  var token = '<%= typeof csrfToken !== "undefined" ? csrfToken : "" %>';
+  if (!token) return;
+  document.querySelectorAll('form[method="post"],form[method="POST"]').forEach(function(form){
+    if (!form.querySelector('input[name="_csrf"]')) {
+      var input=document.createElement('input'); input.type='hidden'; input.name='_csrf'; input.value=token; form.appendChild(input);
+    }
+  });
+})();
+(function(){
+  var originalFetch=window.fetch;
+  window.fetch=function(input,init){
+    init=init||{}; var method=(init.method||'GET').toUpperCase();
+    if(method!=='GET' && method!=='HEAD') { init.headers=Object.assign({},init.headers||{}, {'X-CSRF-Token':'<%= typeof csrfToken !== "undefined" ? csrfToken : "" %>'}); }
+    return originalFetch.call(this,input,init);
+  };
+})();
+(function(){
   var modal = document.getElementById('changePwModal');
   if (!modal) return;
   modal.addEventListener('click', function(e){ if(e.target === modal) modal.style.display='none'; });

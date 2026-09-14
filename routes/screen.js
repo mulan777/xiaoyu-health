@@ -72,8 +72,12 @@ function prevBatchRecords(items, latestDay) {
 }
 
 module.exports = function mountScreenRoutes(app) {
+  // 旧路径 301 → 统一目录（2026-09-10，收藏/投屏链接不失效）
+  app.get('/screen', (req, res) => res.redirect(301, '/admin/screen'));
+  app.get('/screen/api/overview', (req, res) => res.redirect(301, '/admin/screen/api/overview'));
+
   // ========== 大屏页面 ==========
-  app.get('/screen', requireLogin, asyncHandler(async (req, res) => {
+  app.get('/admin/screen', requireLogin, asyncHandler(async (req, res) => {
     const [classes, settings] = await Promise.all([
       dbQuery(
         `SELECT id, name, grade_level
@@ -95,7 +99,7 @@ module.exports = function mountScreenRoutes(app) {
   }));
 
   // ========== 聚合数据 API（前端 30s 轮询） ==========
-  app.get('/screen/api/overview', requireLogin, asyncHandler(async (req, res) => {
+  app.get('/admin/screen/api/overview', requireLogin, asyncHandler(async (req, res) => {
     const scope = req.query.scope === 'class' ? 'class' : 'all';
     const classId = scope === 'class' ? (Number(req.query.classId) || 0) : 0;
     const [records, bandBuckets, bandOverview, attentionAll, recentBands, totals, settings] = await Promise.all([
@@ -238,7 +242,12 @@ module.exports = function mountScreenRoutes(app) {
       sampleCount: Math.max(hrVals.length, spVals.length, tpVals.length)
     };
 
-    const mappingRows = await dbQuery('SELECT band_mac, child_id FROM band_mapping');
+    const mappingRows = await dbQuery(
+      `SELECT m.band_mac, m.child_id, ch.name AS child_name, c.name AS class_name
+         FROM band_mapping m
+         LEFT JOIN children ch ON ch.id = m.child_id
+         LEFT JOIN classes c ON c.id = ch.class_id`);
+    const infoByMac = new Map(mappingRows.map((m) => [String(m.band_mac).toLowerCase(), m]));
     const mappedMacs = new Set(mappingRows.map((m) => String(m.band_mac).toLowerCase()));
     const bandSummary = {
       total: bands.length,
@@ -252,10 +261,15 @@ module.exports = function mountScreenRoutes(app) {
     const HR_HIGH = 140, HR_LOW = 60;
     const bandAlerts = [];
     for (const b of bands) {
+      const info = infoByMac.get(String(b.band_mac).toLowerCase()) || {};
       const hr = Number(b.heart_rate);
+      const cName = info.child_name || '';
+      const clName = info.class_name || '';
       if (inRange(hr, 30, 250) && (hr > HR_HIGH || hr < HR_LOW)) {
         bandAlerts.push({
           band_mac: b.band_mac,
+          child_name: cName,
+          class_name: clName,
           heart_rate: hr,
           kind: hr > HR_HIGH ? 'high' : 'low',
           last_time: b.last_time,
@@ -263,7 +277,7 @@ module.exports = function mountScreenRoutes(app) {
         });
       }
       if (Number(b.sos) > 0) {
-        bandAlerts.push({ band_mac: b.band_mac, heart_rate: hr || null, kind: 'sos', last_time: b.last_time, sos: 1 });
+        bandAlerts.push({ band_mac: b.band_mac, child_name: cName, class_name: clName, heart_rate: hr || null, kind: 'sos', last_time: b.last_time, sos: 1 });
       }
     }
 

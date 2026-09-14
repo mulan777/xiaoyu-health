@@ -4,6 +4,11 @@
 const { normalizeText, asyncHandler, requireRole, requirePermission, requireWritable, hasPermission } = require('../lib/helpers');
 const { dbQuery, getSettings, saveSettings } = require('../lib/db');
 
+/** 手环 MAC 归一化：兼容 D6:12:D9:00:37:FE / d6-12-d9-... / 含空格等写法，统一为小写 12 位 hex */
+function normalizeBandMac(input) {
+  return String(normalizeText(input) || '').toLowerCase().replace(/[\s:\-_.·：]/g, '');
+}
+
 module.exports = function mountBandRoutes(app, upload) {
   const adminOnly = requireRole('admin');
 
@@ -105,7 +110,7 @@ module.exports = function mountBandRoutes(app, upload) {
 
   // ========== 保存 MAC 绑定 ==========
   app.post('/admin/bands/mapping/save', adminOnly, requirePermission('data.bands.config'), requireWritable(), asyncHandler(async (req, res) => {
-    const mac = normalizeText(req.body.bandMac || '').toLowerCase();
+    const mac = normalizeBandMac(req.body.bandMac);
     const childId = req.body.childId ? Number(req.body.childId) : null;
     const remark = normalizeText(req.body.remark || '');
     if (!/^[0-9a-f]{12}$/.test(mac)) return res.redirect('/admin/bands?message=' + encodeURIComponent('MAC 格式不正确（应为 12 位十六进制）'));
@@ -138,7 +143,7 @@ module.exports = function mountBandRoutes(app, upload) {
 
   // ========== JSON 接口：单手环历史记录（曲线数据） ==========
   app.get('/admin/bands/api/records', adminOnly, requirePermission('data.bands.view'), asyncHandler(async (req, res) => {
-    const mac = normalizeText(req.query.mac || '').toLowerCase();
+    const mac = normalizeBandMac(req.query.mac);
     if (!/^[0-9a-f]{12}$/.test(mac)) return res.json({ ok: false, message: 'MAC 参数错误' });
     const hours = Math.min(Math.max(Number(req.query.hours || 6), 1), 72);
     const since = new Date(Date.now() + 8 * 3600 * 1000 - hours * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' ');

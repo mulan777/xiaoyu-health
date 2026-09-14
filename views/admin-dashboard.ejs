@@ -61,7 +61,7 @@
         // 1. 📊 态势与感知
         const monitorItems = [
           {perm:'ops.overview', panel:'overview', label:'工作台概览', icon:'📊'},
-          {perm:'data.fitness', href:'/screen', target:'_blank', label:'全园感知大屏 ↗', icon:'🖥️', badge:'新窗口'},
+          {perm:'data.fitness', href:'/admin/screen', target:'_blank', label:'全园感知大屏 ↗', icon:'🖥️', badge:'新窗口'},
           {perm:'data.bands', href:'/admin/bands', label:'手环健康监测', icon:'⌚'},
           {perm:'data.bands', panel:'alert', label:'心率警报', icon:'🚨'},
           {perm:'data.bands', panel:'report', label:'健康日报', icon:'📋'}
@@ -245,10 +245,7 @@
           <form method="post" action="/admin/settings" class="form-grid">
             <label><span>站点名称</span><input type="text" name="siteName" value="<%= settings.siteName || '' %>" /></label>
             <label><span>副标题</span><input type="text" name="subtitle" value="<%= settings.subtitle || '' %>" /></label>
-            <label><span>首页主标题</span><input type="text" name="heroTitle" value="<%= settings.heroTitle || '' %>" /></label>
-            <label><span>首页说明</span><textarea name="heroDesc" rows="3"><%= settings.heroDesc || '' %></textarea></label>
-            <label><span>移动端提示</span><textarea name="mobileHint" rows="2"><%= settings.mobileHint || '' %></textarea></label>
-            <label><span>后台公告</span><textarea name="adminNotice" rows="2"><%= settings.adminNotice || '' %></textarea></label>
+            <small class="muted">站点名称与副标题显示在页面顶部横幅；新版首页/登录页已改版，旧版「首页主标题、首页说明、移动端提示、后台公告」字段不再使用，已一并移除。</small>
             <label class="setting-check-row">
               <input type="checkbox" name="venueRecommendationEnabled" value="1" <%= String(settings.venueRecommendationEnabled || '1') === '1' ? 'checked' : '' %> />
               <span>开启教师端场地智能推荐</span>
@@ -258,20 +255,6 @@
           </form>
         </div>
 
-        <div class="card">
-          <h3>首页内容维护</h3>
-          <form method="post" action="/admin/content" class="form-grid">
-            <% for (let i = 0; i < 8; i++) { %>
-              <label><span>亮点标题 <%= i + 1 %></span><input type="text" name="featureTitle<%= i + 1 %>" value="<%= content.features[i] ? content.features[i].title : '' %>" /></label>
-              <label><span>亮点描述 <%= i + 1 %></span><textarea name="featureDesc<%= i + 1 %>" rows="2"><%= content.features[i] ? content.features[i].desc : '' %></textarea></label>
-            <% } %>
-            <% for (let i = 0; i < 6; i++) { %>
-              <label><span>快捷入口名称 <%= i + 1 %></span><input type="text" name="quickLinkName<%= i + 1 %>" value="<%= content.quickLinks[i] ? content.quickLinks[i].name : '' %>" /></label>
-              <label><span>快捷入口路径 <%= i + 1 %></span><input type="text" name="quickLinkPath<%= i + 1 %>" value="<%= content.quickLinks[i] ? content.quickLinks[i].path : '' %>" /></label>
-            <% } %>
-            <button class="btn primary full" type="submit">保存首页内容</button>
-          </form>
-        </div>
       </div>
     </section>
 <% } else if (activePanel === 'ai') { %>

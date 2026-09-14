@@ -35,6 +35,7 @@
 
   <!-- v1 基础样式（兼容） -->
   <link rel="stylesheet" href="/static/style.css?v=<%= cssVer %>" />
+  <link rel="stylesheet" href="/static/mobile-saas.css?v=<%= cssVer %>" />
   <!-- 样式已合并进 style.css (原 v1+v2) -->
 </head>
 <body class="<%= typeof pageClass !== 'undefined' ? pageClass : '' %>">
@@ -42,6 +43,7 @@
     <img src="https://www.jiangxiyey.cn/static/site-logo.jpg?v=20260910" alt="logo" width="300" height="300" style="width:300px;height:300px;" />
   </div>
   <header class="topbar">
+    <% if (currentUser && currentUser.role !== 'user') { %><button class="mobile-menu-toggle" type="button" aria-label="打开菜单" onclick="document.body.classList.toggle('mobile-nav-open')"><span></span><span></span><span></span></button><% } %>
     <a class="brand" href="/" aria-label="返回首页">
       <div class="brand-logo"><img src="/static/site-logo-sm.jpg?v=20260613b" alt="<%= settings.siteName || '小鱼健康平台' %>" /></div>
       <div>
@@ -63,5 +65,13 @@
         <a href="/logout">退出</a>
       <% } %>
     </nav>
+    <% if (currentUser && currentUser.role === 'user') { %><a class="mobile-logout" href="/logout" aria-label="退出登录">退出</a><% } %>
   </header>
   <main class="container <%= typeof pageClass !== 'undefined' && pageClass.includes('admin-page') ? 'admin-container' : '' %>">
+  <% if (currentUser) { %><div class="mobile-nav-backdrop" onclick="document.body.classList.remove('mobile-nav-open')"></div><% } %>
+  <% if (currentUser) { %><nav class="mobile-bottom-nav" aria-label="移动端主导航">
+    <a href="<%= currentUser.role === 'user' ? '/user' : '/admin?panel=overview' %>"><span class="mi mi-home"></span><em>首页</em></a>
+    <a href="<%= currentUser.role === 'user' ? '/user?tab=fitness-records' : '/admin/fitness' %>"><span class="mi mi-data"></span><em>数据</em></a>
+    <a href="<%= currentUser.role === 'user' ? '/user?tab=attention' : '/admin?panel=attention' %>"><span class="mi mi-alert"></span><em>关注</em></a>
+    <a href="<%= currentUser.role === 'user' ? '/user/venues' : '/admin/venues' %>"><span class="mi mi-calendar"></span><em>预约</em></a>
+  </nav><% } %>

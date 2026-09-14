@@ -1252,7 +1252,7 @@
     }
 
     function load() {
-      var url = '/screen/api/overview?scope=' + state.scope + (state.classId ? '&classId=' + state.classId : '');
+      var url = '/admin/screen/api/overview?scope=' + state.scope + (state.classId ? '&classId=' + state.classId : '');
       fetch(url, { headers: { 'X-Requested-With': 'fetch' }, credentials: 'same-origin' })
         .then(function (r) { return r.json(); })
         .then(render)
@@ -1723,7 +1723,7 @@
       var alertBox = document.getElementById('bandAlerts');
       if (alerts.length) {
         alertBox.innerHTML = alerts.slice(0, 4).map(function (a) {
-          var name = a.child_name || a.band_mac;
+          var name = a.child_name ? (a.child_name + (a.class_name ? ' · ' + a.class_name : '')) : a.band_mac;
           var msg = a.kind === 'high' ? ('心率偏高 ' + a.heart_rate) : (a.kind === 'low' ? ('心率偏低 ' + a.heart_rate) : 'SOS 紧急');
           return '<div class="feed-row" style="background:#fff1f2;border-color:#fecdd3;">'
             + '<span class="feed-time">' + (a.last_time ? a.last_time.slice(11, 19) : '--') + '</span>'
@@ -1742,7 +1742,7 @@
         recBox.innerHTML = recs.slice(0, 4).map(function (r) {
           return '<div class="feed-row">'
             + '<span class="feed-time">' + r.t.slice(11, 19) + '</span>'
-            + '<span class="feed-name">' + r.band_mac.slice(-5) + '</span>'
+            + '<span class="feed-name">' + (r.child_name || r.band_mac.slice(-5)) + '</span>'
             + '<span class="feed-val hr">' + (r.hr ? (r.hr + 'bpm') : '--') + '</span>'
             + '<span class="feed-val tp">' + (r.tp ? (r.tp + '°') : '--') + '</span>'
             + '<span class="feed-val sp">' + (r.sp ? (r.sp + '%') : '--') + '</span>'
