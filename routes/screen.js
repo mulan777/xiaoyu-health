@@ -249,13 +249,16 @@ module.exports = function mountScreenRoutes(app) {
          LEFT JOIN classes c ON c.id = ch.class_id`);
     const infoByMac = new Map(mappingRows.map((m) => [String(m.band_mac).toLowerCase(), m]));
     const mappedMacs = new Set(mappingRows.map((m) => String(m.band_mac).toLowerCase()));
+    const stepVals = bands.map((b) => Number(b.steps)).filter((v) => Number.isFinite(v) && v > 0);
     const bandSummary = {
       total: bands.length,
       online: bands.filter((b) => b.online).length,
       offline: bands.filter((b) => !b.online).length,
       mappedMacs: mappedMacs.size,
       childrenOnlineBounded: bands.filter((b) => b.online && mappedMacs.has(String(b.band_mac).toLowerCase())).length,
-      sos: bands.filter((b) => Number(b.sos) > 0).length
+      sos: bands.filter((b) => Number(b.sos) > 0).length,
+      stepBands: stepVals.length,
+      totalSteps: stepVals.length ? stepVals.reduce((a, b) => a + b, 0) : null
     };
 
     const HR_HIGH = 140, HR_LOW = 60;

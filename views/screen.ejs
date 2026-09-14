@@ -292,7 +292,7 @@
     /* ============ 中间核心：5 个体征卡片（含异常告警卡） ============ */
     .center-top-metrics {
       display: grid;
-      grid-template-columns: repeat(5, 1fr);
+      grid-template-columns: repeat(6, 1fr);
       gap: 8px;
       margin-bottom: 8px;
       flex: 0 0 auto;
@@ -330,6 +330,7 @@
     .metric-card.tp::before { background: linear-gradient(90deg, #d97706, #fbbf24); }
     .metric-card.bp::before { background: linear-gradient(90deg, #7c3aed, #a855f7); }
     .metric-card.alert::before { background: linear-gradient(90deg, #dc2626, #f87171); }
+    .metric-card.steps::before { background: linear-gradient(90deg, #059669, #34d399); }
 
     .m-label-row {
       display: flex;
@@ -896,6 +897,9 @@
       .metric-card.alert-card {
         grid-column: span 2 !important;
       }
+      .metric-card.steps {
+        grid-column: span 2 !important;
+      }
       .band-subgrid {
         grid-template-columns: 1fr !important;
         height: auto !important;
@@ -1062,6 +1066,19 @@
                 <span class="unit">起</span>
               </div>
               <div class="m-status-row" id="alertTotalSub" style="color:#059669;">当前平稳正常</div>
+            </div>
+
+            <!-- 第 6 个卡片:全园累计步数 -->
+            <div class="metric-card steps">
+              <div class="m-label-row">
+                <span>累计步数</span>
+                <span class="icon">👣</span>
+              </div>
+              <div class="m-value-row">
+                <span class="number" id="totalSteps">--</span>
+                <span class="unit">步</span>
+              </div>
+              <div class="m-status-row" id="totalStepsSub">等待手环上报</div>
             </div>
           </div>
 
@@ -1620,6 +1637,17 @@
         alertTotalNum.style.color = '#059669';
         alertTotalSub.textContent = '全员体征正常';
         alertTotalSub.style.color = '#059669';
+      }
+
+      // 第 6 个卡片:全园累计步数
+      var totalStepsEl = document.getElementById('totalSteps');
+      var totalStepsSub = document.getElementById('totalStepsSub');
+      if (bs.totalSteps != null && bs.totalSteps > 0) {
+        totalStepsEl.textContent = bs.totalSteps.toLocaleString();
+        totalStepsSub.textContent = '今日累计 · ' + (bs.stepBands || 0) + ' 台手环上报';
+      } else {
+        totalStepsEl.textContent = '--';
+        totalStepsSub.textContent = '等待手环上报步数';
       }
 
       // 动态走势折线：过滤掉无效的前缀空点，并且合理配置双 Y 轴与网格边距
