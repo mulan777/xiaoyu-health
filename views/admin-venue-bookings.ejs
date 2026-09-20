@@ -700,7 +700,7 @@
                   <div class="venue-module-attention-item vest-<%= child.vestType %>">
                     <div class="venue-module-attention-meta">
                       <div>
-                        <div class="venue-module-attention-name"><%= child.name %></div>
+                        <div class="venue-module-attention-name"><%= child.display_name || (String(child.name||"").length>1 ? String(child.name).slice(0,-1)+"*" : child.name) %></div>
                         <div class="venue-module-attention-subtitle"><%= child.class_name %> · <%= gradeLabel(child.grade_level) %><%= child.gender ? ' · ' + child.gender : '' %></div>
                       </div>
                       <span class="venue-vest-badge <%= child.vestType %>"><%= child.vestLabel || vestToneLabel(child.vestType) %></span>

@@ -11,6 +11,7 @@ const aiClient = require('../lib/ai-client');
 const aiFitnessReport = require('../lib/ai-fitness-report');
 const { parseWorkbookRows, sendWorkbook, buildUserTemplateWorkbook, importUsersFromRows, buildUserExportWorkbook, buildChildTemplateWorkbook, importChildrenFromRows, buildChildExportWorkbook, buildFitnessTemplateWorkbook } = require('../lib/excel');
 const { computeFitnessResult } = require('../lib/fitness-scoring');
+const { buildDisplayMap } = require('../lib/name-masking');
 const { buildFitnessSummaries, buildRadarChartData } = require('../lib/fitness-analytics');
 const { audit, buildAuditChanges, buildAuditSnapshot, formatAuditValue, pruneJsonLog } = require('../lib/logger');
 
@@ -25,6 +26,21 @@ function fmtLocalDate(value) {
 module.exports = function mountAdminRoutes(app, upload, ctx = {}) {
   const { kickUserSessions } = ctx;
   const adminOnly = requireRole('admin');
+let _sdCache = { at: 0, map: new Map() };
+async function loadStudentDisplayMap() {
+  if (_sdCache.map.size && Date.now() - _sdCache.at < 60000) return _sdCache.map;
+  const rows = await dbQuery(`SELECT ch.name, c.name AS class_name FROM children ch LEFT JOIN classes c ON c.id = ch.class_id WHERE ch.enabled = 1`);
+  _sdCache = { at: Date.now(), map: buildDisplayMap(rows) };
+  return _sdCache.map;
+}
+function maskChildName(displayMap, className, name) {
+  const nm = String(name == null ? '' : name).replace(/[\s\u00a0]/g, '');
+  if (!nm) return name;
+  const hit = displayMap.get(String(className || '') + '\u0001' + nm);
+  return hit === undefined ? (nm.length > 1 ? nm.slice(0, -1) + '*' : nm) : hit;
+}
+
+
   const PANEL_PERMISSIONS = {
     overview: 'ops.overview', site: 'ops.site', ai: 'ops.site', logs: 'ops.logs',
     users: 'data.users', classes: 'data.classes', children: 'data.children',
@@ -425,7 +441,11 @@ module.exports = function mountAdminRoutes(app, upload, ctx = {}) {
       FROM fitness_records fr
       JOIN children ch ON ch.id = fr.child_id
       LEFT JOIN classes c ON c.id = ch.class_id
-      ${queryParts.whereSql}${orderSql}`, queryParts.params);
+      ${queryParts.whereSql}${orderSql}`, queryParts.params).then(async (rows) => {
+        const dm = await loadStudentDisplayMap();
+        for (const _r of rows) { _r.child_display = maskChildName(dm, _r.class_name, _r.child_name); }
+        return rows;
+      });
     }
 
     // 完整范围记录：用于趋势和取最新批次；不受明细筛选影响。
@@ -1533,6 +1553,7 @@ module.exports = function mountAdminRoutes(app, upload, ctx = {}) {
         WHERE fr.id = ?
         LIMIT 1
       `, [editId]);
+      { const dm = await loadStudentDisplayMap(); if (editRows[0]) editRows[0].child_display = maskChildName(dm, editRows[0].class_name, editRows[0].child_name); }
       editRecord = editRows[0] || null;
     }
     res.render('admin-fitness', {
@@ -1741,7 +1762,7 @@ module.exports = function mountAdminRoutes(app, upload, ctx = {}) {
       ' fr.total_score, fr.rating' +
       ' FROM fitness_records fr WHERE fr.child_id = ? ORDER BY fr.test_date ASC';
     const records = await dbQuery(sql, [childId]);
-    res.json({ ok: true, child: { id: child.id, name: child.name, gender: child.gender, birthDate: child.birth_date ? fmtLocalDate(child.birth_date) : '' }, records: records.map(r => ({ id: r.id, testDate: r.test_date ? fmtLocalDate(r.test_date) : '', heightCm: r.height_cm, weightKg: r.weight_kg, bmi: r.bmi, gripKg: r.grip_kg, gripScore: r.grip_score, longJumpCm: r.long_jump_cm, jumpScore: r.jump_score, sitReachCm: r.sit_reach_cm, sitScore: r.sit_score, doubleJumpSec: r.double_jump_sec, djumpScore: r.djump_score, obstacleRunSec: r.obstacle_run_sec, obstacleScore: r.obstacle_score, balanceBeamSec: r.balance_beam_sec, balanceScore: r.balance_score, totalScore: r.total_score, rating: r.rating })) });
+    res.json({ ok: true, child: { id: child.id, name: child.display_name || (String(child.name||'').length>1 ? String(child.name).slice(0,-1)+'*' : child.name), gender: child.gender, birthDate: child.birth_date ? fmtLocalDate(child.birth_date) : '' }, records: records.map(r => ({ id: r.id, testDate: r.test_date ? fmtLocalDate(r.test_date) : '', heightCm: r.height_cm, weightKg: r.weight_kg, bmi: r.bmi, gripKg: r.grip_kg, gripScore: r.grip_score, longJumpCm: r.long_jump_cm, jumpScore: r.jump_score, sitReachCm: r.sit_reach_cm, sitScore: r.sit_score, doubleJumpSec: r.double_jump_sec, djumpScore: r.djump_score, obstacleRunSec: r.obstacle_run_sec, obstacleScore: r.obstacle_score, balanceBeamSec: r.balance_beam_sec, balanceScore: r.balance_score, totalScore: r.total_score, rating: r.rating })) });
   }));
 
   app.post('/admin/fitness/batch-delete', adminOnly, requirePermission('data.fitness.delete'), requireWritable(), asyncHandler(async (req, res) => {

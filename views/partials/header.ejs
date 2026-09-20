@@ -43,7 +43,7 @@
     <img src="https://www.jiangxiyey.cn/static/site-logo.jpg?v=20260910" alt="logo" width="300" height="300" style="width:300px;height:300px;" />
   </div>
   <header class="topbar">
-    <% if (currentUser && currentUser.role !== 'user') { %><button class="mobile-menu-toggle" type="button" aria-label="打开菜单" onclick="document.body.classList.toggle('mobile-nav-open')"><span></span><span></span><span></span></button><% } %>
+      <% if (currentUser && currentUser.role !== 'user') { %><button class="mobile-menu-toggle" type="button" aria-label="打开菜单" onclick="document.body.classList.toggle('mobile-nav-open')"><span></span><span></span><span></span></button><% } %>
     <a class="brand" href="/" aria-label="返回首页">
       <div class="brand-logo"><img src="/static/site-logo-sm.jpg?v=20260613b" alt="<%= settings.siteName || '小鱼健康平台' %>" /></div>
       <div>
@@ -68,10 +68,13 @@
     <% if (currentUser && currentUser.role === 'user') { %><a class="mobile-logout" href="/logout" aria-label="退出登录">退出</a><% } %>
   </header>
   <main class="container <%= typeof pageClass !== 'undefined' && pageClass.includes('admin-page') ? 'admin-container' : '' %>">
-  <% if (currentUser) { %><div class="mobile-nav-backdrop" onclick="document.body.classList.remove('mobile-nav-open')"></div><% } %>
+    <% if (currentUser) { %><div class="mobile-nav-backdrop" onclick="document.body.classList.remove('mobile-nav-open')"></div><% } %>
   <% if (currentUser) { %><nav class="mobile-bottom-nav" aria-label="移动端主导航">
-    <a href="<%= currentUser.role === 'user' ? '/user' : '/admin?panel=overview' %>"><span class="mi mi-home"></span><em>首页</em></a>
-    <a href="<%= currentUser.role === 'user' ? '/user?tab=fitness-records' : '/admin/fitness' %>"><span class="mi mi-data"></span><em>数据</em></a>
-    <a href="<%= currentUser.role === 'user' ? '/user?tab=attention' : '/admin?panel=attention' %>"><span class="mi mi-alert"></span><em>关注</em></a>
+    <a href="<%= currentUser.role === 'user' ? '/user' : '/admin?panel=overview' %>" class="<%= typeof userBandAccess !== 'undefined' && userBandAccess ? 'bn-home' : '' %>"><span class="mi mi-home"></span><em>首页</em></a>
+    <% if (currentUser.role === 'user' && userBandAccess) { %><a href="/user/screen"><span class="mi mi-screen"></span><em>大屏</em></a><% } %>
+    <a href="<%= currentUser.role === 'user' ? '/user?view=records' : '/admin/fitness' %>"><span class="mi mi-data"></span><em>数据</em></a>
+    <% if (currentUser.role === 'user') { %><a href="/user?view=entry"><span class="mi mi-entry"></span><em>录入</em></a><% } %>
+    <a href="<%= currentUser.role === 'user' ? '/user?view=attention' : '/admin?panel=attention' %>"><span class="mi mi-alert"></span><em>关注</em></a>
     <a href="<%= currentUser.role === 'user' ? '/user/venues' : '/admin/venues' %>"><span class="mi mi-calendar"></span><em>预约</em></a>
+    <% if (currentUser.role === 'user' && userBandAccess) { %><a href="/user/bands"><span class="mi mi-band"></span><em>手环</em></a><% } %>
   </nav><% } %>

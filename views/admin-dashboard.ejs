@@ -1,3 +1,4 @@
+<% function dn(child) { const nm = String((child && (child.display_name || child.name)) || ''); return nm ? nm : ''; } %>
 <%- include('partials/header', { pageClass: 'admin-page' + (isReadonly ? ' readonly-mode' : '') + (typeof focusMode !== 'undefined' && focusMode ? ' focus-mode' : '') }) %>
 
 <% if (typeof focusMode !== 'undefined' && focusMode) { %>
@@ -446,7 +447,6 @@
         <div>
           <div class="eyebrow">每日健康日报</div>
           <h2>健康日报</h2>
-          <p class="muted">每天 <%= String(settings.bandDailyTime || '10:30') %> 自动生成并企微推送给管理员与保健老师（<%= String(settings.bandDailyEnabled || '1') === '1' ? '当前已开启' : '当前已关闭' %>）。日报内容同步留档在这里，不再担心错过推送。</p>
         </div>
       </div>
       <div class="panel-grid">
@@ -1005,7 +1005,7 @@
                       <tr>
                         <td class="checkbox-cell"><input type="checkbox" name="selectedIds" value="<%= child.id %>" form="children-batch-form" /></td>
                         <td><%= child.class_name || '-' %></td>
-                        <td><strong><a class="child-compare-link" data-child-id="<%= child.id %>" data-child-name="<%= child.name %>" role="button" tabindex="0"><%= child.name %></a></strong></td>
+                        <td><strong><a class="child-compare-link" data-child-id="<%= child.id %>" data-child-name="<%= child.name %>" role="button" tabindex="0"><%= child.display_name || child.name %></a></strong></td>
                         <td><%= child.gender || '-' %></td>
                         <td><%= child.birth_date ? formatDateOnly(child.birth_date) : '-' %></td>
                         <td><span class="status-badge <%= child.enabled ? 'ok' : 'off' %>"><%= child.enabled ? '启用中' : '已禁用' %></span></td>
@@ -1260,7 +1260,7 @@
                 <% const childStatusClass = child.attention_status === 'active' ? 'warn' : child.attention_status === 'normal' ? 'ok' : 'info'; %>
                 <tr class="attention-row <%= selectedAttentionChild && selectedAttentionChild.id === child.id ? 'is-selected' : '' %>"
                     data-child-id="<%= child.id %>"
-                    data-name="<%= child.name %>"
+                    data-name="<%= child.display_name || child.name %>"
                     data-class-name="<%= child.class_name || '' %>"
                     data-gender="<%= child.gender || '' %>"
                     data-needs-attention="<%= child.attention_marked ? '1' : '0' %>"
@@ -1273,7 +1273,7 @@
                     tabindex="0">
                   <td class="checkbox-cell"><input type="radio" class="attention-row-radio" name="attentionRowSelector" <%= selectedAttentionChild && selectedAttentionChild.id === child.id ? 'checked' : '' %> /></td>
                   <td><%= child.class_name || '-' %></td>
-                  <td><strong><a class="child-compare-link" data-child-id="<%= child.id %>" data-child-name="<%= child.name %>" role="button" tabindex="0"><%= child.name %></a></strong></td>
+                  <td><strong><a class="child-compare-link" data-child-id="<%= child.id %>" data-child-name="<%= child.name %>" role="button" tabindex="0"><%= child.display_name || child.name %></a></strong></td>
                   <td><span class="status-badge <%= childStatusClass %>"><%= childStatusLabel %></span></td>
                   <td><%= child.attention_marked ? ((childStart || '即日起') + ' ~ ' + (childEnd || '长期')) : '-' %></td>
                   <td>

@@ -43,6 +43,7 @@ const mountVenueRoutes = require('./routes/venue');
 const mountUserRoutes = require('./routes/user');
 const mountBandRoutes = require('./routes/bands');
 const mountScreenRoutes = require('./routes/screen');
+const mountUserBandRoutes = require('./routes/user-bands');
 const mountWxRoutes = require('./routes/wx');
 const { initBandJobs } = require('./lib/band-jobs');
 
@@ -407,6 +408,15 @@ async function bootstrap() {
     res.locals.cssVersion = APP_START_TIME;
     res.locals.currentPath = req.path || '/';
     res.locals.settings = await getSettings();
+    // 教师端手环页开通标识（供底部导航条件渲染；60s 内存缓存避免每请求查表）
+    if (res.locals.currentUser && res.locals.currentUser.role === 'user' && res.locals.currentUser.classId) {
+      if (!global.__bandEnabledCache || Date.now() - global.__bandEnabledCache.at > 60000) {
+        global.__bandEnabledCache = { at: Date.now(), ids: (String(res.locals.settings.bandEnabledClasses || '[]').match(/\d+/g) || []).map(Number) };
+      }
+      res.locals.userBandAccess = global.__bandEnabledCache.ids.includes(Number(res.locals.currentUser.classId));
+    } else {
+      res.locals.userBandAccess = false;
+    }
     res.locals.gradeLabel = gradeLabel;
     res.locals.calculateAge = calculateAge;
     res.locals.formatDateOnly = formatDateOnly;
@@ -524,8 +534,46 @@ async function bootstrap() {
   mountBandRoutes(app, upload);
 
   // ========== 数据大屏路由 ==========
-  mountScreenRoutes(app);
+  const screenHelpers = mountScreenRoutes(app);
   mountWxRoutes(app);
+
+  // ========== 只读日报/警报查看页（2026-09-16：推给谁谁能点开，免后台 data.bands 权限） ==========
+  // 日报卡片/心率警报卡片跳转这里；未登录 → 记录回跳地址 → 企微无感登录后自动跳回
+  async function renderReadonlyReportView(req, res, viewType) {
+    const pushType = viewType === 'alert' ? 'hr_alert' : 'daily_report';
+    const pageTitle = viewType === 'alert' ? '心率警报' : '健康日报';
+    const rows = await dbQuery(
+      'SELECT id, ref_id, title, content, wx_errcode, wx_errmsg, created_at FROM push_logs WHERE push_type=? ORDER BY id DESC LIMIT 30',
+      [pushType]
+    );
+    // 卡片直达: ?id= 时把指定那条提到最前(不在最近30条也查出来)
+    if (viewType === 'alert' && req.query.id) {
+      const alertId = Number.parseInt(req.query.id, 10);
+      if (Number.isFinite(alertId) && alertId > 0 && !rows.some((x) => Number(x.id) === alertId && Number(x.ref_id) === alertId)) {
+        const special = await dbQuery(
+          'SELECT id, ref_id, title, content, wx_errcode, wx_errmsg, created_at FROM push_logs WHERE push_type=? AND (id=? OR ref_id=?) LIMIT 1',
+          ['hr_alert', alertId, String(alertId)]
+        );
+        if (special.length) rows.unshift(special[0]);
+      }
+    }
+    res.render('report-standalone', {
+      viewType, pageTitle,
+      latest: rows[0] || null,
+      history: rows.slice(1),
+      pageClass: 'admin-page',
+      cssVersion: APP_START_TIME
+    });
+  }
+  ['report', 'alert'].forEach((t) => {
+    app.get('/' + t, asyncHandler(async (req, res) => {
+      if (!req.session.user) {
+        req.session.loginNext = '/' + t;
+        return res.redirect('/wxoauth');
+      }
+      return renderReadonlyReportView(req, res, t);
+    }));
+  });
 
   // 教师端 /user 路由(从server.js抽取, 依赖注入)
   const userRouteCtx = {
@@ -536,6 +584,7 @@ async function bootstrap() {
     buildUserDashboard, getWeatherCare, normalizePageNumber, paginateItems, chinaNowText
   };
   mountUserRoutes(app, upload, userRouteCtx);
+  mountUserBandRoutes(app, screenHelpers);
 
   // ========== 健康检查 ==========
   app.get('/health', asyncHandler(async (req, res) => {

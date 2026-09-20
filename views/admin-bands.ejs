@@ -13,6 +13,7 @@
 </style>
 <div class="focus-exit"><a href="/logout">退出</a></div>
 <% } %>
+<script>window.teacherView = <%= (typeof teacherView !== 'undefined' && teacherView) ? 'true' : 'false' %>;</script>
 <script src="/static/echarts.min.js"></script>
 
 <%
@@ -144,6 +145,21 @@
 
   /* —— 手环实时概览 —— */
   .band-band-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+  /* ===== 手环班级分组 ===== */
+  .band-group-tools { display: flex; gap: 8px; margin: 0 0 12px 14px; }
+  .band-group { border: 1px solid #e2e8f0; border-radius: 14px; margin: 0 14px 12px; overflow: hidden; background: #fff; }
+  .band-group-head { display: flex; align-items: center; gap: 10px; padding: 11px 14px; cursor: pointer; user-select: none; background: #f8fafc; transition: background .15s; }
+  .band-group-head:hover { background: #eef2ff; }
+  .band-group-head h4 { margin: 0; font-size: 14.5px; font-weight: 800; color: #0f172a; flex: 1; }
+  .band-group-head .bg { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; border: 1px solid; }
+  .band-group-head .g-count { font-size: 12px; color: #64748b; font-weight: 600; }
+  .band-group-head .g-online { font-size: 12px; font-weight: 700; color: #94a3b8; }
+  .band-group-head .g-online.has { color: #059669; }
+  .band-group-head .chev { font-size: 12px; color: #94a3b8; transition: transform .18s; }
+  .band-group.open .band-group-head .chev { transform: rotate(180deg); }
+  .band-group-body { display: none; padding: 12px 0 6px; }
+  .band-group.open .band-group-body { display: block; }
+
   .band-band-card {
     position: relative; overflow: hidden;
     border: 1px solid #e8ebf2; border-radius: 18px; padding: 14px 16px 16px;
@@ -151,6 +167,8 @@
     transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
   }
   .band-band-card:hover { transform: translateY(-3px); box-shadow: 0 12px 28px -10px rgba(99,102,241,.30); border-color: #c7d2fe; }
+  .band-band-card.selected { border-color: #6366f1; box-shadow: 0 0 0 2px rgba(99,102,241,.25), 0 12px 28px -10px rgba(99,102,241,.30); }
+  .band-band-card { cursor: pointer; }
   .band-band-card.online::before {
     content: ''; position: absolute; left: 0; top: 14px; bottom: 14px; width: 4px;
     border-radius: 0 4px 4px 0; background: linear-gradient(180deg, #818cf8, #6366f1);
@@ -270,9 +288,9 @@
 
 <section class="admin-hero card shell-hero band-hero admin-hero-compact">
   <div>
-    <div class="eyebrow">数据管理 · 手环健康监测</div>
+    <div class="eyebrow"><%= typeof teacherView !== 'undefined' && teacherView ? '我的班级 · 手环健康监测' : '数据管理 · 手环健康监测' %></div>
     <h1>手环健康监测</h1>
-    <p>YT9 智能手环实时健康数据：体温、心率、血压、血氧、步数与电量。仅启用班级的数据参与展示。</p>
+    <p><%= typeof teacherView !== 'undefined' && teacherView ? '本班手环实时健康数据：体温、心率、血压、血氧、步数与电量。' : 'YT9 智能手环实时健康数据：体温、心率、血压、血氧、步数与电量。仅启用班级的数据参与展示。' %></p>
     <div class="hero-date"><%= nowIso %> · 每 30 秒自动更新</div>
   </div>
   <div class="admin-hero-actions">
@@ -305,6 +323,7 @@
   </div>
 </div>
 
+<% if (typeof teacherView === 'undefined' || !teacherView) { %>
 <div class="card band-card">
   <div class="band-title"><span class="bar"></span><h2>展示班级配置</h2></div>
   <div class="sub">勾选要展示手环健康数据的班级（只影响手环页面展示范围），保存后即时生效。</div>
@@ -324,40 +343,95 @@
     <% } %>
   </form>
 </div>
+<% } %>
 
 <div class="card band-card">
   <div class="band-title"><span class="bar"></span><h3>手环实时概览 <%= latestRecords.length ? '<span class="refresh-note">· 点击手环卡片查看健康曲线</span>' : '' %></h3></div>
-  <div class="sub">最近一次上报的实时健康数据，绿点代表 6 分钟内有数据的手环。</div>
+  <div class="sub">按班级分组展示，点击班级标题展开 / 收起；点击手环卡片查看健康曲线，绿点代表 6 分钟内有数据。</div>
   <% if (!bandList.length) { %>
     <div class="band-empty">
       <span class="ic">⌚</span>
-      暂无手环数据。请确保手环开机广播、网关在线，band-bridge 服务会将数据自动写入。<br>当前时间：<%= nowIso %>
+      <% if (typeof teacherView !== 'undefined' && teacherView) { %>
+        本班手环暂无上报数据。已绑定的手环会随孩子入园进入网关范围后自动开始上报，届时此页将实时展示。<br>当前时间：<%= nowIso %>
+      <% } else { %>
+        暂无手环数据。请确保手环开机广播、网关在线，band-bridge 服务会将数据自动写入。<br>当前时间：<%= nowIso %>
+      <% } %>
     </div>
   <% } else { %>
-  <div class="band-band-grid">
-    <% bandList.forEach(function(b){ %>
-      <div class="band-band-card <%= b.online ? 'online' : '' %>" onclick="loadChart('<%= b.band_mac %>', 6)">
-        <div class="head">
-          <span class="dot"></span><span class="mac"><%= b.band_mac %></span>
-          <span class="state <%= b.online ? 'on' : 'off' %>"><%= b.online ? '在线' : (b.minutes_ago != null ? b.minutes_ago + '分钟前' : '离线') %></span>
-        </div>
-        <div class="child">
-          <% if (b.child_name) { %>
-            <span class="ph"><%= b.child_name.slice(0, 1) %></span><span><%= b.child_name %><% if (b.class_name) { %> · <span style="color:#94a3b8"><%= b.class_name %></span><% } %></span>
-          <% } else { %>
-            <span class="ph" style="background:#f1f5f9;color:#94a3b8">—</span><span style="color:#94a3b8">未绑定孩子</span>
-          <% } %>
-        </div>
-        <div class="metrics">
-          <div class="m"><span class="dk c-hr"></span><b><%= b.heart_rate != null ? b.heart_rate : '—' %></b><span>心率</span></div>
-          <div class="m"><span class="dk c-tp"></span><b><%= b.body_temp != null ? b.body_temp : '—' %>°</b><span>体温</span></div>
-          <div class="m"><span class="dk c-sp"></span><b><%= b.spo2 != null ? b.spo2 + '%' : '—' %></b><span>血氧</span></div>
-          <div class="m"><span class="dk c-bp"></span><b><%= b.systolic && b.diastolic ? b.systolic + '/' + b.diastolic : '—' %></b><span>血压</span></div>
-          <div class="m"><span class="dk c-bt"></span><b><%= b.battery != null ? b.battery + '%' : '—' %></b><span>电量</span></div>
-          <div class="m"><span class="dk c-st"></span><b><%= b.steps != null ? b.steps : '—' %></b><span>步数</span></div>
+  <%
+    // ===== 分组：年级顺序（小→中→大）→ 班级名 → 未绑定兜底排最后 =====
+    var _gradeOrder = { small: 1, middle: 2, large: 3 };
+    var _groupMap = {};
+    var _groupOrder = [];
+    bandList.forEach(function(b){
+      var key = b.class_name || '';
+      if (!_groupMap[key]) { _groupMap[key] = { className: key, grade: null, bands: [] }; _groupOrder.push(key); }
+      _groupMap[key].bands.push(b);
+    });
+    classes.forEach(function(c){ if (_groupMap[c.name]) _groupMap[c.name].grade = c.grade_level; });
+    _groupOrder.sort(function(a, b){
+      var oa = (_groupMap[a].grade && _gradeOrder[_groupMap[a].grade]) || 99;
+      var ob = (_groupMap[b].grade && _gradeOrder[_groupMap[b].grade]) || 99;
+      if (oa !== ob) return oa - ob;
+      return a.localeCompare(b, 'zh');
+    });
+    var _iu = _groupOrder.indexOf('');
+    if (_iu > -1) { _groupOrder.push(_groupOrder.splice(_iu, 1)[0]); }
+    // 默认展开第一个有在线手环的班级
+    var _defaultOpen = null;
+    for (var _gi = 0; _gi < _groupOrder.length; _gi++) {
+      if (_groupMap[_groupOrder[_gi]].bands.some(function(x){ return x.online; })) { _defaultOpen = _groupOrder[_gi]; break; }
+    }
+    if (_defaultOpen == null && _groupOrder.length) _defaultOpen = _groupOrder[0];
+  %>
+  <div class="band-group-tools">
+    <button type="button" class="btn small" onclick="setAllBandGroups(true)">全部展开</button>
+    <button type="button" class="btn small" onclick="setAllBandGroups(false)">全部收起</button>
+    <select id="bandClassFilter" onchange="filterBandGroups()" style="margin-left:auto;padding:6px 10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;background:#fff;">
+      <option value="">全部班级</option>
+      <% classes.forEach(function(c){ if (_groupMap[c.name]) { %><option value="<%= c.name %>"><%= c.name %></option><% } }); %>
+      <% if (_groupMap['']) { %><option value="__unbound__">未绑定孩子</option><% } %>
+    </select>
+  </div>
+  <div id="bandGroups">
+  <% _groupOrder.forEach(function(gName){ var g = _groupMap[gName]; var onlineN = g.bands.filter(function(x){ return x.online; }).length; var isOpen = (gName === _defaultOpen); %>
+    <div class="band-group <%= isOpen ? 'open' : '' %>">
+      <div class="band-group-head" onclick="toggleBandGroup(this)">
+        <span class="bg <%= g.grade ? _gradeCls(g.grade) : '' %>"><%= g.grade ? _gradeLbl(g.grade) : '未分组' %></span>
+        <h4><%= gName || '未绑定孩子' %></h4>
+        <span class="g-count"><%= g.bands.length %> 只</span>
+        <span class="g-online <%= onlineN ? 'has' : '' %>"><%= onlineN %> 在线</span>
+        <span class="chev">▾</span>
+      </div>
+      <div class="band-group-body">
+        <div class="band-band-grid">
+          <% g.bands.forEach(function(b){ %>
+            <div class="band-band-card <%= b.online ? 'online' : '' %>" data-mac="<%= b.band_mac %>" onclick="loadChart('<%= b.band_mac %>', 6)">
+              <div class="head">
+                <span class="dot"></span><span class="mac"><%= b.band_mac %></span>
+                <span class="state <%= b.online ? 'on' : 'off' %>"><%= b.online ? '在线' : (b.minutes_ago != null ? b.minutes_ago + '分钟前' : '离线') %></span>
+              </div>
+              <div class="child">
+                <% if (b.child_name) { %>
+                  <span class="ph"><%= b.child_name.slice(0, 1) %></span><span><%= b.child_display || (String(b.child_name||"").length>1 ? String(b.child_name).slice(0,-1)+"*" : b.child_name) %><% if (b.class_name) { %> · <span style="color:#94a3b8"><%= b.class_name %></span><% } %></span>
+                <% } else { %>
+                  <span class="ph" style="background:#f1f5f9;color:#94a3b8">—</span><span style="color:#94a3b8">未绑定孩子</span>
+                <% } %>
+              </div>
+              <div class="metrics">
+                <div class="m"><span class="dk c-hr"></span><b><%= b.heart_rate != null ? b.heart_rate : '—' %></b><span>心率</span></div>
+                <div class="m"><span class="dk c-tp"></span><b><%= b.body_temp != null ? b.body_temp : '—' %>°</b><span>体温</span></div>
+                <div class="m"><span class="dk c-sp"></span><b><%= b.spo2 != null ? b.spo2 + '%' : '—' %></b><span>血氧</span></div>
+                <div class="m"><span class="dk c-bp"></span><b><%= b.systolic && b.diastolic ? b.systolic + '/' + b.diastolic : '—' %></b><span>血压</span></div>
+                <div class="m"><span class="dk c-bt"></span><b><%= b.battery != null ? b.battery + '%' : '—' %></b><span>电量</span></div>
+                <div class="m"><span class="dk c-st"></span><b><%= b.steps != null ? b.steps : '—' %></b><span>步数</span></div>
+              </div>
+            </div>
+          <% }); %>
         </div>
       </div>
-    <% }); %>
+    </div>
+  <% }); %>
   </div>
   <% } %>
 </div>
@@ -370,7 +444,7 @@
     <select id="chartMac" onchange="loadChart(this.value, ((document.querySelector('.chart-tabs .seg .tab.active') || { dataset: { h: '6' } }).dataset.h * 1))">
       <option value="">— 请选择手环 —</option>
       <% bandList.forEach(function(b){ %>
-        <option value="<%= b.band_mac %>"><%= b.band_mac %> <%= b.child_name ? '(' + b.child_name + ')' : '' %></option>
+        <option value="<%= b.band_mac %>"><%= b.band_mac %> <%= b.child_name ? '(' + (b.child_display || (String(b.child_name||"").length>1 ? String(b.child_name).slice(0,-1)+"*" : b.child_name)) + ')' : '' %></option>
       <% }); %>
     </select>
     <span class="sel">范围</span>
@@ -406,7 +480,7 @@
         <tr data-class="<%= r.class_name || '' %>">
           <td class="t-time"><%= _fmtT(r.bp_time) %></td>
           <td class="t-mac"><%= r.band_mac %></td>
-          <td class="t-child"><% if (r.child_name) { %><%= r.child_name %><% } else { %><span class="t-na">未绑定</span><% } %></td>
+          <td class="t-child"><% if (r.child_name) { %><%= r.child_display || (String(r.child_name||"").length>1 ? String(r.child_name).slice(0,-1)+"*" : r.child_name) %><% } else { %><span class="t-na">未绑定</span><% } %></td>
           <td><% if (r.class_name) { %><%= r.class_name %><% } else { %><span class="t-na">—</span><% } %></td>
           <td class="v-hr"><% if (r.heart_rate != null) { %><%= r.heart_rate %><% } else { %><span class="t-na">—</span><% } %></td>
           <td class="v-tp"><% if (r.body_temp != null) { %><%= r.body_temp %>℃<% } else { %><span class="t-na">—</span><% } %></td>
@@ -425,6 +499,7 @@
   <script>window.__bandInitRecs = <%- JSON.stringify(latestRecords || []).replace(/</g, '\\u003c') %>;</script>
 </div>
 
+<% if (typeof teacherView === 'undefined' || !teacherView) { %>
 <div class="card band-card">
   <div class="band-title"><span class="bar"></span><h2>手环绑定管理</h2></div>
   <div class="sub">将手环 MAC 与幼儿档案绑定，绑定后页面自动显示孩子姓名与班级。绑定数据入库后展示即生效。学生下拉仅显示「展示班级配置」中勾选启用班级的幼儿。</div>
@@ -451,7 +526,7 @@
       <% mappings.forEach(function(m){ %>
         <tr>
           <td class="t-mac"><%= m.band_mac %></td>
-          <td class="t-child"><%= m.child_name || '—' %></td>
+          <td class="t-child"><%= m.child_display || (String(m.child_name||"").length>1 ? String(m.child_name).slice(0,-1)+"*" : (m.child_name || '—')) %></td>
           <td><%= m.class_name || '<span class="t-na">—</span>' %></td>
           <td><%= m.remark || '<span class="t-na">—</span>' %></td>
           <td>
@@ -469,8 +544,10 @@
   </div>
   <% } else { %><div class="band-empty"><span class="ic">🔗</span>暂无绑定，对照表来了之后在这里批量录入</div><% } %>
 </div>
+<% } %>
 
 <script>
+  window.__bandApiBase = (typeof teacherView !== 'undefined' && teacherView) ? '/user/bands/api' : '/admin/bands/api';
   const gradeMap = { small: '小班', middle: '中班', large: '大班' };
 
   function fmtT(v) {
@@ -515,7 +592,7 @@
         return '<tr>'
           + '<td class="t-time">' + escHtml(fmtT(r.bp_time)) + '</td>'
           + '<td class="t-mac">' + escHtml(r.band_mac) + '</td>'
-          + '<td class="t-child">' + (r.child_name ? escHtml(r.child_name) : '<span class="t-na">未绑定</span>') + '</td>'
+          + '<td class="t-child">' + (r.child_name ? escHtml(r.child_display || (String(r.child_name||"").length>1 ? String(r.child_name).slice(0,-1)+"*" : r.child_name)) : '<span class="t-na">未绑定</span>') + '</td>'
           + '<td>' + (r.class_name ? escHtml(r.class_name) : na) + '</td>'
           + '<td class="v-hr">' + (r.heart_rate != null ? escHtml(r.heart_rate) : na) + '</td>'
           + '<td class="v-tp">' + (r.body_temp != null ? escHtml(r.body_temp) + '℃' : na) + '</td>'
@@ -628,12 +705,44 @@
     return chart;
   }
 
-  function loadChart(mac, hours) {
+  // ===== 班级分组展开/收起 =====
+  function toggleBandGroup(headEl) {
+    var g = headEl.parentNode;
+    g.classList.toggle('open');
+    // 展开后重算组内图表尺寸（防止隐藏时渲染导致宽度为 0）
+    setTimeout(function () {
+      __bandCharts.forEach(function (c) { try { c.resize(); } catch (e) {} });
+    }, 60);
+  }
+  function setAllBandGroups(open) {
+    document.querySelectorAll('.band-group').forEach(function (g) {
+      g.classList.toggle('open', open);
+    });
+    setTimeout(function () {
+      __bandCharts.forEach(function (c) { try { c.resize(); } catch (e) {} });
+    }, 60);
+  }
+  // 班级筛选：只显示勾选班级的分组（不影响曲线）
+  function filterBandGroups() {
+    var sel = document.getElementById('bandClassFilter');
+    var v = sel ? sel.value : '';
+    document.querySelectorAll('#bandGroups .band-group').forEach(function (g) {
+      var name = g.querySelector('.band-group-head h4').textContent.trim();
+      var isUnbound = g.querySelector('.band-group-head .bg').textContent.indexOf('未分组') > -1;
+      g.style.display = (!v || (v === '__unbound__' && isUnbound) || name === v) ? '' : 'none';
+    });
+  }
+
+  function loadChart(mac, hours, doScroll) {
     if (!mac) return;
     const wrap = document.getElementById('chartWrap');
-    wrap.innerHTML = '<div class="band-empty">加载中…</div>';
+    wrap.innerHTML = '<div class="band-empty"><span class="ic">⏳</span>正在加载 ' + mac + ' 的健康曲线…</div>';
+    // 选中卡片高亮 + 曲线区滚动到可见，避免"点了没反应"的观感
+    document.querySelectorAll('.band-band-card').forEach(function (c) { c.classList.toggle('selected', c.dataset.mac === mac); });
+    var chartCard = document.getElementById('chartCard');
+    if (doScroll !== false && chartCard && typeof chartCard.scrollIntoView === 'function') chartCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     disposeBandCharts();
-    fetch('/admin/bands/api/records?mac=' + encodeURIComponent(mac) + '&hours=' + hours)
+    fetch((window.__bandApiBase || '/admin/bands/api') + '/records?mac=' + encodeURIComponent(mac) + '&hours=' + hours)
       .then(function(r) { return r.json(); })
       .then(function(data) {
         if (!data.ok || !data.records || !data.records.length) {
@@ -684,13 +793,13 @@
     });
   })();
 
-  // 默认选中第一个在线手环并加载曲线
+  // 默认选中第一个在线手环并加载曲线（不滚动，避免进页面被自动带到中部）
   (function() {
     const first = document.querySelector('.band-band-card.online .mac');
     if (first) {
       const mac = first.textContent.trim();
       document.getElementById('chartMac').value = mac;
-      loadChart(mac, 6);
+      loadChart(mac, 6, false);
     }
   })();
 
@@ -710,7 +819,7 @@
   applyRecView();
 
   setInterval(function() {
-    fetch('/admin/bands/api/recent')
+    fetch((window.__bandApiBase || '/admin/bands/api') + '/recent')
       .then(function(r) { return r.json(); })
       .then(function(data) {
         if (data && data.ok && data.records) renderRecentRows(data.records);

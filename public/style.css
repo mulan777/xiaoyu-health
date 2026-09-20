@@ -10436,3 +10436,21 @@ label{
     justify-content: center;
   }
 }
+
+
+/* ========== 2026-09-20 首页视图：仅教师工作台，满屏垂直居中 ========== */
+/* 桌面端正常文档流 */
+.home-wrap{padding:12px 0 32px;}
+.home-wrap .stats-row{margin:16px 0;}
+.home-growth-card{padding:22px 24px;}
+@media (min-width:961px){.home-logout{display:none;}}
+.home-wrap .dashboard-head{padding:34px 30px;border-radius:26px;position:relative;}
+.home-logout{position:absolute;top:20px;right:22px;padding:7px 18px;border-radius:999px;background:rgba(15,23,42,.05);color:#64748b;font-size:13px;font-weight:600;text-decoration:none;border:1px solid rgba(15,23,42,.08);transition:all .18s;}.home-logout:hover{background:#fee2e2;color:#dc2626;border-color:#fecaca;}
+.home-wrap .dashboard-head .eyebrow{font-size:13px;}
+.home-wrap .dashboard-head h1{font-size:28px;margin:12px 0 0;}
+@media (max-width:960px){
+  .home-wrap{padding:14px 0 28px;}
+  .home-wrap .dashboard-head{padding:30px 22px;border-radius:22px;}
+  .home-wrap .dashboard-head h1{font-size:26px;}
+  .home-wrap .teacher-care-card{margin-top:18px;padding:18px 18px;}
+}

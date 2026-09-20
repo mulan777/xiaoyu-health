@@ -202,7 +202,7 @@
           <div class="child-item attention-reminder-card <%= attentionVestClass(child) %>">
             <div class="child-item-head attention-reminder-head">
               <div class="attention-reminder-main">
-                <strong><%= child.name %></strong>
+                <strong><%= child.display_name || (String(child.name||"").length>1 ? String(child.name).slice(0,-1)+"*" : child.name) %></strong>
                 <div class="muted attention-reminder-subtitle"><%= child.class_name %> · <%= gradeLabel(child.grade_level) %><%= child.gender ? ' · ' + child.gender : '' %></div>
               </div>
               <div class="attention-reminder-badges">
@@ -267,7 +267,7 @@
                   data-attention-tags="<%= childTagsText %>"
                   data-attention-active="<%= Number(child.needs_attention || 0) ? '1' : '0' %>"
                 >
-                  <%= child.name %><%= child.gender ? ' · ' + child.gender : '' %>
+                  <%= child.display_name || (String(child.name||"").length>1 ? String(child.name).slice(0,-1)+"*" : child.name) %><%= child.gender ? ' · ' + child.gender : '' %>
                 </option>
               <% }) %>
             </select>
@@ -311,7 +311,7 @@
                 <div class="venue-attention-current-item">
                   <div class="venue-attention-current-meta">
                     <div>
-                      <strong><%= child.name %></strong>
+                      <strong><%= child.display_name || (String(child.name||"").length>1 ? String(child.name).slice(0,-1)+"*" : child.name) %></strong>
                       <div class="muted"><%= formatAttentionPeriod(child.attention_start_date, child.attention_end_date) %></div>
                     </div>
                     <form method="post" action="/user/venues/attention/clear" class="inline-form">
@@ -1032,7 +1032,7 @@
                   <div class="venue-attention-child-list">
                     <% vestChildren.forEach(function(child, index) { %>
                       <button type="button" class="venue-attention-child-btn js-attention-child-btn <%= index === 0 ? 'is-active' : '' %> <%= attentionVestClass(child) %>" data-attention-child-id="<%= child.id %>" data-attention-vest="<%= vestType %>">
-                        <span><%= child.name %></span>
+                        <span><%= child.display_name || (String(child.name||"").length>1 ? String(child.name).slice(0,-1)+"*" : child.name) %></span>
                         <span class="vest-badge <%= vestType %>"><%= attentionVestLabel(child) %></span>
                       </button>
                     <% }) %>
@@ -1042,7 +1042,7 @@
                       <div class="venue-scene-attention-item <%= attentionVestClass(child) %>" data-attention-child-panel="<%= child.id %>" <%= index === 0 ? '' : 'hidden' %>>
                         <div class="venue-scene-attention-head">
                           <div>
-                            <strong><%= child.name %></strong>
+                            <strong><%= child.display_name || (String(child.name||"").length>1 ? String(child.name).slice(0,-1)+"*" : child.name) %></strong>
                             <div class="muted" style="margin-top:4px;"><%= child.class_name %></div>
                           </div>
                           <span class="vest-badge <%= vestType %>"><%= vestType === 'red' ? '红马甲' : (vestType === 'green' ? '绿马甲' : '黄马甲') %></span>
@@ -1070,7 +1070,7 @@
                 <% sceneAttentionChildren.forEach(function(child) { %>
                   <div class="venue-scene-attention-item <%= attentionVestClass(child) %>">
                     <div class="venue-scene-attention-head">
-                      <strong><%= child.name %></strong>
+                      <strong><%= child.display_name || (String(child.name||"").length>1 ? String(child.name).slice(0,-1)+"*" : child.name) %></strong>
                       <span class="vest-badge <%= attentionVestKey(child) %>"><%= attentionVestLabel(child) %></span>
                     </div>
                     <div class="venue-scene-text"><%= child.attention_reason || '已被标记为重点关注，请活动时重点照看。' %></div>

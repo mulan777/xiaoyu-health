@@ -28,20 +28,17 @@ module.exports = function mountBandRoutes(app, upload) {
                LEFT JOIN children ch ON ch.id = m.child_id
                LEFT JOIN classes c ON c.id = ch.class_id
                ORDER BY m.id DESC`),
-      dbQuery(`SELECT b.band_mac,
-                     MAX(b.bp_time) AS last_time,
-                     COUNT(*) AS total_records,
-                     (SELECT heart_rate FROM band_records b2 WHERE b2.band_mac = b.band_mac ORDER BY b2.id DESC LIMIT 1) AS heart_rate,
-                     (SELECT body_temp FROM band_records b2 WHERE b2.band_mac = b.band_mac ORDER BY b2.id DESC LIMIT 1) AS body_temp,
-                     (SELECT systolic FROM band_records b2 WHERE b2.band_mac = b.band_mac ORDER BY b2.id DESC LIMIT 1) AS systolic,
-                     (SELECT diastolic FROM band_records b2 WHERE b2.band_mac = b.band_mac ORDER BY b2.id DESC LIMIT 1) AS diastolic,
-                     (SELECT spo2 FROM band_records b2 WHERE b2.band_mac = b.band_mac ORDER BY b2.id DESC LIMIT 1) AS spo2,
-                     (SELECT steps FROM band_records b2 WHERE b2.band_mac = b.band_mac ORDER BY b2.id DESC LIMIT 1) AS steps,
-                     (SELECT battery FROM band_records b2 WHERE b2.band_mac = b.band_mac ORDER BY b2.id DESC LIMIT 1) AS battery,
-                     (SELECT sos FROM band_records b2 WHERE b2.band_mac = b.band_mac ORDER BY b2.id DESC LIMIT 1) AS sos
-              FROM band_records b
-              GROUP BY b.band_mac
-              ORDER BY last_time DESC`),
+      // 性能：band_records 已 35 万+ 行，逐 MAC 的 8 个关联子查询实测 11s；
+      // 改为「聚合派生表 JOIN 最新行」，索引 idx_band_time(band_mac,bp_time)+PRIMARY(id) 全程覆盖扫描，实测 ~300ms
+      dbQuery(`SELECT r.band_mac,
+                     r.heart_rate, r.body_temp, r.systolic, r.diastolic,
+                     r.spo2, r.steps, r.battery, r.sos,
+                     g.last_time, g.total_records
+              FROM (SELECT band_mac, MAX(id) AS max_id FROM band_records GROUP BY band_mac) m
+              JOIN band_records r ON r.id = m.max_id
+              JOIN (SELECT band_mac, MAX(bp_time) AS last_time, COUNT(*) AS total_records
+                    FROM band_records GROUP BY band_mac) g ON g.band_mac = r.band_mac
+              ORDER BY g.last_time DESC`),
       dbQuery(`SELECT b.id, b.band_mac, b.bp_time, b.heart_rate, b.body_temp, b.systolic, b.diastolic,
                       b.spo2, b.steps, b.battery, b.sos,
                       m.child_id, ch.name AS child_name, c.name AS class_name, c.id AS class_id

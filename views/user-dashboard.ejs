@@ -1,3 +1,4 @@
+<% function dn(child) { const nm = String((child && (child.display_name || child.name)) || ''); return nm ? nm : ''; } %>
 <%- include('partials/header') %>
 
 
@@ -323,10 +324,23 @@
         <span class="user-fitness-nav-title">场地预约</span>
         <span class="user-fitness-nav-desc">进入场地预约与使用管理</span>
       </a>
+      <% if (typeof bandAccess !== 'undefined' && bandAccess) { %>
+      <a class="user-fitness-nav-link" href="/user/bands">
+        <span class="user-fitness-nav-title">手环健康监测</span>
+        <span class="user-fitness-nav-desc">本班手环实时体温、心率、血氧与曲线</span>
+      </a>
+      <a class="user-fitness-nav-link" href="/user/screen">
+        <span class="user-fitness-nav-title">班级数据大屏</span>
+        <span class="user-fitness-nav-desc">本班体测与健康数据可视化大屏</span>
+      </a>
+      <% } %>
     </nav>
   </aside>
   <div class="user-fitness-main">
+<% if (userView === 'home') { %>
+    <div class="home-wrap">
     <section class="dashboard-head card">
+      <a class="home-logout" href="/logout">退出</a>
       <div>
         <div class="eyebrow">教师工作台</div>
         <h1>你好，<%= currentUser.name %></h1>
@@ -347,10 +361,41 @@
 
     </section>
 
+    <div class="stats-row" id="v2-stats">
+      <div class="stat-card"><div class="stat-icon blue"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-7 8-7s8 3 8 7"/></svg></div><div class="stat-info"><div class="stat-number"><%= childCollection.length %></div><div class="stat-label">班级幼儿</div></div></div>
+      <div class="stat-card"><div class="stat-icon green"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div><div class="stat-info"><div class="stat-number"><%= typeof totalFitnessRecordsCount !== "undefined" ? totalFitnessRecordsCount : (typeof allFitnessRecords !== "undefined" ? allFitnessRecords.length : 0) %></div><div class="stat-label">体测记录</div></div></div>
+      <div class="stat-card" onclick="openAttentionModal()" style="cursor:pointer;" title="点击查看重点关注名单"><div class="stat-icon amber"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div><div class="stat-info"><div class="stat-number"><%= activeAttentionChildren.length %></div><div class="stat-label">待关注</div></div></div>
+    </div>
+
+    <section class="card chart-card home-growth-card">
+      <div class="section-head" style="margin-bottom:6px;">
+        <div>
+          <h3>班级生长趋势</h3>
+          <div class="muted no-margin">按测试日期展示本班幼儿身高 / 体重 / BMI 均值趋势</div>
+        </div>
+      </div>
+      <% if (Array.isArray(scopeTrendData) && scopeTrendData.length >= 2) { %>
+      <script type="application/json" id="userGrowthData"><%- JSON.stringify(scopeTrendData) %></script>
+      <div id="userGrowthChart" class="chart-el" style="width:100%;height:300px;" role="img" aria-label="班级生长趋势"></div>
+      <% } else { %>
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:200px;color:#94a3b8;background:#f8fafc;border-radius:8px;border:2px dashed #e2e8f0;">
+        <span style="font-size:14px;font-weight:500;margin-bottom:4px;">暂无足够数据</span>
+        <span style="font-size:12px;">至少需要 2 次不同日期的测试记录才能生成趋势</span>
+      </div>
+      <% } %>
+      <div style="text-align:center;margin-top:12px;">
+        <a class="btn small primary" href="/user?view=records">查看完整数据分析 ›</a>
+      </div>
+    </section>
+    </div><!-- /home-wrap -->
+<% } %>
+
+<% if (userView !== 'home') { %>
 <div class="stats-row" id="v2-stats">
   <div class="stat-card"><div class="stat-icon blue"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-7 8-7s8 3 8 7"/></svg></div><div class="stat-info"><div class="stat-number"><%= childCollection.length %></div><div class="stat-label">班级幼儿</div></div></div>
   <div class="stat-card"><div class="stat-icon green"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div><div class="stat-info"><div class="stat-number"><%= typeof totalFitnessRecordsCount !== "undefined" ? totalFitnessRecordsCount : (typeof allFitnessRecords !== "undefined" ? allFitnessRecords.length : 0) %></div><div class="stat-label">体测记录</div></div></div>
   <div class="stat-card" onclick="openAttentionModal()" style="cursor:pointer;" title="点击查看重点关注名单"><div class="stat-icon amber"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div><div class="stat-info"><div class="stat-number"><%= activeAttentionChildren.length %></div><div class="stat-label">待关注</div></div></div>
+<% } %>
 </div>
 
 <!-- 待关注名单弹窗：点击"待关注"卡片弹出，显示姓名/马甲类型/关注原因 -->
@@ -368,7 +413,7 @@
         <% activeAttentionChildren.forEach(function(child) { %>
           <div class="attention-modal-item">
             <div class="attention-modal-item-head">
-              <span class="attention-modal-name"><%= child.name %><% if (child.gender) { %><span class="attention-modal-gender"><%= child.gender %></span><% } %></span>
+              <span class="attention-modal-name"><%= dn(child) %><% if (child.gender) { %><span class="attention-modal-gender"><%= child.gender %></span><% } %></span>
               <span class="vest-badge <%= attentionVestKey(child) %>"><%= attentionVestLabel(child) %></span>
             </div>
             <div class="attention-modal-reason"><%= child.attention_reason || '已标记为重点关注，请在活动前再次确认。' %></div>
@@ -387,7 +432,7 @@
     </div>
     <div class="attention-modal-foot">
       <button type="button" class="btn" onclick="closeAttentionModal()">关闭</button>
-      <button type="button" class="btn primary" onclick="closeAttentionModal();switchTab('attention')">去维护重点关注</button>
+      <button type="button" class="btn primary" onclick="closeAttentionModal();if(document.getElementById('tab-attention')&&window.__userView!=='home'){switchTab('attention')}else{location.href='/user?view=attention'}">去维护重点关注</button>
     </div>
   </div>
 </div>
@@ -438,13 +483,6 @@
   document.addEventListener('keydown',function(e){if(e.key==='Escape')closeAttentionModal();});
 </script>
 
-<div class="tab-bar" id="v2-tabbar">
-  <button class="tab-btn active" onclick="switchTab(&#39;records&#39;)">体测记录</button>
-  <button class="tab-btn" onclick="switchTab(&#39;attention&#39;)">重点关注</button>
-  <button class="tab-btn" onclick="switchTab(&#39;entry&#39;)">录入体测</button>
-  <button class="tab-btn" onclick="switchTab(&#39;venue&#39;)">场地预约</button>
-</div>
-
     <% if (message) { %>
       <div class="alert success"><%= message %></div>
     <% } %>
@@ -452,8 +490,9 @@
       <div class="alert error"><%= editError %></div>
     <% } %>
 
+<% if (userView === 'attention') { %>
 <div class="tab-panel" id="tab-attention" style="display:none;">
-    <% if (userView === 'attention' || true) { %>
+    <% if (userView === 'attention') { %>
 
 <section class="card venue-attention-manage-card" id="attention-manage">
   <div class="section-head">
@@ -491,7 +530,7 @@
                 data-attention-tags="<%= childTagsText %>"
                 data-attention-vest-type="<%= attentionVestKey(child) %>"
               >
-                <%= child.name %><%= child.gender ? ' / ' + child.gender : '' %>
+                <%= dn(child) %><%= child.gender ? ' / ' + child.gender : '' %>
               </option>
             <% }) %>
           </select>
@@ -543,7 +582,7 @@
               <div class="venue-attention-current-item">
                 <div class="venue-attention-current-meta">
                   <div>
-                    <strong><a class="child-compare-link" data-child-id="<%= child.id %>" data-child-name="<%= child.name %>" role="button" tabindex="0"><%= child.name %></a></strong>
+                    <strong><a class="child-compare-link" data-child-id="<%= child.id %>" data-child-name="<%= child.name %>" role="button" tabindex="0"><%= dn(child) %></a></strong>
                     <div class="muted"><%= formatAttentionPeriod(child.attention_start_date, child.attention_end_date) %></div>
                   </div>
                   <span class="vest-badge <%= attentionVestKey(child) %>"><%= attentionVestLabel(child) %></span>
@@ -574,8 +613,10 @@
     <% } %>
 </div>
 
+<% } %>
+<% if (userView === 'records') { %>
 <div class="tab-panel active" id="tab-records">
-    <% if (userView === 'records' || !userView) { %>
+    <% if (userView === 'records') { %>
 <!-- 本班体测数据 -->
 <section class="card" id="fitness-records" data-ajax-panel="user-records">
   <h2>本班体测记录</h2>
@@ -977,7 +1018,7 @@
                 <div class="muted" style="margin-top:6px;">对应人员：
                   <% if (item.nameLinks && item.nameLinks.length) { %>
                     <% item.nameLinks.forEach(function(link) { const quick = (childQuickLookup && childQuickLookup[link.name]) || null; %>
-                      <a class="child-compare-link" data-child-id="<%= quick && quick.childId ? quick.childId : '' %>" data-child-name="<%= link.name %>" role="button" tabindex="0" style="margin:4px 6px 0 0;display:inline-block;color:#2563eb;cursor:pointer;font-size:13px;"><%= link.name %></a>
+                      <a class="child-compare-link" data-child-id="<%= quick && quick.childId ? quick.childId : '' %>" data-child-name="<%= link.name %>" role="button" tabindex="0" style="margin:4px 6px 0 0;display:inline-block;color:#2563eb;cursor:pointer;font-size:13px;"><%= link.displayName || link.name %></a>
                     <% }) %>
                   <% } else { %>
                     暂无
@@ -1075,7 +1116,7 @@
         <tbody>
           <% fitnessRecords.forEach(function(r) { %>
             <tr>
-              <td><strong><a class="child-compare-link" data-child-id="<%= r.child_id %>" data-child-name="<%= r.child_name %>" role="button" tabindex="0"><%= r.child_name %></a></strong></td>
+              <td><strong><a class="child-compare-link" data-child-id="<%= r.child_id %>" data-child-name="<%= r.child_name %>" role="button" tabindex="0"><%= r.child_display || (String(r.child_name||"").slice(0,-1) + (String(r.child_name||"").length>1 ? "*" : "")) %></a></strong></td>
               <td><%= r.gender || '-' %></td>
               <td><%= r.test_date ? formatDateOnly(r.test_date) : '-' %></td>
               <td><%= r.height_cm ?? '-' %></td>
@@ -1125,8 +1166,10 @@
 </section>
 </div>
 
+<% } %>
+<% if (userView === 'entry') { %>
 <div class="tab-panel" id="tab-entry" style="display:none;">
-    <% if (userView === 'entry' || userView === 'records' || userView === 'attention' || !userView) { %>
+    <% if (userView === 'entry') { %>
 
 <!-- 体测录入 -->
 <section class="card" id="fitness-entry">
@@ -1179,7 +1222,7 @@
       <div class="muted" style="margin-top:12px;">未录入名单：</div>
       <% if (batchMissingChildren.length) { %>
         <div class="tag-list compact-tag-list" style="margin-top:8px;">
-          <% batchMissingChildren.forEach(function(child) { %><span class="tag-pill"><%= child.name %></span><% }) %>
+          <% batchMissingChildren.forEach(function(child) { %><span class="tag-pill"><%= dn(child) %></span><% }) %>
         </div>
       <% } else { %>
         <div class="venue-resource-empty" style="margin-top:8px;padding:14px 16px;">这个批次当前已经全部录完，可以切换其他批次，或者直接录入新增幼儿。</div>
@@ -1197,7 +1240,7 @@
           <% if (batchMissingChildren.length) { %>
             <optgroup label="本批次未录入">
               <% batchMissingChildren.forEach(function(ch) { %>
-                <option value="<%= ch.id %>" data-entry-status="missing"><%= ch.name %><%= ch.gender ? '(' + ch.gender + ')' : '' %> · 未录入</option>
+                <option value="<%= ch.id %>" data-entry-status="missing"><%= ch.display_name || (String(ch.name||'').slice(0,-1) + (String(ch.name||'').length>1 ? '*' : '')) %><%= ch.gender ? '(' + ch.gender + ')' : '' %> · 未录入</option>
               <% }) %>
             </optgroup>
           <% } %>
@@ -1217,13 +1260,13 @@
                   data-double-jump-sec="<%= ch.existingFitness && ch.existingFitness.doubleJumpSec != null ? ch.existingFitness.doubleJumpSec : '' %>"
                   data-obstacle-run-sec="<%= ch.existingFitness && ch.existingFitness.obstacleRunSec != null ? ch.existingFitness.obstacleRunSec : '' %>"
                   data-balance-beam-sec="<%= ch.existingFitness && ch.existingFitness.balanceBeamSec != null ? ch.existingFitness.balanceBeamSec : '' %>"
-                ><%= ch.name %><%= ch.gender ? '(' + ch.gender + ')' : '' %> · 已录入</option>
+                ><%= ch.display_name || (String(ch.name||'').slice(0,-1) + (String(ch.name||'').length>1 ? '*' : '')) %><%= ch.gender ? '(' + ch.gender + ')' : '' %> · 已录入</option>
               <% }) %>
             </optgroup>
           <% } %>
         <% } else { %>
           <% childCollection.forEach(function(ch) { %>
-            <option value="<%= ch.id %>"><%= ch.name %><%= ch.gender ? '(' + ch.gender + ')' : '' %></option>
+            <option value="<%= ch.id %>"><%= ch.display_name || (String(ch.name||'').slice(0,-1) + (String(ch.name||'').length>1 ? '*' : '')) %><%= ch.gender ? '(' + ch.gender + ')' : '' %></option>
           <% }) %>
         <% } %>
         <option value="__manual__">&#20854;&#20182;&#65288;&#25163;&#22635;&#26032;&#22686;&#65289;</option>
@@ -1279,6 +1322,7 @@
 </section>
     <% } %>
 </div>
+<% } %>
 <!-- /tab-entry -->
 
 </section>
@@ -2119,9 +2163,10 @@ function closeUserChildFitnessModal() {
 
 <script>
 (function(){
+  window.__userView='<%= userView %>';
   window.switchTab=function(name){
     if(name==="venue"){window.location.href="/user/venues";return;}
-    document.querySelectorAll("#v2-tabbar .tab-btn").forEach(function(b){
+    document.querySelectorAll("#v2-tabbar .tab-btn").forEach(function(b){  /* tabbar removed 20260920, selector matches nothing */
       var t=b.textContent;
       b.classList.toggle("active",
         (name==="records"&&t.includes("体测记录"))||
@@ -2193,8 +2238,8 @@ function closeUserChildFitnessModal() {
       }
     });
   };
-  // 初始化 tab：URL ?view= 优先 → localStorage → 默认 records
-  try{
+  // 初始化 tab：URL ?view= 优先 → localStorage → 默认 records（home 视图无面板，跳过 20260920）
+  if(window.__userView!=='home')try{
     var _vm=(window.location.search.match(/[?&]view=([^&]+)/)||[])[1];
     var _view=_vm?decodeURIComponent(_vm):"";
     var _valid={records:1,attention:1,entry:1};
@@ -2212,6 +2257,8 @@ function closeUserChildFitnessModal() {
     if(!a) return;
     var tab=a.getAttribute("data-tab-nav");
     if(!tab) return;
+    if(window.__userView==='home') return;
+    if(!document.getElementById("tab-"+tab)) return;
     e.preventDefault();
     switchTab(tab);
     try{history.replaceState(null,"","/user?view="+tab);}catch(err){}

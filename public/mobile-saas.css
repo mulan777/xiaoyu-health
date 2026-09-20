@@ -1,7 +1,9 @@
 /* Mobile SaaS shell */
 .mobile-menu-toggle,.mobile-nav-backdrop,.mobile-bottom-nav{display:none}
 @media (max-width:860px){
-body{padding-bottom:96px}.mobile-menu-toggle{display:flex;position:absolute;left:12px;top:17px;width:32px;height:28px;padding:5px;border:0;background:transparent;flex-direction:column;justify-content:space-around;z-index:120}.mobile-menu-toggle span{height:2px;width:21px;border-radius:2px;background:#334155}.mobile-nav-backdrop{display:block;position:fixed;inset:0;background:rgba(15,23,42,.35);opacity:0;pointer-events:none;transition:.2s;z-index:90}body.mobile-nav-open{overflow:hidden}body.mobile-nav-open .mobile-nav-backdrop{opacity:1;pointer-events:auto}.admin-sidebar{position:fixed!important;left:0;top:0;bottom:0;width:min(84vw,330px)!important;margin:0!important;border-radius:0 18px 18px 0!important;transform:translateX(-105%);transition:transform .25s ease;z-index:100;overflow:auto;padding-top:72px}body.mobile-nav-open .admin-sidebar{transform:translateX(0)}.mobile-bottom-nav{display:flex;position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));height:58px;z-index:80;align-items:center;justify-content:space-around;border:1px solid rgba(148,163,184,.22);border-radius:18px;background:rgba(255,255,255,.94);box-shadow:0 8px 30px rgba(15,23,42,.16);backdrop-filter:blur(14px)}.mobile-bottom-nav a{min-width:62px;text-align:center;color:#64748b;text-decoration:none;font-size:11px}.mobile-bottom-nav em{display:block;font-style:normal;margin-top:3px}.mi{display:inline-block;width:18px;height:18px;position:relative;color:#64748b}.mi:before,.mi:after{content:"";position:absolute;border:1.6px solid currentColor}.mi-home:before{left:2px;top:7px;width:14px;height:9px;border-radius:2px}.mi-home:after{left:4px;top:2px;width:10px;height:10px;transform:rotate(45deg);border-right:0;border-bottom:0}.mi-data:before{left:2px;bottom:2px;width:3px;height:9px;border-radius:1px;box-shadow:5px -5px 0 -1px #fff,5px -5px 0 0 currentColor,10px -9px 0 -1px #fff,10px -9px 0 0 currentColor}.mi-alert:before{left:3px;top:2px;width:12px;height:12px;border-radius:50%}.mi-calendar:before{left:2px;top:3px;width:14px;height:12px;border-radius:2px}.topbar .brand{margin-left:36px}.topbar .nav{display:none!important}.mobile-logout{display:block;position:absolute;right:14px;top:20px;color:#475569;font-size:13px;text-decoration:none}.v2-tabbar{overflow-x:auto;white-space:nowrap}body:has(#v2-stats) .topbar .brand{display:none}body:has(#v2-stats) .topbar{justify-content:center}body:has(#v2-stats) .container{padding:10px 12px 150px!important}body:has(#v2-stats) .teacher-care-card{margin-top:8px;padding:10px 12px;border-radius:14px}body:has(#v2-stats) .teacher-care-icon{width:34px;height:34px;font-size:18px}body:has(#v2-stats) .teacher-care-title{font-size:14px;line-height:1.4}body:has(#v2-stats) .teacher-care-meta{margin-top:4px;gap:5px}body:has(#v2-stats) .teacher-care-meta span{padding:3px 7px}body:has(#v2-stats) .teacher-care-detail{margin-top:3px;font-size:11px}body:has(#v2-stats) #v2-stats{display:grid!important;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0!important}body:has(#v2-stats) #v2-stats .stat-card{min-height:86px;padding:12px 8px!important}body:has(#v2-stats) #v2-stats .stat-card .stat-number{font-size:27px!important}body:has(#v2-stats) #v2-tabbar{position:sticky;top:58px;z-index:10;margin:8px 0!important}body:has(#v2-stats) #fitness-records{margin-top:8px!important}body:has(#v2-stats) #fitness-records .card{padding:16px!important}body:has(#v2-stats) .analysis-section{margin-top:8px!important}
+body:not(:has(.admin-sidebar)) .mobile-menu-toggle{display:none!important}
+body:not(:has(.admin-sidebar)) .topbar .brand{margin-left:12px}
+body{padding-bottom:96px}.mobile-menu-toggle{display:flex;position:absolute;left:12px;top:17px;width:32px;height:28px;padding:5px;border:0;background:transparent;flex-direction:column;justify-content:space-around;z-index:120}.mobile-menu-toggle span{height:2px;width:21px;border-radius:2px;background:#334155}.mobile-nav-backdrop{display:block;position:fixed;inset:0;background:rgba(15,23,42,.35);opacity:0;pointer-events:none;transition:.2s;z-index:90}body.mobile-nav-open{overflow:hidden}body.mobile-nav-open .mobile-nav-backdrop{opacity:1;pointer-events:auto}.admin-sidebar{position:fixed!important;left:0;top:0;bottom:0;width:min(84vw,330px)!important;margin:0!important;border-radius:0 18px 18px 0!important;transform:translateX(-105%);transition:transform .25s ease;z-index:100;overflow:auto;padding-top:72px}body.mobile-nav-open .admin-sidebar{transform:translateX(0)}.mobile-bottom-nav{display:flex;position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));height:58px;z-index:80;align-items:center;justify-content:space-around;border:1px solid rgba(148,163,184,.22);border-radius:18px;background:rgba(255,255,255,.94);box-shadow:0 8px 30px rgba(15,23,42,.16);backdrop-filter:blur(14px)}.mobile-bottom-nav a{min-width:52px;text-align:center;color:#64748b;text-decoration:none;font-size:11px;flex:1}.mobile-bottom-nav em{display:block;font-style:normal;margin-top:3px}.mi{display:inline-block;width:18px;height:18px;position:relative;color:#64748b}.mi:before,.mi:after{content:"";position:absolute;border:1.6px solid currentColor}.mi-home:before{left:2px;top:7px;width:14px;height:9px;border-radius:2px}.mi-home:after{left:4px;top:2px;width:10px;height:10px;transform:rotate(45deg);border-right:0;border-bottom:0}.mi-data:before{left:2px;bottom:2px;width:3px;height:9px;border-radius:1px;box-shadow:5px -5px 0 -1px #fff,5px -5px 0 0 currentColor,10px -9px 0 -1px #fff,10px -9px 0 0 currentColor}.mi-alert:before{left:3px;top:2px;width:12px;height:12px;border-radius:50%}.mi-calendar:before{left:2px;top:3px;width:14px;height:12px;border-radius:2px}.mi-entry:before{left:3px;top:2px;width:12px;height:13px;border-radius:2px;clip-path:polygon(0 22%,62% 22%,100% 0,100% 100%,0 100%)}.topbar .brand{margin-left:36px}.topbar .nav{display:none!important}.mobile-logout{display:block;position:absolute;right:14px;top:20px;color:#475569;font-size:13px;text-decoration:none}.v2-tabbar{overflow-x:auto;white-space:nowrap}body:has(#v2-stats) .topbar .brand{display:none}body:has(#v2-stats) .topbar{justify-content:center}body:has(#v2-stats) .container{padding:10px 12px 150px!important}body:has(#v2-stats) .teacher-care-card{margin-top:8px;padding:10px 12px;border-radius:14px}body:has(#v2-stats) .teacher-care-icon{width:34px;height:34px;font-size:18px}body:has(#v2-stats) .teacher-care-title{font-size:14px;line-height:1.4}body:has(#v2-stats) .teacher-care-meta{margin-top:4px;gap:5px}body:has(#v2-stats) .teacher-care-meta span{padding:3px 7px}body:has(#v2-stats) .teacher-care-detail{margin-top:3px;font-size:11px}body:has(#v2-stats) #v2-stats{display:grid!important;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0!important}body:has(#v2-stats) #v2-stats .stat-card{min-height:86px;padding:12px 8px!important}body:has(#v2-stats) #v2-stats .stat-card .stat-number{font-size:27px!important}body:has(#v2-stats) #v2-tabbar{position:sticky;top:58px;z-index:10;margin:8px 0!important}body:has(#v2-stats) #fitness-records{margin-top:8px!important}body:has(#v2-stats) #fitness-records .card{padding:16px!important}body:has(#v2-stats) .analysis-section{margin-top:8px!important}
 /* 2026-09-13 教师端移动端修复：统计卡/评级卡竖排居中，杜绝文字挤压竖排 */
 body:has(#v2-stats) #v2-stats .stat-card{flex-direction:column!important;justify-content:center!important;align-items:center!important;text-align:center!important;gap:2px!important;padding:10px 4px!important;min-height:88px!important}
 body:has(#v2-stats) #v2-stats .stat-card .stat-icon{width:30px!important;height:30px!important;font-size:15px!important;flex:none!important}
@@ -38,3 +40,53 @@ body:has(#v2-stats) .trend-insight-card{padding:12px 14px!important}
 body:has(#v2-stats) .trend-insight-head{flex-wrap:wrap!important;row-gap:4px!important;align-items:center!important}
 body:has(#v2-stats) .trend-insight-head .trend-insight-now{white-space:nowrap!important}
 }
+
+/* 2026-09-20 导航精简：手机端只保留底部导航，隐藏顶栏与退出浮标 */
+@media (max-width:860px){
+.topbar{display:none!important}
+.mobile-logout{display:none!important}
+.user-pill-tab-nav{display:none!important}
+}
+/* 手环底部导航图标 */
+.mi-band:before{left:1px;top:4px;width:12px;height:12px;border-radius:4px}
+.mi-band:after{left:5px;top:0;width:5px;height:3px;border-radius:2px 2px 0 0;border-bottom:0}
+
+/* 2026-09-20 手环页移动端紧凑布局：一行2张卡，减少滚动 */
+@media (max-width:860px){
+  /* 班级分组内边距收紧 */
+  .band-group{margin:0 8px 10px}
+  .band-group-head{padding:9px 10px}
+  .band-group-body{padding:8px 0 4px}
+  .band-group-tools{margin:0 8px 10px}
+  /* 两列网格 */
+  .band-band-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px}
+  /* 紧凑卡片：隐藏MAC长串(信息在曲线下拉里有)，保留在线状态点/孩子名/心率/体温/电量 */
+  .band-band-card{padding:8px 10px 10px;border-radius:12px}
+  .band-band-card .head .mac{display:none}
+  .band-band-card .head{gap:5px;font-size:11px}
+  .band-band-card .head .state{font-size:10px}
+  .band-band-card .child{font-size:13px;margin:4px 0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .band-band-card .child .ph{width:20px;height:20px;font-size:11px}
+  .band-band-card .child span:last-child{color:#0f172a;font-weight:600}
+  /* 指标 2x2 网格：心率/体温/血氧/电量（血压和步数手机端隐藏） */
+  .band-band-card .metrics{grid-template-columns:1fr 1fr!important;gap:2px 6px!important;margin-top:6px!important;padding-top:6px!important}
+  .band-band-card .metrics .m{margin:0}
+  .band-band-card .metrics .m{display:flex;align-items:center;gap:4px;min-width:0}
+  .band-band-card .metrics .m b{font-size:13px}
+  .band-band-card .metrics .m span:not(.dk){font-size:10px;color:#94a3b8}
+  /* 隐藏次要指标：血压(第4个)与步数(第6个)，2x2正好装下心率/体温/血氧/电量 */
+  .band-band-card .metrics .m:nth-child(4),
+  .band-band-card .metrics .m:nth-child(6){display:none}
+}
+
+/* 2026-09-20 教师首页"班级数据大屏"快捷入口 + 大屏底部图标 */
+.screen-shortcut{display:flex;align-items:center;gap:10px;margin:10px 0 0;padding:12px 14px;border-radius:14px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;text-decoration:none;box-shadow:0 6px 18px -6px rgba(99,102,241,.45)}
+.screen-shortcut .ss-ic{font-size:22px}
+.screen-shortcut .ss-tx{flex:1;display:flex;flex-direction:column;line-height:1.3}
+.screen-shortcut .ss-tx b{font-size:14.5px}
+.screen-shortcut .ss-tx i{font-style:normal;font-size:11.5px;opacity:.85}
+.screen-shortcut .ss-go{font-size:20px;opacity:.8}
+.mi-screen:before{left:2px;top:3px;width:13px;height:10px;border-radius:2px}
+.mi-screen:after{left:6px;top:14px;width:6px;height:2px;border-radius:1px}
+/* 手环班教师：隐藏药丸导航（双保险，include已删） */
+body:has(.screen-shortcut) .user-pill-tab-nav{display:none!important}

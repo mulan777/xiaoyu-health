@@ -1,3 +1,4 @@
+<% function dn2(r) { return (r && (r.child_display || r.child_name)) || ""; } %>
 <%- include('partials/header', { pageClass: 'admin-page' + (typeof isReadonly !== 'undefined' && isReadonly ? ' readonly-mode' : '') }) %>
 
 <style>
@@ -679,7 +680,7 @@
           <select name="childId" required>
             <option value="">请选择</option>
             <% allChildren.forEach(function(ch) { %>
-              <option value="<%= ch.id %>" <%= selectedChildIdText === String(ch.id) ? 'selected' : '' %>><%= ch.class_name ? ch.class_name + ' - ' : '' %><%= ch.name %><%= ch.gender ? '(' + ch.gender + ')' : '' %></option>
+              <option value="<%= ch.id %>" <%= selectedChildIdText === String(ch.id) ? 'selected' : '' %>><%= ch.class_name ? ch.class_name + ' - ' : '' %><%= ch.display_name || (String(ch.name||'').slice(0,-1) + (String(ch.name||'').length>1 ? '*' : '')) %><%= ch.gender ? '(' + ch.gender + ')' : '' %></option>
             <% }) %>
           </select>
         </label>
@@ -818,7 +819,7 @@
           <select name="childId">
             <option value="">请选择幼儿</option>
             <% allChildren.forEach(function(ch) { %>
-              <option value="<%= ch.id %>" <%= selectedChildIdText === String(ch.id) ? 'selected' : '' %>><%= ch.class_name ? ch.class_name + ' - ' : '' %><%= ch.name %><%= ch.gender ? '(' + ch.gender + ')' : '' %></option>
+              <option value="<%= ch.id %>" <%= selectedChildIdText === String(ch.id) ? 'selected' : '' %>><%= ch.class_name ? ch.class_name + ' - ' : '' %><%= ch.display_name || (String(ch.name||'').slice(0,-1) + (String(ch.name||'').length>1 ? '*' : '')) %><%= ch.gender ? '(' + ch.gender + ')' : '' %></option>
             <% }) %>
           </select>
         </label>
@@ -871,7 +872,7 @@
               <% records.forEach(function(r) { %>
                 <tr>
                   <td><%= r.class_name || '-' %></td>
-                  <td><strong><a class="child-compare-link" data-child-id="<%= r.child_id %>" data-child-name="<%= r.child_name %>" role="button" tabindex="0"><%= r.child_name %></a></strong></td>
+                  <td><strong><a class="child-compare-link" data-child-id="<%= r.child_id %>" data-child-name="<%= r.child_name %>" role="button" tabindex="0"><%= dn2(r) %></a></strong></td>
                   <td><%= r.gender || '-' %></td>
                   <td><%= r.test_date ? formatDateOnly(r.test_date) : '-' %></td>
                   <td><%= r.height_cm ?? '-' %></td>

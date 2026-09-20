@@ -6,6 +6,21 @@
 const { asyncHandler } = require('../lib/helpers');
 const { dbQuery, getSettings } = require('../lib/db');
 const { buildFitnessSummaries, buildRadarChartData } = require('../lib/fitness-analytics');
+const { buildDisplayMap } = require('../lib/name-masking');
+
+let _sdCache = { at: 0, map: new Map() };
+async function loadStudentDisplayMap() {
+  if (_sdCache.map.size && Date.now() - _sdCache.at < 60000) return _sdCache.map;
+  const rows = await dbQuery(`SELECT ch.name, c.name AS class_name FROM children ch LEFT JOIN classes c ON c.id = ch.class_id WHERE ch.enabled = 1`);
+  _sdCache = { at: Date.now(), map: buildDisplayMap(rows) };
+  return _sdCache.map;
+}
+function maskChildName(displayMap, className, name) {
+  const nm = String(name == null ? '' : name).replace(/[\s\u00a0]/g, '');
+  if (!nm) return name;
+  const hit = displayMap.get(String(className || '') + '\u0001' + nm);
+  return hit === undefined ? (nm.length > 1 ? nm.slice(0, -1) + '*' : nm) : hit;
+}
 
 function requireLogin(req, res, next) {
   if (req.session && req.session.user) return next();
@@ -99,34 +114,45 @@ module.exports = function mountScreenRoutes(app) {
   }));
 
   // ========== 聚合数据 API（前端 30s 轮询） ==========
-  app.get('/admin/screen/api/overview', requireLogin, asyncHandler(async (req, res) => {
-    const scope = req.query.scope === 'class' ? 'class' : 'all';
-    const classId = scope === 'class' ? (Number(req.query.classId) || 0) : 0;
+  /**
+   * 大屏聚合数据（2026-09-20 抽取复用）：
+   *   scope/classId   体测数据范围（all=全园 / class=指定班）
+   *   bandClassId     手环数据过滤（0=全部手环，>0=仅该班手环——教师端大屏用）
+   * 返回 res.json 同构的数据对象。
+   */
+  async function buildScreenOverview(scope, classId, intervalMin, bandClassId) {
+    // 动态走势区间与分桶: 近1h=1min桶(60点) / 近6h=5min桶(72点) / 近24h=15min桶(96点)
+    intervalMin = Math.min(1440, Math.max(30, Number(intervalMin) || 60));
+    const bucketSec = intervalMin <= 60 ? 60 : (intervalMin <= 360 ? 300 : 900);
+    const timeFmt = intervalMin > 360 ? "'%m-%d %H:%i'" : "'%H:%i'";
     const [records, bandBuckets, bandOverview, attentionAll, recentBands, totals, settings] = await Promise.all([
       loadScopedFitnessRecords(scope, classId),
-      // 聚合曲线：最近 120 分钟按 5 分钟分桶，全部手环平均值
+      // 聚合曲线: 按区间分桶, 全部手环平均值
       dbQuery(
-        `SELECT DATE_FORMAT(MIN(r.bp_time), '%H:%i') AS t,
+        `SELECT DATE_FORMAT(MIN(r.bp_time), ${timeFmt}) AS t,
                 AVG(CASE WHEN r.heart_rate > 0 THEN r.heart_rate END) AS avg_hr,
                 AVG(CASE WHEN r.spo2 > 0 THEN r.spo2 END) AS avg_spo2,
                 AVG(CASE WHEN r.body_temp > 0 THEN r.body_temp END) AS avg_tp
            FROM band_records r
-          WHERE r.bp_time >= DATE_SUB(NOW(), INTERVAL 120 MINUTE)
-          GROUP BY FLOOR(UNIX_TIMESTAMP(r.bp_time) / 300)
+          WHERE r.bp_time >= DATE_SUB(NOW(), INTERVAL ${intervalMin} MINUTE)
+            ${bandClassId ? 'AND r.band_mac IN (SELECT m2.band_mac FROM band_mapping m2 JOIN children ch2 ON ch2.id = m2.child_id WHERE ch2.class_id = ' + Number(bandClassId) + ')' : ''}
+          GROUP BY FLOOR(UNIX_TIMESTAMP(r.bp_time) / ${bucketSec})
           ORDER BY t ASC`),
       dbQuery(
         `SELECT b.band_mac,
                 MAX(b.bp_time) AS last_time,
                 COUNT(*) AS total_records,
-                (SELECT heart_rate FROM band_records b2 WHERE b2.band_mac = b.band_mac ORDER BY b2.id DESC LIMIT 1) AS heart_rate,
-                (SELECT body_temp  FROM band_records b2 WHERE b2.band_mac = b.band_mac ORDER BY b2.id DESC LIMIT 1) AS body_temp,
-                (SELECT systolic   FROM band_records b2 WHERE b2.band_mac = b.band_mac ORDER BY b2.id DESC LIMIT 1) AS systolic,
-                (SELECT diastolic  FROM band_records b2 WHERE b2.band_mac = b.band_mac ORDER BY b2.id DESC LIMIT 1) AS diastolic,
-                (SELECT spo2       FROM band_records b2 WHERE b2.band_mac = b.band_mac ORDER BY b2.id DESC LIMIT 1) AS spo2,
-                (SELECT steps      FROM band_records b2 WHERE b2.band_mac = b.band_mac ORDER BY b2.id DESC LIMIT 1) AS steps,
-                (SELECT battery    FROM band_records b2 WHERE b2.band_mac = b.band_mac ORDER BY b2.id DESC LIMIT 1) AS battery,
-                (SELECT sos        FROM band_records b2 WHERE b2.band_mac = b.band_mac ORDER BY b2.id DESC LIMIT 1) AS sos
+                (SELECT heart_rate FROM band_records b2 WHERE b2.band_mac = b.band_mac AND b2.bp_time >= CURDATE() ORDER BY b2.id DESC LIMIT 1) AS heart_rate,
+                (SELECT body_temp  FROM band_records b2 WHERE b2.band_mac = b.band_mac AND b2.bp_time >= CURDATE() ORDER BY b2.id DESC LIMIT 1) AS body_temp,
+                (SELECT systolic   FROM band_records b2 WHERE b2.band_mac = b.band_mac AND b2.bp_time >= CURDATE() ORDER BY b2.id DESC LIMIT 1) AS systolic,
+                (SELECT diastolic  FROM band_records b2 WHERE b2.band_mac = b.band_mac AND b2.bp_time >= CURDATE() ORDER BY b2.id DESC LIMIT 1) AS diastolic,
+                (SELECT spo2       FROM band_records b2 WHERE b2.band_mac = b.band_mac AND b2.bp_time >= CURDATE() ORDER BY b2.id DESC LIMIT 1) AS spo2,
+                (SELECT steps      FROM band_records b2 WHERE b2.band_mac = b.band_mac AND b2.bp_time >= CURDATE() ORDER BY b2.id DESC LIMIT 1) AS steps,
+                (SELECT battery    FROM band_records b2 WHERE b2.band_mac = b.band_mac AND b2.bp_time >= CURDATE() ORDER BY b2.id DESC LIMIT 1) AS battery,
+                (SELECT sos        FROM band_records b2 WHERE b2.band_mac = b.band_mac AND b2.bp_time >= CURDATE() ORDER BY b2.id DESC LIMIT 1) AS sos
            FROM band_records b
+          WHERE b.bp_time >= CURDATE()
+            ${bandClassId ? 'AND b.band_mac IN (SELECT m3.band_mac FROM band_mapping m3 JOIN children ch3 ON ch3.id = m3.child_id WHERE ch3.class_id = ' + Number(bandClassId) + ')' : ''}
           GROUP BY b.band_mac
           ORDER BY last_time DESC`),
       // 重点关注管理（预约管理 - 重点关注管理的人）
@@ -145,6 +171,7 @@ module.exports = function mountScreenRoutes(app) {
            FROM band_records r
            LEFT JOIN band_mapping m ON m.band_mac = r.band_mac
            LEFT JOIN children ch ON ch.id = m.child_id
+          ${bandClassId ? 'WHERE ch.class_id = ' + Number(bandClassId) : ''}
           ORDER BY r.id DESC
           LIMIT 10`),
       dbQuery(`SELECT
@@ -247,6 +274,13 @@ module.exports = function mountScreenRoutes(app) {
          FROM band_mapping m
          LEFT JOIN children ch ON ch.id = m.child_id
          LEFT JOIN classes c ON c.id = ch.class_id`);
+  { const dm = await loadStudentDisplayMap(); for (const _r of (Array.isArray(mappingRows) ? mappingRows : [])) {
+      if (_r.name && !_r.display_name) _r.display_name = maskChildName(dm, _r.class_name, _r.name);
+      if (_r.child_name && !_r.child_display) _r.child_display = maskChildName(dm, _r.class_name, _r.child_name);
+      // API 出口直接脱敏原字段（前端已改用 display 字段，这里兜底所有出口）
+      if (_r.name) _r.name = _r.display_name || _r.name;
+      if (_r.child_name) _r.child_name = _r.child_display || _r.child_name;
+  } }
     const infoByMac = new Map(mappingRows.map((m) => [String(m.band_mac).toLowerCase(), m]));
     const mappedMacs = new Set(mappingRows.map((m) => String(m.band_mac).toLowerCase()));
     const stepVals = bands.map((b) => Number(b.steps)).filter((v) => Number.isFinite(v) && v > 0);
@@ -258,32 +292,45 @@ module.exports = function mountScreenRoutes(app) {
       childrenOnlineBounded: bands.filter((b) => b.online && mappedMacs.has(String(b.band_mac).toLowerCase())).length,
       sos: bands.filter((b) => Number(b.sos) > 0).length,
       stepBands: stepVals.length,
-      totalSteps: stepVals.length ? stepVals.reduce((a, b) => a + b, 0) : null
+      totalSteps: stepVals.length ? stepVals.reduce((a, b) => a + b, 0) : null,
+      avgSteps: stepVals.length ? Math.round(stepVals.reduce((a, b) => a + b, 0) / stepVals.length) : null
     };
 
-    const HR_HIGH = 140, HR_LOW = 60;
-    const bandAlerts = [];
-    for (const b of bands) {
-      const info = infoByMac.get(String(b.band_mac).toLowerCase()) || {};
-      const hr = Number(b.heart_rate);
-      const cName = info.child_name || '';
-      const clName = info.class_name || '';
-      if (inRange(hr, 30, 250) && (hr > HR_HIGH || hr < HR_LOW)) {
-        bandAlerts.push({
-          band_mac: b.band_mac,
-          child_name: cName,
-          class_name: clName,
-          heart_rate: hr,
-          kind: hr > HR_HIGH ? 'high' : 'low',
-          last_time: b.last_time,
-          sos: 0
-        });
-      }
-      if (Number(b.sos) > 0) {
-        bandAlerts.push({ band_mac: b.band_mac, child_name: cName, class_name: clName, heart_rate: hr || null, kind: 'sos', last_time: b.last_time, sos: 1 });
-      }
-    }
+    // ---------- 手环：聚合健康 ----------
+    // 大屏「重点预警事件」改读持久化事件表 band_alerts（2026-09-16 杰哥要求: 记录不消失）
+    // 显示: 今日全部事件（含已恢复），active 在前按最后触发时间倒序
+    const alertRows = await dbQuery(
+      `SELECT a.id, a.band_mac, a.kind, a.child_name, a.class_name, a.peak_value,
+              a.first_time, a.last_time, a.trigger_count, a.status, a.resolved_at,
+              TIMESTAMPDIFF(SECOND, a.first_time, a.last_time) AS dur_sec,
+              TIMESTAMPDIFF(SECOND, a.first_time, NOW()) AS dur_now_sec
+         FROM band_alerts a
+        WHERE a.last_time >= CURDATE()
+          ${bandClassId ? 'AND a.class_name = (SELECT name FROM classes WHERE id = ' + Number(bandClassId) + ')' : ''}
+        ORDER BY (a.status = 'active') DESC, a.last_time DESC
+        LIMIT 60`, []
+    );
+  { const dm = await loadStudentDisplayMap(); for (const _r of (Array.isArray(alertRows) ? alertRows : [])) {
+      if (_r.child_name && !_r.child_display) _r.child_display = maskChildName(dm, _r.class_name, _r.child_name);
+      if (_r.child_name) _r.child_name = _r.child_display;
+  } }
+    const bandAlerts = alertRows.map((a) => ({
+      id: a.id,
+      band_mac: a.band_mac,
+      kind: a.kind,
+      child_name: a.child_name || '',
+      class_name: a.class_name || '',
+      heart_rate: a.peak_value != null ? Number(a.peak_value) : null,
+      first_time: fmtDateTime(a.first_time),
+      last_time: fmtDateTime(a.last_time),
+      dur_sec: Number(a.dur_sec) || 0,
+      dur_now_sec: Number(a.dur_now_sec) || 0,
+      trigger_count: Number(a.trigger_count) || 1,
+      status: a.status,
+      resolved_at: a.resolved_at ? fmtDateTime(a.resolved_at) : null
+    }));
 
+    { const dm = await loadStudentDisplayMap(); for (const _r of (recentBands || [])) { if (_r.child_name) _r.child_display = maskChildName(dm, _r.class_name, _r.child_name); } }
     const recentBandsList = (recentBands || []).map((r) => ({
       band_mac: r.band_mac,
       t: fmtDateTime(r.bp_time),
@@ -292,14 +339,15 @@ module.exports = function mountScreenRoutes(app) {
       sp: Number(r.spo2) || null,
       bp: (Number(r.systolic) > 0 && Number(r.diastolic) > 0) ? `${r.systolic}/${r.diastolic}` : null,
       sos: Number(r.sos) || 0,
-      child_name: r.child_name || ''
+      child_name: r.child_display || r.child_name || ''
     }));
 
     // ---------- 重点关注（按展示班级过滤，避免超屏） ----------
     const VEST = { green: { label: '绿背心', color: '#16a34a' }, yellow: { label: '黄背心', color: '#d97706' }, red: { label: '红背心', color: '#dc2626' } };
+    { const dm = await loadStudentDisplayMap(); for (const _r of (attentionAll || [])) { if (_r.name) _r.display_name = maskChildName(dm, _r.class_name, _r.name); } }
     const attentionAllList = (attentionAll || []).map((r) => ({
       id: r.id,
-      name: r.name,
+      name: r.display_name || r.name,
       class_id: Number(r.class_id) || 0,
       class_name: r.class_name || '',
       reason: r.attention_reason || '',
@@ -313,7 +361,7 @@ module.exports = function mountScreenRoutes(app) {
     const attentionChildren = attnFiltered.slice(0, 8);
     const attentionTotal = attnFiltered.length;
 
-    res.json({
+    return {
       ok: true,
       scope,
       scopeLabel: scope === 'class' ? (className || '本班') : '全园',
@@ -339,6 +387,16 @@ module.exports = function mountScreenRoutes(app) {
       attentionChildren,
       attentionTotal,
       totals: Array.isArray(totals) ? (totals[0] || {}) : totals
-    });
+    };
+  }
+
+  // 管理端路由（行为不变）
+  app.get('/admin/screen/api/overview', requireLogin, asyncHandler(async (req, res) => {
+    const scope = req.query.scope === 'class' ? 'class' : 'all';
+    const classId = scope === 'class' ? (Number(req.query.classId) || 0) : 0;
+    const data = await buildScreenOverview(scope, classId, req.query.intervalMin, 0);
+    res.json(Object.assign({ ok: true }, data));
   }));
+
+  return { buildScreenOverview };
 };

@@ -5,8 +5,27 @@ const XLSX = require('xlsx');
 const { computeFitnessResult } = require('../lib/fitness-scoring');
 const { buildFitnessSummaries, buildRadarChartData } = require('../lib/fitness-analytics');
 const { parseWorkbookRows } = require('../lib/excel');
+const { buildDisplayMap } = require('../lib/name-masking');
 
 module.exports = function mountUserRoutes(app, upload, ctx) {
+// 幼儿姓名展示脱敏（2026-09-17）：默认末字星，同班撞车中间星
+let _studentDisplayCache = { at: 0, map: new Map() };
+async function loadStudentDisplayMap() {
+  if (_studentDisplayCache.map.size && Date.now() - _studentDisplayCache.at < 60000) return _studentDisplayCache.map;
+  const rows = await ctx.dbQuery(
+    `SELECT ch.name, c.name AS class_name FROM children ch LEFT JOIN classes c ON c.id = ch.class_id WHERE ch.enabled = 1`
+  );
+  _studentDisplayCache = { at: Date.now(), map: buildDisplayMap(rows) };
+  return _studentDisplayCache.map;
+}
+function maskChildName(displayMap, className, name) {
+  const nm = String(name == null ? '' : name).replace(/[\s\u00a0]/g, '');
+  if (!nm) return name;
+  const hit = displayMap.get(String(className || '') + '\u0001' + nm);
+  return hit === undefined ? (nm.length > 1 ? nm.slice(0, -1) + '*' : nm) : hit;
+}
+
+
   const {
     asyncHandler, requireRole, normalizeText, toNullableInt, normalizeFlexibleDate,
     normalizeDateInput, normalizeChildGender, normalizeFitnessSortField, normalizeSortOrder,
@@ -14,6 +33,22 @@ module.exports = function mountUserRoutes(app, upload, ctx) {
     dbQuery, getSettings, audit, buildAuditChanges, buildAuditSnapshot, APP_START_TIME,
     buildUserDashboard, getWeatherCare, normalizePageNumber, paginateItems, chinaNowText
   } = ctx;
+
+  // 教师端手环/大屏入口开关：本班在 bandEnabledClasses 中才显示（2026-09-20）
+  let _bandAccessCache = { at: 0, ids: [] };
+  async function getUserBandAccess(user) {
+    try {
+      const classId = Number(user.classId || user.class_id || 0);
+      if (!classId) return false;
+      if (Date.now() - _bandAccessCache.at > 60000) {
+        const settings = await getSettings();
+        let ids = [];
+        try { ids = JSON.parse(settings.bandEnabledClasses || '[]'); } catch (e) {}
+        _bandAccessCache = { at: Date.now(), ids: (Array.isArray(ids) ? ids : []).map(Number) };
+      }
+      return _bandAccessCache.ids.includes(classId);
+    } catch (e) { return false; }
+  }
 
   function buildUserFitnessQuery(source = {}) {
     return {
@@ -361,7 +396,7 @@ module.exports = function mountUserRoutes(app, upload, ctx) {
     const childPage = normalizePageNumber(req.query.childPage, 1);
     const recordPage = normalizePageNumber(req.query.recordPage, 1);
     const editId = toNullableInt(req.query.editId);
-    const userView = ['records', 'entry', 'attention'].includes(String(req.query.view || '')) ? String(req.query.view) : 'records';
+    const userView = ['records', 'entry', 'attention'].includes(String(req.query.view || '')) ? String(req.query.view) : 'home';
     const allChildren = dashboard.children || [];
     const entryBatchDate = normalizeDateInput(req.query.entryBatchDate);
     const userFitnessFilters = buildUserFitnessQuery(req.query);
@@ -397,6 +432,7 @@ module.exports = function mountUserRoutes(app, upload, ctx) {
         LEFT JOIN classes c ON c.id = ch.class_id
         WHERE ch.class_id = ?
         ORDER BY fr.test_date DESC, fr.id DESC, ch.name`, [classId]);
+      { const dm = await loadStudentDisplayMap(); for (const _r of allFitnessRecords) { _r.child_display = maskChildName(dm, _r.class_name, _r.child_name); } }
       const latestBatchDate = allFitnessRecords.length ? formatDateOnly(allFitnessRecords[0].test_date) : '';
       latestFitnessRecords = latestBatchDate
         ? allFitnessRecords.filter((item) => formatDateOnly(item.test_date) === latestBatchDate)
@@ -425,6 +461,7 @@ module.exports = function mountUserRoutes(app, upload, ctx) {
         LEFT JOIN classes c ON c.id = ch.class_id
         ${displayWhereSql}
         ORDER BY ${orderExpr} ${orderDir}, fr.test_date DESC, ch.name`, displayParams);
+      { const dm = await loadStudentDisplayMap(); for (const _r of fitnessRecords) { _r.child_display = maskChildName(dm, _r.class_name, _r.child_name); } }
 
       const dateRows = await dbQuery(`
         SELECT DATE_FORMAT(fr.test_date, '%Y-%m-%d') AS test_date,
@@ -458,6 +495,7 @@ module.exports = function mountUserRoutes(app, upload, ctx) {
       ratingCounts = summary.ratingCounts;
       ratingSummary = summary.ratingSummary;
       metricNeedTrainingSummary = summary.metricNeedTrainingSummary;
+      var _renderDm = await loadStudentDisplayMap();
     }
     const latestBatchDateForCharts = latestFitnessRecords[0] ? formatDateOnly(latestFitnessRecords[0].test_date) : '';
     const allBatchDateListForCharts = Array.from(new Set(allFitnessRecords.map((item) => formatDateOnly(item.test_date)).filter(Boolean)));
@@ -479,6 +517,7 @@ module.exports = function mountUserRoutes(app, upload, ctx) {
         LEFT JOIN classes c ON c.id = ch.class_id
         WHERE c.grade_level = ?
         ORDER BY fr.test_date DESC, c.name, ch.name`, [dashboard.assignedClass.grade_level]);
+      { const dm = await loadStudentDisplayMap(); for (const _r of gradeRecords) { _r.child_display = maskChildName(dm, _r.class_name, _r.child_name); } }
       radarChartData = buildRadarChartData(metricHealthSummary, {
         currentLabel: dashboard.assignedClass.name || '本班',
         currentColor: '#0f172a',
@@ -667,7 +706,7 @@ module.exports = function mountUserRoutes(app, upload, ctx) {
         var r = allFitnessRecords[i];
         if (r[metricKey] == null) continue;
         var cid = r.child_id;
-        if (!byChild[cid]) byChild[cid] = { childId: cid, name: r.child_name, gender: r.gender || '-', points: [] };
+        if (!byChild[cid]) byChild[cid] = { childId: cid, name: (r.child_display || (String(r.child_name||'').length>1 ? String(r.child_name).slice(0,-1)+'*' : r.child_name)), gender: r.gender || '-', points: [] };
         byChild[cid].points.push({ date: formatDateOnly(r.test_date), value: Number(r[metricKey]) });
       }
       var out = [];
@@ -833,7 +872,14 @@ module.exports = function mountUserRoutes(app, upload, ctx) {
       latestFitnessRecordsCount: latestFitnessRecords.length,
       totalFitnessRecordsCount: allFitnessRecords.length,
       fitnessRecordDates,
-      avgScore, ratingCounts, ratingSummary, metricNeedTrainingSummary, metricHealthSummary, radarChartData, trendSummary,
+      avgScore, ratingCounts, ratingSummary,
+      // [mask] 训练建议/提升空间的名字展示脱敏（compare lookup 用 data-child-name 全名，不受影响）
+      metricNeedTrainingSummary: metricNeedTrainingSummary.map((item) => {
+        const dmNames = (item.names || []).map((nm) => maskChildName(_renderDm, item.key === 'bmi' ? '' : '', nm));
+        const dmLinks = (item.nameLinks || []).map((l) => ({ ...l, displayName: maskChildName(_renderDm, '', l.name) }));
+        return { ...item, names: dmNames, namesText: dmNames.length ? dmNames.join('、') : item.namesText, nameLinks: dmLinks };
+      }),
+      metricHealthSummary, radarChartData, trendSummary,
       scopeTrendData,
       gradeTrendData,
       growthGradeGender,
@@ -852,7 +898,8 @@ module.exports = function mountUserRoutes(app, upload, ctx) {
       userFitnessQueryString: buildUserFitnessQueryString(userFitnessFilters),
       message: normalizeText(req.query.message),
       editError: normalizeText(req.query.error),
-      editRecord
+      editRecord,
+      bandAccess: await getUserBandAccess(req.session.user)
     });
   }));
 
@@ -901,6 +948,7 @@ module.exports = function mountUserRoutes(app, upload, ctx) {
       'SELECT fr.*, ch.name AS child_name, ch.gender, ch.birth_date, c.name AS class_name FROM fitness_records fr JOIN children ch ON ch.id = fr.child_id LEFT JOIN classes c ON c.id = ch.class_id WHERE ' + conditions.join(' AND ') + ' ORDER BY ' + orderExpr + ' ' + orderDir + ', fr.test_date DESC, ch.name',
       params
     );
+    { const dm = await loadStudentDisplayMap(); for (const _r of rows) { _r.child_display = maskChildName(dm, _r.class_name, _r.child_name); } }
 
     const total = rows.length;
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -1311,7 +1359,7 @@ module.exports = function mountUserRoutes(app, upload, ctx) {
       ok: true,
       child: {
         id: child.id,
-        name: child.name,
+        name: child.display_name || (String(child.name||'').length>1 ? String(child.name).slice(0,-1)+'*' : child.name),
         gender: child.gender,
         birthDate: child.birth_date ? formatDateOnly(child.birth_date) : ''
       },
@@ -1361,7 +1409,7 @@ module.exports = function mountUserRoutes(app, upload, ctx) {
 
   app.post('/user/fitness/import', requireRole('user'), upload.single('file'), asyncHandler(async (req, res) => {
     const classId = req.session.user.classId;
-    if (!classId) return res.redirect('/user?message=' + encodeURIComponent('未绑定班级，无法导入'));
+    if (!classId) return res.redirect('/user?view=records&message=' + encodeURIComponent('未绑定班级，无法导入'));
     const rows = parseWorkbookRows(req.file);
     let inserted = 0, updated = 0, skipped = 0;
     const importedNames = [];
@@ -1455,13 +1503,13 @@ module.exports = function mountUserRoutes(app, upload, ctx) {
       ip: req.ip,
       message: `操作人：${req.session.user && (req.session.user.name || req.session.user.username) || '教师'}；教师批量导入体测数据：新增 ${inserted}，覆盖 ${updated}，跳过 ${skipped}；涉及幼儿：${Array.from(new Set(importedNames)).slice(0, 20).join('、') || '无'}`
     });
-    res.redirect('/user?message=' + encodeURIComponent(`体测导入完成：新增 ${inserted}，覆盖 ${updated}，跳过 ${skipped}`));
+    res.redirect('/user?view=records&message=' + encodeURIComponent(`体测导入完成：新增 ${inserted}，覆盖 ${updated}，跳过 ${skipped}`));
   }));
 
   app.get('/user/fitness/export', requireRole('user'), asyncHandler(async (req, res) => {
     const XLSX = require('xlsx');
     const classId = req.session.user.classId;
-    if (!classId) return res.redirect('/user?message=' + encodeURIComponent('未绑定班级'));
+    if (!classId) return res.redirect('/user?view=records&message=' + encodeURIComponent('未绑定班级'));
     const userFitnessFilters = buildUserFitnessQuery(req.query);
     const exportBatchDate = userFitnessFilters.detailBatchDate || userFitnessFilters.batchDate;
     const userSortFieldMap = {

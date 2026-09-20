@@ -441,6 +441,29 @@
       flex: 0 0 auto;
     }
 
+    .trend-tabs {
+      display: inline-flex;
+      gap: 4px;
+    }
+    .trend-tab {
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      background: rgba(255, 255, 255, 0.6);
+      color: #64748b;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: all 0.2s;
+      line-height: 1.6;
+    }
+    .trend-tab:hover { border-color: #6366f1; color: #6366f1; }
+    .trend-tab.active {
+      background: linear-gradient(90deg, #6366f1, #8b5cf6);
+      color: #ffffff;
+      border-color: transparent;
+    }
+
     /* 异常报警与最近上报 */
     .center-bottom-row {
       display: grid;
@@ -821,6 +844,54 @@
 
     
   
+    /* ========== 平板横版自适应 (769px ~ 1366px: iPad 横屏/安卓平板, 2026-09-16 杰哥要求) ========== */
+    @media screen and (min-width: 769px) and (max-width: 1366px) {
+      html, body { height: 100vh; }
+      .screen-root { padding: 8px 12px 6px; }
+      .screen-header {
+        height: 52px;
+        flex-basis: 52px;
+        margin-bottom: 8px;
+        padding: 0 10px;
+      }
+      .brand-logo-img { width: 36px; height: 36px; }
+      .brand-meta h1 { font-size: 16px; }
+      .clock-display .time { font-size: 20px; }
+      .screen-grid {
+        grid-template-columns: 230px 1fr 240px;
+        gap: 10px;
+      }
+      .panel-header { height: 32px; flex-basis: 32px; }
+      .center-top-metrics {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+        margin-bottom: 6px;
+      }
+      .metric-card { padding: 7px 9px; }
+      .m-value-row .number { font-size: 20px; }
+      .center-bottom-row {
+        height: 96px;
+        flex-basis: 96px;
+        gap: 6px;
+      }
+      .feed-list { overflow-y: auto; }
+      .trend-block { padding: 5px 8px 3px; }
+      #curveChart { min-height: 0; }
+      .screen-footer { height: 22px; flex-basis: 22px; margin-top: 4px; }
+    }
+
+    /* 更窄的平板（≤1100px: 如 iPad 1024 横屏）再收紧边栏 */
+    @media screen and (min-width: 769px) and (max-width: 1100px) {
+      .screen-grid {
+        grid-template-columns: 200px 1fr 210px;
+        gap: 8px;
+      }
+      .screen-root { padding: 6px 10px 4px; }
+      .scope-bar { gap: 6px; flex-wrap: wrap; }
+      .clock-display .date { display: none; }
+      .brand-meta .sub-title { font-size: 10px; }
+    }
+
     /* ========== 手机端专用独立流式排版 (仅在宽度 <= 768px 的真机窄屏生效，完全不影响电脑大屏) ========== */
     @media screen and (max-width: 768px) {
       html, body {
@@ -893,12 +964,6 @@
       .center-top-metrics {
         grid-template-columns: repeat(2, 1fr) !important;
         gap: 8px !important;
-      }
-      .metric-card.alert-card {
-        grid-column: span 2 !important;
-      }
-      .metric-card.steps {
-        grid-column: span 2 !important;
       }
       .band-subgrid {
         grid-template-columns: 1fr !important;
@@ -1068,10 +1133,10 @@
               <div class="m-status-row" id="alertTotalSub" style="color:#059669;">当前平稳正常</div>
             </div>
 
-            <!-- 第 6 个卡片:全园累计步数 -->
+            <!-- 第 6 个卡片:全园平均步数 -->
             <div class="metric-card steps">
               <div class="m-label-row">
-                <span>累计步数</span>
+                <span>平均步数</span>
                 <span class="icon">👣</span>
               </div>
               <div class="m-value-row">
@@ -1090,8 +1155,12 @@
           <!-- 实时动态走势曲线（清晰图例与双 Y 轴分布） -->
           <div class="trend-block">
             <div class="trend-header">
-              <span>动态健康走势 (近2小时)</span>
-              <span id="curveNote" style="color: #0284c7;"></span>
+              <span id="trendTitle">动态健康走势 (近1小时)</span>
+              <span class="trend-tabs">
+                <button type="button" class="trend-tab active" data-min="60">近1小时</button>
+                <button type="button" class="trend-tab" data-min="360">近6小时</button>
+                <button type="button" class="trend-tab" data-min="1440">近24小时</button>
+              </span>
             </div>
             <div class="chart-container" id="curveChart"></div>
             <div id="curveEmpty" style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;font-size:12px;color:var(--text-muted);">
@@ -1113,7 +1182,7 @@
 
             <div class="feed-box">
               <div class="feed-title">
-                <span>📡 实时监测流 (30s刷新)</span>
+                <span>📡 实时监测流 (5s刷新)</span>
               </div>
               <div class="feed-list" id="recentList">
                 <!-- 数据流水 -->
@@ -1243,7 +1312,7 @@
     tick();
     setInterval(tick, 1000);
 
-    var state = { scope: 'all', classId: 0 };
+    var state = { scope: 'all', classId: 0, trendMin: 60 };
 
     function rebuildScopeChips(classes) {
       var wrap = document.getElementById('scopeSwitch');
@@ -1269,7 +1338,7 @@
     }
 
     function load() {
-      var url = '/admin/screen/api/overview?scope=' + state.scope + (state.classId ? '&classId=' + state.classId : '');
+      var url = '/admin/screen/api/overview?scope=' + state.scope + (state.classId ? '&classId=' + state.classId : '') + '&intervalMin=' + state.trendMin;
       fetch(url, { headers: { 'X-Requested-With': 'fetch' }, credentials: 'same-origin' })
         .then(function (r) { return r.json(); })
         .then(render)
@@ -1282,6 +1351,8 @@
 
       document.getElementById('screenTitle').textContent = '小鱼健康 · ' + d.scopeLabel + '感知大屏';
       document.getElementById('screenSub').textContent = d.scope === 'all' ? '全园体测 × 手环健康动态感知中心' : '班级体测 × 手环健康动态监测（' + d.scopeLabel + '）';
+      var trendLabel = state.trendMin <= 60 ? '近1小时' : (state.trendMin <= 360 ? '近6小时' : '近24小时');
+      document.getElementById('trendTitle').textContent = '动态健康走势 (' + trendLabel + ')';
       document.getElementById('footUpdated').textContent = d.updatedAt ? d.updatedAt.slice(11) : '--';
       document.getElementById('footChildren').textContent = d.totals.children;
       document.getElementById('footFitness').textContent = d.totals.fitnessRecords;
@@ -1602,6 +1673,7 @@
     function renderBands(d) {
       var bs = d.bandSummary || {};
       var alerts = d.bandAlerts || [];
+      var activeAlertsNum = alerts.filter(function (x) { return x.status === 'active'; }).length;
       document.getElementById('bandTag').innerHTML = '设备 <b>' + (bs.total || 0) + '</b> · 绑定 <b>' + (bs.mappedMacs || 0) + '</b>';
 
       // 药丸芯片
@@ -1609,7 +1681,7 @@
         '<span class="mini-pill green"><span class="dot"></span>在线 <b>' + (bs.online != null ? bs.online : 0) + '</b></span>'
         + '<span class="mini-pill"><span class="dot" style="background:#94a3b8;"></span>离线 <b>' + (bs.offline != null ? bs.offline : 0) + '</b></span>'
         + '<span class="mini-pill cyan"><span class="dot"></span>活跃幼儿 <b>' + (bs.childrenOnlineBounded != null ? bs.childrenOnlineBounded : 0) + '</b></span>'
-        + (alerts.length ? '<span class="mini-pill red"><span class="dot"></span>异常告警 <b>' + alerts.length + '</b></span>' : '<span class="mini-pill green"><span class="dot"></span>体征平稳</span>');
+        + (activeAlertsNum ? '<span class="mini-pill red"><span class="dot"></span>异常预警 <b>' + activeAlertsNum + '</b></span>' : '<span class="mini-pill green"><span class="dot"></span>体征平稳</span>');
 
       // 4 大卡片均值
       var ah = d.avgHealth || {};
@@ -1623,28 +1695,26 @@
       document.getElementById('avgBp').textContent = ah.avgBp != null ? ah.avgBp : '--';
       document.getElementById('avgBpSub').textContent = sampleTxt;
 
-      // 第 5 个指标卡：体征预警
+      // 第 5 个指标卡：体征预警（今日累计；进行中单独红显）
       var alertTotalNum = document.getElementById('alertTotalNum');
       var alertTotalSub = document.getElementById('alertTotalSub');
-      var alertCount = alerts.length;
-      alertTotalNum.textContent = alertCount;
-      if (alertCount > 0) {
+      alertTotalNum.textContent = alerts.length;
+      if (activeAlertsNum > 0) {
         alertTotalNum.style.color = '#dc2626';
-        alertTotalSub.textContent = '需关注处置';
+        alertTotalSub.textContent = activeAlertsNum + ' 起进行中';
         alertTotalSub.style.color = '#dc2626';
       } else {
-        alertTotalNum.textContent = '0';
         alertTotalNum.style.color = '#059669';
-        alertTotalSub.textContent = '全员体征正常';
+        alertTotalSub.textContent = '今日预警均已恢复';
         alertTotalSub.style.color = '#059669';
       }
 
-      // 第 6 个卡片:全园累计步数
+      // 第 6 个卡片:全园平均步数（每台手环今日累计步数的均值）
       var totalStepsEl = document.getElementById('totalSteps');
       var totalStepsSub = document.getElementById('totalStepsSub');
-      if (bs.totalSteps != null && bs.totalSteps > 0) {
-        totalStepsEl.textContent = bs.totalSteps.toLocaleString();
-        totalStepsSub.textContent = '今日累计 · ' + (bs.stepBands || 0) + ' 台手环上报';
+      if (bs.avgSteps != null && bs.avgSteps > 0) {
+        totalStepsEl.textContent = bs.avgSteps.toLocaleString();
+        totalStepsSub.textContent = '今日平均 · ' + (bs.stepBands || 0) + ' 台手环上报';
       } else {
         totalStepsEl.textContent = '--';
         totalStepsSub.textContent = '等待手环上报步数';
@@ -1685,7 +1755,8 @@
             type: 'category',
             data: api.map(function (c) { return c.t; }),
             boundaryGap: false,
-            axisLabel: { color: '#94a3b8', fontSize: 9.5 },
+            // 标签尽量密集显示(1h模式=每分钟1个标签)，放不下时自动隐藏重叠项，避免"看起来还是5分钟"
+            axisLabel: { color: '#94a3b8', fontSize: 9.5, interval: 0, hideOverlap: true, margin: 6 },
             axisLine: { lineStyle: { color: '#e2e8f0' } }
           },
           yAxis: [
@@ -1745,18 +1816,31 @@
         emptyEl.style.display = 'flex';
       }
 
-      // 异常事件渲染
+      // 异常事件渲染（持久化事件表，2026-09-16: 记录不消失，进行中/已恢复双状态）
+      function fmtDur(sec) {
+        var s = Math.max(0, Math.round(sec || 0));
+        if (s < 60) return s + '秒';
+        var m = Math.floor(s / 60), r = s % 60;
+        return r ? (m + '分' + r + '秒') : (m + '分钟');
+      }
+      var activeAlerts = alerts.filter(function (x) { return x.status === 'active'; });
       var alertCountEl = document.getElementById('alertCountTag');
-      alertCountEl.textContent = alerts.length ? (alerts.length + ' 起') : '无异常';
+      alertCountEl.innerHTML = alerts.length
+        ? ('今日 <b style="color:#e11d48;">' + alerts.length + '</b> 起' + (activeAlerts.length ? ' · <b style="color:#dc2626;">' + activeAlerts.length + ' 起进行中</b>' : ' · 均已恢复正常'))
+        : '<span style="color:#059669;">今日无异常</span>';
       var alertBox = document.getElementById('bandAlerts');
       if (alerts.length) {
-        alertBox.innerHTML = alerts.slice(0, 4).map(function (a) {
-          var name = a.child_name ? (a.child_name + (a.class_name ? ' · ' + a.class_name : '')) : a.band_mac;
-          var msg = a.kind === 'high' ? ('心率偏高 ' + a.heart_rate) : (a.kind === 'low' ? ('心率偏低 ' + a.heart_rate) : 'SOS 紧急');
-          return '<div class="feed-row" style="background:#fff1f2;border-color:#fecdd3;">'
-            + '<span class="feed-time">' + (a.last_time ? a.last_time.slice(11, 19) : '--') + '</span>'
-            + '<span class="feed-name" style="color:#be123c;">' + name + '</span>'
-            + '<span class="feed-val hr">' + msg + '</span>'
+        alertBox.innerHTML = alerts.slice(0, 8).map(function (a) {
+          var name = a.child_name ? ((a.child_display || (String(a.child_name||'').length>1 ? String(a.child_name).slice(0,-1)+'*' : a.child_name)) + (a.class_name ? ' · ' + a.class_name : '')) : a.band_mac;
+          var kindTxt = a.kind === 'hr_high' ? ('心率偏高 ' + (a.heart_rate != null ? a.heart_rate : '--')) : (a.kind === 'hr_low' ? ('心率偏低 ' + (a.heart_rate != null ? a.heart_rate : '--')) : 'SOS 紧急');
+          var isActive = a.status === 'active';
+          var durSec = isActive ? (a.dur_now_sec || 0) : (a.dur_sec || 0);
+          var durTxt = durSec > 0 ? (' · 持续' + fmtDur(durSec)) : '';
+          var t = (a.last_time || '').slice(11, 19);
+          return '<div class="feed-row" style="' + (isActive ? 'background:#fff1f2;border-color:#fecdd3;' : 'background:#f8fafc;border-color:#e2e8f0;opacity:0.78;') + '">'
+            + '<span class="feed-time">' + t + '</span>'
+            + '<span class="feed-name" style="' + (isActive ? 'color:#be123c;' : 'color:#64748b;text-decoration:line-through;') + '">' + name + '</span>'
+            + '<span class="feed-val hr">' + (isActive ? '🔴 ' : '✅ ') + kindTxt + durTxt + '</span>'
             + '</div>';
         }).join('');
       } else {
@@ -1770,7 +1854,7 @@
         recBox.innerHTML = recs.slice(0, 4).map(function (r) {
           return '<div class="feed-row">'
             + '<span class="feed-time">' + r.t.slice(11, 19) + '</span>'
-            + '<span class="feed-name">' + (r.child_name || r.band_mac.slice(-5)) + '</span>'
+            + '<span class="feed-name">' + (r.child_display || (r.child_name ? (String(r.child_name).length>1 ? String(r.child_name).slice(0,-1)+'*' : r.child_name) : r.band_mac.slice(-5))) + '</span>'
             + '<span class="feed-val hr">' + (r.hr ? (r.hr + 'bpm') : '--') + '</span>'
             + '<span class="feed-val tp">' + (r.tp ? (r.tp + '°') : '--') + '</span>'
             + '<span class="feed-val sp">' + (r.sp ? (r.sp + '%') : '--') + '</span>'
@@ -1793,7 +1877,7 @@
           return '<div class="attention-card">'
             + '<div class="vest-bar" style="background:' + color + ';"></div>'
             + '<div class="att-info">'
-            + '<div class="att-row-1"><span class="att-name">' + r.name + '</span><span class="att-class">' + (r.class_name || '') + '</span></div>'
+            + '<div class="att-row-1"><span class="att-name">' + (r.display_name || (String(r.name||'').length>1 ? String(r.name).slice(0,-1)+'*' : r.name)) + '</span><span class="att-class">' + (r.class_name || '') + '</span></div>'
             + '<div class="att-reason" title="' + why + '">' + why + '</div>'
             + '</div></div>';
         }).join('');
@@ -1809,7 +1893,18 @@
     });
 
     load();
-    setInterval(load, 30000);
+    setInterval(load, 5000);   // 实时刷新: 5s 轮询 overview (接口 ~6ms, 无压力)
+
+    // 动态走势区间切换
+    document.querySelectorAll('.trend-tab').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var min = Number(btn.getAttribute('data-min')) || 60;
+        if (min === state.trendMin) return;
+        state.trendMin = min;
+        document.querySelectorAll('.trend-tab').forEach(function (b) { b.classList.toggle('active', b === btn); });
+        load();
+      });
+    });
   })();
   </script>
 </body>
