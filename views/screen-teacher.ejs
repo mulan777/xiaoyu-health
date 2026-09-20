@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title><%= typeof teacherView !== 'undefined' && teacherView ? '我的班级 · 健康监测大屏' : '小鱼健康 · 智能健康监测大屏' %></title>
+  <title><%= (typeof teacherView !== 'undefined' && teacherView) ? '我的班级 · 健康监测大屏' : '小鱼健康 · 智能健康监测大屏' %></title>
   <style>
     :root {
       /* 典雅明亮高级科技风配色 */
       --bg-base: #f8fafc;
       --panel-bg: #ffffff;
       --panel-border: #e2e8f0;
-      
+
       --primary: #4f46e5;
       --primary-light: #6366f1;
       --accent-cyan: #0284c7;
@@ -22,7 +22,7 @@
       --text-main: #0f172a;
       --text-sub: #475569;
       --text-muted: #94a3b8;
-      
+
       --shadow-sm: 0 2px 4px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02);
       --shadow-md: 0 10px 25px -3px rgba(15, 23, 42, 0.07), 0 4px 10px -2px rgba(15, 23, 42, 0.03), inset 0 1px 0 rgba(255, 255, 255, 0.85);
       --shadow-glow: 0 12px 30px -4px rgba(79, 70, 229, 0.12), inset 0 1px 1px rgba(255, 255, 255, 0.9);
@@ -51,12 +51,12 @@
         linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%);
       z-index: -2;
     }
-    
+
     body::after {
       content: '';
       position: absolute;
       inset: 0;
-      background-image: 
+      background-image:
         linear-gradient(rgba(15, 23, 42, 0.025) 1px, transparent 1px),
         linear-gradient(90deg, rgba(15, 23, 42, 0.025) 1px, transparent 1px);
       background-size: 30px 30px;
@@ -88,7 +88,7 @@
       box-shadow: var(--shadow-md);
       flex: 0 0 60px;
     }
-    
+
     .screen-header::after {
       content: '';
       position: absolute;
@@ -297,7 +297,7 @@
       margin-bottom: 8px;
       flex: 0 0 auto;
     }
-    
+
     .metric-card {
       background: linear-gradient(160deg, #ffffff 0%, #f8fafc 100%);
       border: 1px solid rgba(226, 232, 240, 0.9);
@@ -472,7 +472,7 @@
       height: 108px;
       flex: 0 0 108px;
     }
-    
+
     .feed-box {
       background: #ffffff;
       border: 1px solid #e2e8f0;
@@ -610,9 +610,9 @@
     .back-btn:hover {
       color: #4f46e5;
     }
-  
-    
-    
+
+
+
     /* ========== 深色未来科技大屏微光主题 (Cyber Dark Theme) ========== */
     body.theme-dark {
       background-color: #030712 !important;
@@ -626,12 +626,12 @@
         linear-gradient(180deg, #040918 0%, #020617 100%) !important;
     }
     body.theme-dark::after {
-      background-image: 
+      background-image:
         linear-gradient(rgba(56, 189, 248, 0.05) 1px, transparent 1px),
         linear-gradient(90deg, rgba(56, 189, 248, 0.05) 1px, transparent 1px) !important;
       background-size: 24px 24px !important;
     }
-    
+
     body.theme-dark .screen-header {
       background: rgba(10, 22, 40, 0.85) !important;
       border: 1px solid rgba(56, 189, 248, 0.35) !important;
@@ -761,7 +761,7 @@
       text-shadow: 0 0 8px rgba(56, 189, 248, 0.5) !important;
     }
 
-    
+
     /* ========== 彻底消除暗黑模式下的所有浅色/白底块 (Zero White Blocks) ========== */
     body.theme-dark .brand-logo-img {
       background: rgba(15, 23, 42, 0.9) !important;
@@ -842,8 +842,8 @@
       box-shadow: 0 0 14px rgba(56, 189, 248, 0.4) !important;
     }
 
-    
-  
+
+
     /* ========== 平板横版自适应 (769px ~ 1366px: iPad 横屏/安卓平板, 2026-09-16 杰哥要求) ========== */
     @media screen and (min-width: 769px) and (max-width: 1366px) {
       html, body { height: 100vh; }
@@ -1010,9 +1010,9 @@
       <div class="scope-bar" id="scopeSwitch">
         <% if (typeof teacherView !== 'undefined' && teacherView) { %>
         <button class="scope-chip active" data-scope="class" data-class-id="<%= teacherClassId %>"><%= teacherClassName %></button>
-      <% } else { %>
+        <% } else { %>
         <button class="scope-chip active" data-scope="all" data-class-id="0">全园视角</button>
-      <% } %>
+        <% } %>
       </div>
 
       <div class="header-right">
@@ -1621,7 +1621,7 @@
     }
 
     // ---------- 3. 体能六维雷达 ----------
-    
+
 
     // ---------- 3. 体能六维雷达 ----------
     function renderRadar(d) {
