@@ -114,7 +114,27 @@ module.exports = function mountBandRoutes(app, upload) {
     await dbQuery(`INSERT INTO band_mapping (band_mac, child_id, remark) VALUES (?, ?, ?)
                    ON DUPLICATE KEY UPDATE child_id = VALUES(child_id), remark = VALUES(remark)`,
       [mac, childId, remark]);
-    res.redirect('/admin/bands?message=' + encodeURIComponent('MAC 绑定已保存：' + mac));
+
+    // 联动检查：绑定的孩子所在班级是否已启用手环分组（bandEnabledClasses），未启用则自动补上
+    // （2026-09-20 交接坑：批量绑定后忘查 bandEnabledClasses 导致页面分组不显示）
+    let extraMsg = '';
+    if (childId) {
+      const rows = await dbQuery(
+        `SELECT c.id, c.name FROM children ch JOIN classes c ON c.id = ch.class_id WHERE ch.id = ?`, [childId]);
+      const cls = rows[0];
+      if (cls) {
+        const settings = await getSettings();
+        let enabledClassIds = [];
+        try { enabledClassIds = JSON.parse(settings.bandEnabledClasses || '[]'); } catch (e) { enabledClassIds = []; }
+        if (!Array.isArray(enabledClassIds)) enabledClassIds = [];
+        if (!enabledClassIds.includes(cls.id)) {
+          enabledClassIds.push(cls.id);
+          await saveSettings({ bandEnabledClasses: JSON.stringify(enabledClassIds) });
+          extraMsg = '；班级「' + cls.name + '」未启用手环，已自动加入启用列表';
+        }
+      }
+    }
+    res.redirect('/admin/bands?message=' + encodeURIComponent('MAC 绑定已保存：' + mac + extraMsg));
   }));
 
   // ========== 删除 MAC 绑定 ==========
