@@ -134,6 +134,9 @@ function buildWeatherCare(data) {
   const hourly = Array.isArray(today.hourly) ? today.hourly : [];
   const maxRainChance = hourly.reduce((max, item) => Math.max(max, Number(item.chanceofrain || 0)), 0);
   const desc = current.weatherDesc && current.weatherDesc[0] ? current.weatherDesc[0].value : '';
+  // wttr.in 的中文翻译在 lang_zh-cn 字段（weatherDesc 恒为英文）
+  const zhArr = current['lang_zh-cn'];
+  const descZh = zhArr && zhArr[0] ? String(zhArr[0].value || '').trim() : '';
   const willRain = maxRainChance >= 50 || /雨|rain|shower/i.test(desc);
   const temperature = minTemp && maxTemp ? `${minTemp}–${maxTemp}℃` : (temp ? `${temp}℃` : '温度暂无');
   const summary = willRain
@@ -142,7 +145,7 @@ function buildWeatherCare(data) {
   return {
     city: WEATHER_CITY,
     summary,
-    detail: desc ? `当前天气：${desc}。` : '愿今天也是轻松顺利的一天。',
+    detail: descZh ? `当前天气：${descZh}` : '愿今天也是轻松顺利的一天。',
     temperature,
     rainHint: willRain ? `降雨概率约 ${maxRainChance}%` : `降雨概率约 ${maxRainChance}%`,
     source: 'wttr.in'

@@ -79,4 +79,20 @@
     <a href="<%= currentUser.role === 'user' ? '/user?view=attention' : '/admin?panel=attention' %>"><span class="mi mi-alert"></span><em>关注</em></a>
     <a href="<%= currentUser.role === 'user' ? '/user/venues' : '/admin/venues' %>"><span class="mi mi-calendar"></span><em>预约</em></a>
     <% if (currentUser.role === 'user' && userBandAccess) { %><a href="/user/bands"><span class="mi mi-band"></span><em>手环</em></a><% } %>
-  </nav><% } %>
+  </nav>
+  <script>(function(){/* 底部导航选中态：按路径+query匹配当前项 */
+    var links = document.querySelectorAll('.mobile-bottom-nav a');
+    var path = location.pathname, q = new URLSearchParams(location.search), view = q.get('view') || '';
+    var best = null, bestScore = -1;
+    links.forEach(function(a){
+      var u = new URL(a.href, location.origin);
+      var score = -1;
+      if (u.pathname === path) {
+        score = 1;
+        var uv = u.searchParams.get('view') || '';
+        if (uv && uv === view) score = 2; else if (uv && !view) score = 0;
+      }
+      if (score > bestScore) { bestScore = score; best = a; }
+    });
+    if (best && bestScore >= 1) best.classList.add('bn-active');
+  })();</script><% } %>

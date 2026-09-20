@@ -47,6 +47,11 @@ body:has(#v2-stats) .trend-insight-head .trend-insight-now{white-space:nowrap!im
 .mobile-logout{display:none!important}
 .user-pill-tab-nav{display:none!important}
 }
+/* 底部导航选中态 */
+.mobile-bottom-nav a.bn-active{color:#4f46e5}
+.mobile-bottom-nav a.bn-active .mi{color:#4f46e5}
+.mobile-bottom-nav a.bn-active em{font-weight:600}
+.mobile-bottom-nav a.bn-active:before{content:"";display:block;width:16px;height:3px;border-radius:2px;background:#4f46e5;margin:0 auto 2px}
 /* 手环底部导航图标 */
 .mi-band:before{left:1px;top:4px;width:12px;height:12px;border-radius:4px}
 .mi-band:after{left:5px;top:0;width:5px;height:3px;border-radius:2px 2px 0 0;border-bottom:0}

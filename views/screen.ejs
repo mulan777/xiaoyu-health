@@ -122,7 +122,7 @@
       line-height: 1.2;
     }
     .brand-meta .sub-title {
-      font-size: 11px;
+      font-size: 12.5px;
       color: #6366f1;
       font-weight: 600;
       letter-spacing: 0.3px;
@@ -169,7 +169,7 @@
       display: flex;
       align-items: center;
       gap: 5px;
-      font-size: 11px;
+      font-size: 12.5px;
       font-weight: 600;
       color: #059669;
       background: rgba(16, 185, 129, 0.1);
@@ -201,7 +201,7 @@
       line-height: 1;
     }
     .clock-display .date {
-      font-size: 10.5px;
+      font-size: 12.5px;
       color: var(--text-sub);
       margin-top: 2px;
       font-weight: 500;
@@ -259,7 +259,7 @@
       box-shadow: 0 1px 4px rgba(79, 70, 229, 0.25);
     }
     .panel-tag {
-      font-size: 11px;
+      font-size: 12.5px;
       color: var(--text-sub);
     }
     .panel-tag b {
@@ -336,7 +336,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      font-size: 11px;
+      font-size: 12.5px;
       font-weight: 600;
       color: var(--text-sub);
     }
@@ -350,7 +350,7 @@
       gap: 3px;
     }
     .m-value-row .number {
-      font-size: 23px;
+      font-size: 30px;
       font-weight: 800;
       color: #0f172a;
       font-variant-numeric: tabular-nums;
@@ -359,16 +359,16 @@
     .metric-card.hr .number { color: #e11d48; }
     .metric-card.sp .number { color: #0284c7; }
     .metric-card.tp .number { color: #d97706; }
-    .metric-card.bp .number { color: #7c3aed; font-size: 19px; }
+    .metric-card.bp .number { color: #7c3aed; font-size: 24px; }
     .metric-card.alert .number { color: #dc2626; }
 
     .m-value-row .unit {
-      font-size: 10.5px;
+      font-size: 12.5px;
       color: var(--text-muted);
       font-weight: 600;
     }
     .m-status-row {
-      font-size: 10px;
+      font-size: 12px;
       color: var(--text-muted);
       font-weight: 500;
       white-space: nowrap;
@@ -391,7 +391,7 @@
       gap: 5px;
       padding: 2.5px 8px;
       border-radius: 6px;
-      font-size: 10.5px;
+      font-size: 12px;
       background: #f8fafc;
       border: 1px solid #e2e8f0;
       color: var(--text-sub);
@@ -434,7 +434,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 11px;
+      font-size: 12.5px;
       font-weight: 600;
       color: var(--text-sub);
       margin-bottom: 2px;
@@ -449,7 +449,7 @@
       border: 1px solid rgba(148, 163, 184, 0.35);
       background: rgba(255, 255, 255, 0.6);
       color: #64748b;
-      font-size: 10px;
+      font-size: 11.5px;
       font-weight: 600;
       padding: 2px 8px;
       border-radius: 999px;
@@ -485,7 +485,7 @@
       box-shadow: var(--shadow-sm);
     }
     .feed-title {
-      font-size: 11px;
+      font-size: 12.5px;
       font-weight: 700;
       color: var(--text-sub);
       margin-bottom: 4px;
@@ -508,14 +508,14 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      font-size: 10.5px;
+      font-size: 12px;
       padding: 2.5px 6px;
       border-radius: 4px;
       background: #f8fafc;
       border: 1px solid #f1f5f9;
     }
-    .feed-time { color: var(--text-muted); font-size: 9.5px; }
-    .feed-name { color: #334155; font-weight: 600; font-family: ui-monospace, Menlo, monospace; font-size: 10px; }
+    .feed-time { color: var(--text-muted); font-size: 12.5px; }
+    .feed-name { color: #334155; font-weight: 600; font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; }
     .feed-val { font-variant-numeric: tabular-nums; font-weight: 600; }
     .feed-val.hr { color: #e11d48; }
     .feed-val.tp { color: #d97706; }
@@ -566,12 +566,12 @@
       color: #0f172a;
     }
     .att-class {
-      font-size: 10.5px;
+      font-size: 12px;
       color: var(--text-muted);
       font-weight: 500;
     }
     .att-reason {
-      font-size: 10px;
+      font-size: 11.5px;
       color: var(--text-sub);
       white-space: nowrap;
       overflow: hidden;
@@ -586,7 +586,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      font-size: 11px;
+      font-size: 12.5px;
       color: var(--text-sub);
       padding: 0 4px;
       flex: 0 0 24px;
@@ -1177,7 +1177,7 @@
             <div class="feed-box">
               <div class="feed-title">
                 <span>⚠️ 重点预警事件</span>
-                <span style="font-size: 10px; color: var(--accent-rose);" id="alertCountTag"></span>
+                <span style="font-size: 11.5px; color: var(--accent-rose);" id="alertCountTag"></span>
               </div>
               <div class="feed-list" id="bandAlerts">
                 <!-- 预警内容 -->
@@ -1721,7 +1721,7 @@
       var totalStepsSub = document.getElementById('totalStepsSub');
       if (bs.avgSteps != null && bs.avgSteps > 0) {
         totalStepsEl.textContent = bs.avgSteps.toLocaleString();
-        totalStepsSub.textContent = '今日平均 · ' + (bs.stepBands || 0) + ' 台手环上报';
+        totalStepsSub.textContent = '今日 ' + (bs.stepBands || 0) + ' 台上报';
       } else {
         totalStepsEl.textContent = '--';
         totalStepsSub.textContent = '等待手环上报步数';

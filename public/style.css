@@ -4152,6 +4152,8 @@ table.modern-class-table td:nth-child(8) .table-row-actions form.inline-form { w
   gap: 8px;
   font-size: 13px;
   color: #0f172a; }
+.board-demo-tag { display: inline-block; margin-bottom: 12px; padding: 3px 10px; border-radius: 999px;
+  background: #fef3c7; color: #92400e; font-size: 11.5px; font-weight: 500; }
 .device-status-pill .live-dot { width: 8px;
   height: 8px;
   background: #10b981;
