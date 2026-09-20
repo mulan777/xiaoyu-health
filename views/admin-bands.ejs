@@ -288,7 +288,7 @@
 
 <section class="admin-hero card shell-hero band-hero admin-hero-compact">
   <div>
-    <div class="eyebrow"><%= typeof teacherView !== 'undefined' && teacherView ? '我的班级 · 手环健康监测' : '数据管理 · 手环健康监测' %></div>
+    <div class="eyebrow"><%= typeof teacherView !== 'undefined' && teacherView ? '我的班级' : '数据管理' %></div>
     <h1>手环健康监测</h1>
     <p><%= typeof teacherView !== 'undefined' && teacherView ? '本班手环实时健康数据：体温、心率、血压、血氧、步数与电量。' : 'YT9 智能手环实时健康数据：体温、心率、血压、血氧、步数与电量。仅启用班级的数据参与展示。' %></p>
     <div class="hero-date"><%= nowIso %> · 每 30 秒自动更新</div>
@@ -346,7 +346,7 @@
 <% } %>
 
 <div class="card band-card">
-  <div class="band-title"><span class="bar"></span><h3>手环实时概览 <%= latestRecords.length ? '<span class="refresh-note">· 点击手环卡片查看健康曲线</span>' : '' %></h3></div>
+  <div class="band-title"><span class="bar"></span><h3>手环实时概览 <%- latestRecords.length ? '<span class="refresh-note">· 点击手环卡片查看健康曲线</span>' : '' %></h3></div>
   <div class="sub">按班级分组展示，点击班级标题展开 / 收起；点击手环卡片查看健康曲线，绿点代表 6 分钟内有数据。</div>
   <% if (!bandList.length) { %>
     <div class="band-empty">

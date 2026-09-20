@@ -1301,10 +1301,11 @@
       if (c) c.setOption(opt, true);
     }
 
-    // 时钟
+    // 时钟（固定东八区，避免访客浏览器时区不同导致大屏时间错乱）
     function pad(n) { return String(n).padStart(2, '0'); }
+    function beijingNow() { return new Date(Date.now() + (new Date().getTimezoneOffset() + 480) * 60000); }
     function tick() {
-      var d = new Date();
+      var d = beijingNow();
       var ct = document.getElementById('clockTime');
       var cd = document.getElementById('clockDate');
       if (ct) ct.textContent = pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());

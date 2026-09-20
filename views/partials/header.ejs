@@ -67,6 +67,8 @@
     </nav>
     <% if (currentUser && currentUser.role === 'user') { %><a class="mobile-logout" href="/logout" aria-label="退出登录">退出</a><% } %>
   </header>
+  <style>/* 桌面端顶栏已有「退出」，页面内重复的登出口仅手机端需要（手机顶栏隐藏后它是唯一登出口） */
+  @media (min-width:861px){ .home-logout{display:none} .admin-hero-actions a[href="/logout"]{display:none} }</style>
   <main class="container <%= typeof pageClass !== 'undefined' && pageClass.includes('admin-page') ? 'admin-container' : '' %>">
     <% if (currentUser) { %><div class="mobile-nav-backdrop" onclick="document.body.classList.remove('mobile-nav-open')"></div><% } %>
   <% if (currentUser) { %><nav class="mobile-bottom-nav" aria-label="移动端主导航">
