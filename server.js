@@ -535,6 +535,7 @@ async function bootstrap() {
 
   // ========== 手环健康监测路由 ==========
   mountBandRoutes(app, upload);
+  if (require('./routes/bands').mountBandCommandRoutes) require('./routes/bands').mountBandCommandRoutes(app);
 
   // ========== 数据大屏路由 ==========
   const screenHelpers = mountScreenRoutes(app);

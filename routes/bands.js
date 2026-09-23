@@ -170,3 +170,41 @@ module.exports = function mountBandRoutes(app, upload) {
     res.json({ ok: true, mac, hours, count: rows.length, records: rows });
   }));
 };
+// ========== 手环下发管理（代理到 band-command 服务 127.0.0.1:3079，2026-09-23）==========
+// 页面：/admin/bands/command；API：/admin/bands/command/api/* → http://127.0.0.1:3079/api/*
+const BAND_COMMAND_BASE = process.env.BAND_COMMAND_URL || 'http://127.0.0.1:3079';
+
+function mountBandCommandRoutes(app) {
+  const adminOnly = requireRole('admin');
+  app.get('/admin/bands/command', adminOnly, requirePermission('data.bands.view'), asyncHandler(async (req, res) => {
+  const settings = await getSettings();
+  res.render('admin-band-command', {
+    settings,
+    nowIso: new Date().toLocaleString('zh-CN', { hour12: false, timeZone: 'Asia/Shanghai' }),
+    teacherView: false,
+  });
+}));
+
+async function proxyBandCommand(req, res) {
+  const sub = req.path.replace(/^\/admin\/bands\/command\/api/, '') || '/';
+  const url = BAND_COMMAND_BASE + '/api' + sub + (req._parsedUrl && req._parsedUrl.search ? req._parsedUrl.search : '');
+  const init = { method: req.method, headers: { 'content-type': 'application/json' }, signal: AbortSignal.timeout(45000) };
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    init.body = JSON.stringify(req.body || {});
+  }
+  try {
+    const r = await fetch(url, init);
+    const text = await r.text();
+    let data;
+    try { data = JSON.parse(text); } catch (e) { data = { ok: r.ok, raw: text.slice(0, 500) }; }
+    res.status(r.status).json(data);
+  } catch (e) {
+    res.status(502).json({ ok: false, error: 'band-command 服务不可达：' + e.message });
+  }
+}
+app.get('/admin/bands/command/api/*', adminOnly, requirePermission('data.bands.view'), asyncHandler(proxyBandCommand));
+app.post('/admin/bands/command/api/*', adminOnly, requirePermission('data.bands.config'), requireWritable(), asyncHandler(proxyBandCommand));
+// /api/vibrate 需要可写权限但不需要 config 那么高？统一 config 口径，保持简单。
+}
+
+module.exports.mountBandCommandRoutes = mountBandCommandRoutes;

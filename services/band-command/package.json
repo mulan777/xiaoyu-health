@@ -1,0 +1,7 @@
+{
+  "name": "band-command",
+  "version": "1.0.0",
+  "description": "YT9 手环下行命令服务：HTTP API → MQTT SrvData 下发 → GwData 回执解析落库",
+  "main": "server.js",
+  "dependencies": { "mqtt": "^5", "mysql2": "^3" }
+}

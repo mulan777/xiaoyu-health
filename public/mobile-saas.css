@@ -44,6 +44,8 @@ body:has(#v2-stats) .trend-insight-head .trend-insight-now{white-space:nowrap!im
 /* 2026-09-20 导航精简：手机端只保留底部导航，隐藏顶栏与退出浮标 */
 @media (max-width:860px){
 .topbar{display:none!important}
+/* 修复20260921：汉堡按钮原先嵌在顶栏内，顶栏隐藏后侧边栏入口丢失。挪出顶栏固定左上角（仅管理端页面渲染此按钮，教师端不受影响） */
+.mobile-menu-toggle{display:flex!important;position:fixed!important;left:10px;top:14px;z-index:120;background:rgba(255,255,255,.94);border:1px solid rgba(148,163,184,.22);border-radius:10px;width:38px;height:34px;box-shadow:0 2px 10px rgba(15,23,42,.10);backdrop-filter:blur(8px)}
 .mobile-logout{display:none!important}
 .user-pill-tab-nav{display:none!important}
 }
@@ -95,3 +97,61 @@ body:has(#v2-stats) .trend-insight-head .trend-insight-now{white-space:nowrap!im
 .mi-screen:after{left:6px;top:14px;width:6px;height:2px;border-radius:1px}
 /* 手环班教师：隐藏药丸导航（双保险，include已删） */
 body:has(.screen-shortcut) .user-pill-tab-nav{display:none!important}
+
+/* 20260921 管理端手机端布局修复：关注面板表格溢出+编辑表单双列过挤 */
+@media (max-width:860px){
+  /* 关注名单表：隐藏「有效期」「标签」列（编辑卡内可见可改），表格收敛进屏宽 */
+  .attention-table th:nth-child(5), .attention-table td:nth-child(5),
+  .attention-table th:nth-child(6), .attention-table td:nth-child(6){display:none}
+  /* 关注名单表放开全局min-width，配合隐藏列后可完全收进屏宽 */
+  .attention-table{min-width:0!important}
+  .attention-table td,.attention-table th{white-space:normal}
+  /* 关注编辑表单：单列排布 */
+  .attn-ed-form{grid-template-columns:1fr!important}
+  /* 管理端容器底部留出底部导航高度，避免内容被遮挡 */
+  .container.admin-container{padding-bottom:120px!important}
+  /* 汉堡按钮固定左上后，管理端 hero 徽标/标题避开按钮区域 */
+  .container .admin-hero{padding-left:58px!important}
+  /* 使用建议卡：手机端压缩行距与字号，减少首屏占用 */
+  .tips.compact{font-size:12.5px;line-height:1.55}
+}
+
+/* 20260921 底部导航改版：管理端4大项+二级弹出菜单；手机端移除侧边栏与汉堡按钮 */
+@media (max-width:860px){
+  /* 侧边栏与汉堡彻底退场（桌面不受影响） */
+  .admin-sidebar{display:none!important}
+  .mobile-menu-toggle{display:none!important}
+  .admin-layout.shell-layout{display:block!important}
+  .admin-main.shell-main{margin-left:0!important;width:100%!important}
+  /* 4 大项 */
+  .bn-group{position:relative;flex:1;display:flex;flex-direction:column;align-items:center}
+  .bn-group-btn{background:none;border:0;padding:6px 0;display:flex;flex-direction:column;align-items:center;gap:3px;color:#64748b;font-size:11px;min-width:52px}
+  .bn-group-btn em{font-style:normal}
+  .bn-group-active .bn-group-btn,.bn-group-active .bn-group-btn .mi{color:#4f46e5;font-weight:600}
+  .bn-group-active .bn-group-btn:before{content:"";display:block;width:16px;height:3px;border-radius:2px;background:#4f46e5;margin:0 auto 1px}
+  /* 二级弹出菜单：从底部导航上方弹出 */
+  .bn-submenu{display:none;position:fixed;left:10px;right:10px;bottom:78px;z-index:130;background:#fff;border:1px solid rgba(148,163,184,.25);border-radius:16px;box-shadow:0 12px 40px rgba(15,23,42,.22);backdrop-filter:blur(14px);padding:8px;max-height:56vh;overflow:auto}
+  .bn-submenu.open{display:block;animation:bnPop .18s ease-out}
+  @keyframes bnPop{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  .bn-submenu a{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:10px;color:#334155;text-decoration:none;font-size:13.5px}
+  .bn-submenu a:active{background:#eef2ff}
+  .bn-sub-ico{font-size:16px;width:22px;text-align:center}
+  /* 大项图标 */
+  .mi-radar:before{left:3px;top:3px;width:12px;height:12px;border-radius:50%;border:1.6px solid currentColor}
+  .mi-radar:after{left:8px;top:8px;width:7px;height:1.6px;background:currentColor;transform:rotate(45deg);transform-origin:left center}
+  .mi-run:before{left:4px;top:2px;width:6px;height:6px;border-radius:50%}
+  .mi-run:after{left:6px;top:7px;width:2px;height:9px;transform:skewX(-12deg)}
+  .mi-school:before{left:2px;top:4px;width:14px;height:10px;border-radius:2px 2px 0 0;border-bottom:0}
+  .mi-school:after{left:0;top:1px;width:0;height:0;border-left:9px solid transparent;border-right:9px solid transparent;border-bottom:5px solid currentColor}
+  .mi-gear:before{left:3px;top:3px;width:12px;height:12px;border-radius:50%;border:1.6px solid currentColor}
+  .mi-gear:after{left:7.5px;top:0;width:3px;height:18px;background:linear-gradient(to bottom,transparent 6px,currentColor 6px,currentColor 12px,transparent 12px)}
+}
+
+/* 20260921b 手机端分页控件：恢复横排（历史column规则导致竖排挤占+被底部导航遮挡） */
+@media (max-width:860px){
+  .pagination-bar{flex-direction:row!important;flex-wrap:wrap!important;justify-content:center!important;align-items:center!important;gap:6px!important;padding:8px 4px!important}
+  .pagination-link{min-width:34px!important;height:34px!important;display:inline-flex;align-items:center;justify-content:center}
+  .pagination-nav{min-width:64px!important}
+  /* 「每页N条」选择器独占一行居中，与页码分离 */
+  .table-pagination-bar{flex-direction:column!important;align-items:center!important}
+}

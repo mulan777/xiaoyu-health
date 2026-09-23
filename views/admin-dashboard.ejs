@@ -428,8 +428,15 @@
         </div>
         <div class="card" style="min-width:0">
           <h3>🗂️ 历史警报</h3>
-          <% if (alertLogs && alertLogs.length > 1) { %>
-            <% alertLogs.slice(1).forEach(function(r) { %>
+          <% if (alertLogs && alertLogs.length) { %>
+            <% if (typeof alertTotal !== 'undefined' && alertTotal > 10) { %>
+            <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin:4px 0 12px">
+              <% if (alertPage > 1) { %><a href="?panel=alert&alert_page=<%= alertPage - 1 %>" style="font-size:13px;color:#4f46e5;font-weight:600;text-decoration:none">‹ 上一页</a><% } else { %><span style="font-size:13px;color:#cbd5e1">‹ 上一页</span><% } %>
+              <span style="font-size:13px;color:#64748b;font-weight:700"><%= alertPage %> / <%= Math.max(1, Math.ceil(alertTotal / 10)) %></span>
+              <% if (alertPage * 10 < alertTotal) { %><a href="?panel=alert&alert_page=<%= alertPage + 1 %>" style="font-size:13px;color:#4f46e5;font-weight:600;text-decoration:none">下一页 ›</a><% } else { %><span style="font-size:13px;color:#cbd5e1">下一页 ›</span><% } %>
+            </div>
+            <% } %>
+            <% alertLogs.forEach(function(r) { %>
             <details style="border:1px solid #e5eaf0;border-radius:10px;padding:10px 14px;margin-bottom:10px;word-break:break-all">
               <summary style="cursor:pointer;font-weight:600"><%= r.created_at %> · <%= r.wx_errcode === 0 ? '✅' : '❌' %> <%= r.title %></summary>
               <pre style="background:#f6f8fa;padding:12px;border-radius:8px;white-space:pre-wrap;word-break:break-all;overflow-wrap:anywhere;font-size:12.5px;line-height:1.6;margin-top:8px"><%= r.content || '' %></pre>

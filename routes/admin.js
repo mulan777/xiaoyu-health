@@ -787,7 +787,14 @@ function maskChildName(displayMap, className, name) {
     const aiSettings = activePanel === 'ai' ? await getAiSettings(false) : null;
     const pushLogs = activePanel === 'push' ? await dbQuery('SELECT push_type, ref_id, mac, tousers, title, wx_errcode, wx_errmsg, created_at FROM push_logs ORDER BY id DESC LIMIT 8') : [];
     const dailyReports = activePanel === 'report' ? await dbQuery('SELECT id, ref_id, tousers, title, content, wx_errcode, wx_errmsg, created_at FROM push_logs WHERE push_type="daily_report" ORDER BY id DESC LIMIT 30') : [];
-    const alertLogs = activePanel === 'alert' ? await dbQuery('SELECT id, ref_id, mac, title, content, wx_errcode, wx_errmsg, created_at FROM push_logs WHERE push_type="hr_alert" ORDER BY id DESC LIMIT 30') : [];
+    let alertLogs = []; let alertTotal = 0; let alertPage = 1; const ALERT_PAGE_SIZE = 10;
+    if (activePanel === 'alert') {
+      alertPage = Math.max(1, Number.parseInt(req.query.alert_page, 10) || 1);
+      const [c] = await dbQuery('SELECT COUNT(*) AS total FROM push_logs WHERE push_type="hr_alert"');
+      alertTotal = c ? c.total : 0;
+      const aLimit = Number(ALERT_PAGE_SIZE), aOff = Number((alertPage - 1) * ALERT_PAGE_SIZE);
+      alertLogs = await dbQuery('SELECT id, ref_id, mac, title, content, wx_errcode, wx_errmsg, created_at FROM push_logs WHERE push_type="hr_alert" ORDER BY id DESC LIMIT ' + aLimit + ' OFFSET ' + aOff);
+    }
     // 卡片带 ?id= 时: 把指定那条警报提到最前(不在最近30条也查出来), 点卡片直达对应警报
     // id 参数来自卡片url(携带 band_records.id), 同时按 push_logs.id 与 ref_id 匹配
     if (activePanel === 'alert' && req.query.id) {
@@ -842,7 +849,7 @@ function maskChildName(displayMap, className, name) {
       aiSettings,
       pushLogs,
       dailyReports,
-      alertLogs,
+      alertLogs, alertTotal, alertPage, alertPageSize: 10,
       activePanel,
       activeGroup,
       message: normalizeText(req.query.message),

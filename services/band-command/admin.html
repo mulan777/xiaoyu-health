@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>手环下发管理 - 小鱼健康</title>
+<style>
+  :root { --bg:#f2f5f9; --card:#fff; --line:#e5eaf1; --tx:#1c2b3a; --sub:#68788c; --blue:#2f7cf6; --red:#e5484d; --green:#18a058; --orange:#e8890c; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; background:var(--bg); color:var(--tx); min-height:100vh; }
+  .wrap { max-width:860px; margin:0 auto; padding:16px 14px 40px; }
+  h1 { font-size:19px; padding:6px 2px 14px; display:flex; align-items:center; gap:8px; }
+  h1 .dot { width:9px; height:9px; border-radius:50%; background:var(--green); }
+  h1 .dot.off { background:var(--red); }
+  .card { background:var(--card); border-radius:14px; padding:16px; margin-bottom:14px; box-shadow:0 1px 3px rgba(16,32,64,.06); }
+  .card h2 { font-size:15px; margin-bottom:12px; }
+  .row { display:flex; flex-wrap:wrap; gap:12px; }
+  .field { flex:1; min-width:150px; }
+  .field label { display:block; font-size:12px; color:var(--sub); margin-bottom:5px; }
+  .field input, .field select { width:100%; border:1px solid var(--line); border-radius:9px; padding:9px 11px; font-size:14px; background:#fafbfd; }
+  .field .hint { font-size:11px; color:var(--sub); margin-top:4px; }
+  .btn { border:none; border-radius:9px; padding:10px 18px; font-size:14px; font-weight:600; cursor:pointer; background:var(--blue); color:#fff; }
+  .btn.secondary { background:#eef3fb; color:var(--blue); }
+  .btn:active { opacity:.85; }
+  .toast { position:fixed; left:50%; bottom:36px; transform:translateX(-50%); background:rgba(20,30,44,.92); color:#fff; padding:10px 20px; border-radius:99px; font-size:13px; display:none; z-index:9; max-width:86vw; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { text-align:left; color:var(--sub); font-weight:500; font-size:12px; padding:7px 8px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  td { padding:8px; border-bottom:1px solid #f0f3f8; }
+  tr:last-child td { border-bottom:none; }
+  .tag { display:inline-block; padding:2px 9px; border-radius:99px; font-size:11px; font-weight:600; }
+  .tag.acked { background:#e6f6ec; color:var(--green); }
+  .tag.sent { background:#eef3fb; color:var(--blue); }
+  .tag.pending { background:#f4f4f5; color:var(--sub); }
+  .tag.failed, .tag.no_response { background:#fdebec; color:var(--red); }
+  .tag.manual { background:#f0f0fa; color:#5b5bd6; }
+  .tag.threshold { background:#fef3e2; color:var(--orange); }
+  .muted { color:var(--sub); font-size:12px; }
+  .mono { font-family:ui-monospace,Menlo,monospace; font-size:12px; }
+  .empty { text-align:center; color:var(--sub); padding:24px 0; font-size:13px; }
+  .refresh-note { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1><span class="dot" id="svcDot"></span>手环下发管理 <span class="muted" id="svcInfo"></span></h1>
+
+  <div class="card">
+    <h2>⚙️ 全局设置</h2>
+    <div class="row">
+      <div class="field">
+        <label>震动秒数</label>
+        <input type="number" id="vibrateSeconds" min="1" max="60" value="3">
+        <div class="hint">找手环/阈值触发时的震动时长（1–60 秒）</div>
+      </div>
+      <div class="field">
+        <label>心率自动检测频次</label>
+        <select id="hrInterval">
+          <option value="1">15 分钟一次</option>
+          <option value="2">30 分钟一次</option>
+          <option value="3">60 分钟一次</option>
+        </select>
+        <div class="hint">手环固件仅支持 15/30/60 分钟档</div>
+      </div>
+      <div class="field">
+        <label>心率阈值震动</label>
+        <input type="number" id="hrThreshold" min="80" max="220" value="160">
+        <div class="hint">实时心率 ≥ 阈值自动下发震动</div>
+      </div>
+      <div class="field">
+        <label>阈值震动冷却</label>
+        <input type="number" id="hrCooldown" min="30" max="3600" value="300">
+        <div class="hint">同一手环两次自动震动的最短间隔（秒）</div>
+      </div>
+    </div>
+    <div style="margin-top:12px; display:flex; gap:10px; align-items:center;">
+      <label style="font-size:13px; display:flex; gap:6px; align-items:center;">
+        <input type="checkbox" id="hrWatch" style="width:16px;height:16px;"> 启用心率阈值监听
+      </label>
+      <button class="btn" onclick="saveSettings()">保存设置</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>📳 手动下发</h2>
+    <div class="row">
+      <div class="field" style="flex:2;">
+        <label>选择手环</label>
+        <select id="targetBand"></select>
+        <div class="hint" id="bandStat"></div>
+      </div>
+      <div class="field" style="max-width:150px;">
+        <label>本次震动秒数</label>
+        <input type="number" id="manualSeconds" min="1" max="60" placeholder="默认=设置值">
+      </div>
+      <div class="field" style="max-width:120px; display:flex; align-items:flex-end;">
+        <button class="btn" style="width:100%;" onclick="sendVibrate()">立即震动</button>
+      </div>
+    </div>
+    <div class="row" style="margin-top:10px;">
+      <div class="field" style="max-width:220px;">
+        <button class="btn secondary" style="width:100%;" onclick="pushHrInterval()">下发心率频次到手环</button>
+        <div class="hint">把上方选择的频次写入所选手环</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>📋 下发记录</h2>
+    <div class="refresh-note">
+      <span class="muted" id="cmdCount"></span>
+      <span class="muted">每 10 秒自动刷新</span>
+    </div>
+    <table>
+      <thead><tr><th>时间</th><th>孩子/手环</th><th>命令</th><th>触发</th><th>状态</th></tr></thead>
+      <tbody id="cmdBody"></tbody>
+    </table>
+    <div class="empty" id="cmdEmpty" style="display:none;">暂无下发记录</div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const HR_LABEL = {1:'15分钟', 2:'30分钟', 3:'60分钟'};
+function toast(msg, ok=true) {
+  const t = $('toast'); t.textContent = msg;
+  t.style.background = ok ? 'rgba(20,30,44,.92)' : 'rgba(165,30,34,.95)';
+  t.style.display = 'block';
+  clearTimeout(t._h); t._h = setTimeout(() => t.style.display='none', 2600);
+}
+function esc(s) { return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function fmtTime(s) { return s ? s.replace('T',' ').slice(5,16) : '-'; }
+function childLabel(c) { return c.child_name ? `${c.child_name}（${c.band_mac.slice(-4)}）` : `未绑定（${c.band_mac.slice(-4)}）`; }
+function statusTag(s) { return `<span class="tag ${s}">${({acked:'已确认',sent:'已发送',pending:'待发送',failed:'失败',no_response:'无回执'})[s]||s}</span>`; }
+function srcTag(s) { return `<span class="tag ${s}">${({manual:'手动',threshold:'阈值触发'})[s]||s}</span>`; }
+
+async function loadHealth() {
+  try {
+    const r = await (await fetch('api/health')).json();
+    $('svcDot').className = 'dot' + (r.ok ? '' : ' off');
+    $('svcInfo').textContent = `运行 ${Math.round(r.uptime_s/3600)} 小时 · 在线手环 ${r.gwKnown} 块 · 阈值触发 ${r.thresholdTriggers} 次`;
+  } catch (e) { $('svcDot').className = 'dot off'; $('svcInfo').textContent = '服务离线'; }
+}
+async function loadSettings() {
+  const s = await (await fetch('api/settings')).json();
+  $('vibrateSeconds').value = s.vibrate_seconds;
+  $('hrInterval').value = s.hr_interval;
+  $('hrThreshold').value = s.hr_threshold;
+  $('hrCooldown').value = s.hr_cooldown_seconds;
+  $('hrWatch').checked = !!s.hr_watch_enabled;
+}
+async function saveSettings() {
+  const body = {
+    vibrate_seconds: +$('vibrateSeconds').value,
+    hr_interval: +$('hrInterval').value,
+    hr_threshold: +$('hrThreshold').value,
+    hr_cooldown_seconds: +$('hrCooldown').value,
+    hr_watch_enabled: $('hrWatch').checked,
+  };
+  const r = await (await fetch('api/settings', {method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify(body)})).json();
+  r.ok ? toast('设置已保存') : toast('保存失败：'+(r.error||''), false);
+}
+async function loadBands() {
+  const r = await (await fetch('api/bands')).json();
+  const sel = $('targetBand'); const cur = sel.value;
+  sel.innerHTML = r.bands.length
+    ? r.bands.map(c => `<option value="${c.band_mac}">${childLabel(c)} · 心率${c.heart_rate??'-'} · 电量${c.battery??'-'}%</option>`).join('')
+    : '<option value="">（暂无在线手环）</option>';
+  if (cur) sel.value = cur;
+  $('bandStat').textContent = r.bands.length ? `${r.bands.length} 块手环在线（近2分钟有广播）` : '网关扫描中，稍候刷新';
+}
+async function sendVibrate() {
+  const mac = $('targetBand').value;
+  if (!mac) return toast('暂无在线手环', false);
+  const body = { band_mac: mac };
+  if ($('manualSeconds').value) body.seconds = +$('manualSeconds').value;
+  toast('下发中…');
+  const r = await (await fetch('api/vibrate', {method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify(body)})).json();
+  r.ok ? toast(r.detail || '已下发') : toast('失败：'+(r.error||''), false);
+  loadCommands();
+}
+async function pushHrInterval() {
+  const mac = $('targetBand').value;
+  if (!mac) return toast('暂无在线手环', false);
+  toast('下发中…');
+  const r = await (await fetch('api/heart-rate/interval', {method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({band_mac:mac, code:+$('hrInterval').value})})).json();
+  r.ok ? toast(r.acked ? '手环已确认频次设置' : '指令已写入（等手环回执）') : toast('失败：'+(r.error||''), false);
+  loadCommands();
+}
+async function loadCommands() {
+  const r = await (await fetch('api/commands?limit=50')).json();
+  const tb = $('cmdBody');
+  $('cmdCount').textContent = `最近 ${r.commands.length} 条`;
+  $('cmdEmpty').style.display = r.commands.length ? 'none' : 'block';
+  tb.innerHTML = r.commands.map(c => `<tr>
+    <td class="muted">${fmtTime(c.created_at)}</td>
+    <td>${c.child_name ? `<b>${c.child_name}</b>` : '<span class="muted">未绑定</span>'}<div class="muted mono">${c.band_mac}</div></td>
+    <td>${c.cmd_desc || c.cmd_type}</td>
+    <td>${srcTag(c.trigger_source)}</td>
+    <td>${statusTag(c.status)}${c.error_msg ? `<div class="muted">${c.error_msg}</div>` : ''}</td>
+  </tr>`).join('');
+}
+(async () => {
+  await Promise.all([loadHealth(), loadSettings(), loadBands(), loadCommands()]);
+  setInterval(loadBands, 10000);
+  setInterval(loadCommands, 10000);
+  setInterval(loadHealth, 30000);
+})();
+</script>
+</body>
+</html>

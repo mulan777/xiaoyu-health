@@ -42,8 +42,9 @@
   <div id="wechat-share-thumbnail" style="position:fixed;top:-9999px;left:-9999px;width:300px;height:300px;overflow:hidden;opacity:0;pointer-events:none;z-index:-999;">
     <img src="https://www.jiangxiyey.cn/static/site-logo.jpg?v=20260910" alt="logo" width="300" height="300" style="width:300px;height:300px;" />
   </div>
+  <!-- 20260921 修复：汉堡按钮挪出顶栏（v3.6 把 .topbar 手机端 display:none 后按钮陪葬，侧边栏无入口）。固定左上角 -->
+  <% if (currentUser && currentUser.role !== 'user') { %><button class="mobile-menu-toggle" type="button" aria-label="打开菜单" onclick="document.body.classList.toggle('mobile-nav-open')"><span></span><span></span><span></span></button><% } %>
   <header class="topbar">
-      <% if (currentUser && currentUser.role !== 'user') { %><button class="mobile-menu-toggle" type="button" aria-label="打开菜单" onclick="document.body.classList.toggle('mobile-nav-open')"><span></span><span></span><span></span></button><% } %>
     <a class="brand" href="/" aria-label="返回首页">
       <div class="brand-logo"><img src="/static/site-logo-sm.jpg?v=20260613b" alt="<%= settings.siteName || '小鱼健康平台' %>" /></div>
       <div>
@@ -72,27 +73,73 @@
   <main class="container <%= typeof pageClass !== 'undefined' && pageClass.includes('admin-page') ? 'admin-container' : '' %>">
     <% if (currentUser) { %><div class="mobile-nav-backdrop" onclick="document.body.classList.remove('mobile-nav-open')"></div><% } %>
   <% if (currentUser) { %><nav class="mobile-bottom-nav" aria-label="移动端主导航">
-    <a href="<%= currentUser.role === 'user' ? '/user' : '/admin?panel=overview' %>" class="<%= typeof userBandAccess !== 'undefined' && userBandAccess ? 'bn-home' : '' %>"><span class="mi mi-home"></span><em>首页</em></a>
-    <% if (currentUser.role === 'user' && userBandAccess) { %><a href="/user/screen"><span class="mi mi-screen"></span><em>大屏</em></a><% } %>
-    <a href="<%= currentUser.role === 'user' ? '/user?view=records' : '/admin/fitness' %>"><span class="mi mi-data"></span><em>数据</em></a>
-    <% if (currentUser.role === 'user') { %><a href="/user?view=entry"><span class="mi mi-entry"></span><em>录入</em></a><% } %>
-    <a href="<%= currentUser.role === 'user' ? '/user?view=attention' : '/admin?panel=attention' %>"><span class="mi mi-alert"></span><em>关注</em></a>
-    <a href="<%= currentUser.role === 'user' ? '/user/venues' : '/admin/venues' %>"><span class="mi mi-calendar"></span><em>预约</em></a>
-    <% if (currentUser.role === 'user' && userBandAccess) { %><a href="/user/bands"><span class="mi mi-band"></span><em>手环</em></a><% } %>
-  </nav>
-  <script>(function(){/* 底部导航选中态：按路径+query匹配当前项 */
-    var links = document.querySelectorAll('.mobile-bottom-nav a');
-    var path = location.pathname, q = new URLSearchParams(location.search), view = q.get('view') || '';
-    var best = null, bestScore = -1;
-    links.forEach(function(a){
-      var u = new URL(a.href, location.origin);
-      var score = -1;
-      if (u.pathname === path) {
-        score = 1;
-        var uv = u.searchParams.get('view') || '';
-        if (uv && uv === view) score = 2; else if (uv && !view) score = 0;
-      }
-      if (score > bestScore) { bestScore = score; best = a; }
+    <% if (currentUser.role === 'user') { %>
+    <a href="/user" class="<%= typeof userBandAccess !== 'undefined' && userBandAccess ? 'bn-home' : '' %>"><span class="mi mi-home"></span><em>首页</em></a>
+    <% if (userBandAccess) { %><a href="/user/screen"><span class="mi mi-screen"></span><em>大屏</em></a><% } %>
+    <a href="/user?view=records"><span class="mi mi-data"></span><em>数据</em></a>
+    <a href="/user?view=entry"><span class="mi mi-entry"></span><em>录入</em></a>
+    <a href="/user?view=attention"><span class="mi mi-alert"></span><em>关注</em></a>
+    <a href="/user/venues"><span class="mi mi-calendar"></span><em>预约</em></a>
+    <% if (userBandAccess) { %><a href="/user/bands"><span class="mi mi-band"></span><em>手环</em></a><% } %>
+    <% } else { %>
+    <%
+      const bnGroups = [
+        {key:'monitor', label:'态势', icon:'mi-radar', items:[
+          {perm:'ops.overview', href:'/admin?panel=overview', label:'工作台概览', icon:'\uD83D\uDCCA'},
+          {perm:'data.fitness', href:'/admin/screen', target:'_blank', label:'全园感知大屏 \u2197', icon:'\uD83D\uDDA5\uFE0F'},
+          {perm:'data.bands', href:'/admin/bands', label:'手环健康监测', icon:'\u231A'},
+          {perm:'data.bands', href:'/admin?panel=alert', label:'心率警报', icon:'\uD83D\uDEA8'},
+          {perm:'data.bands', href:'/admin?panel=report', label:'健康日报', icon:'\uD83D\uDCCB'},
+          {perm:'data.bands', href:'/admin/bands/command', label:'手环下发', icon:'\uD83D\uDCF3'}
+        ]},
+        {key:'care', label:'体测', icon:'mi-run', items:[
+          {perm:'data.fitness', href:'/admin/fitness', label:'体测数据管理', icon:'\uD83C\uDFC3'},
+          {perm:'booking.attention', href:'/admin?panel=attention', label:'重点关注管理', icon:'\u2764\uFE0F'}
+        ]},
+        {key:'edu', label:'教务', icon:'mi-school', items:[
+          {perm:'data.classes', href:'/admin?panel=classes', label:'班级管理', icon:'\uD83C\uDFEB'},
+          {perm:'data.children', href:'/admin?panel=children', label:'幼儿档案管理', icon:'\uD83D\uDC76'},
+          {perm:'booking.venues', href:'/admin/venues', label:'场地预约管理', icon:'\uD83D\uDCC5'}
+        ]},
+        {key:'system', label:'系统', icon:'mi-gear', items:[
+          {perm:'data.users', href:'/admin?panel=users', label:'用户管理', icon:'\uD83D\uDC64'},
+          {perm:'admin.roles', href:'/admin?panel=roles', label:'角色权限管理', icon:'\uD83D\uDEE1\uFE0F'},
+          {perm:'ops.site', href:'/admin?panel=ai', label:'AI 智能接入', icon:'\uD83E\uDD16'},
+          {perm:'ops.site', href:'/admin?panel=push', label:'消息推送', icon:'\uD83D\uDCE3'},
+          {perm:'ops.site', href:'/admin?panel=site', label:'站点配置', icon:'\u2699\uFE0F'},
+          {perm:'ops.logs', href:'/admin?panel=logs', label:'系统日志', icon:'\uD83D\uDCDC'}
+        ]}
+      ].map(function(g){ return {key:g.key, label:g.label, icon:g.icon, items:g.items.filter(function(i){ return i.perm.length<3 || hasPerm(i.perm); })}; }).filter(function(g){ return g.items.length; });
+    %>
+    <% bnGroups.forEach(function(g){ %>
+    <div class="bn-group" data-bnkey="<%= g.key %>">
+      <button type="button" class="bn-group-btn" onclick="bnToggleMenu('<%= g.key %>')"><span class="mi <%= g.icon %>"></span><em><%= g.label %></em></button>
+      <div class="bn-submenu" id="bn-sub-<%= g.key %>">
+        <% g.items.forEach(function(i){ %>
+        <a href="<%= i.href %>" <%= i.target ? 'target="' + i.target + '"' : '' %>><span><%= i.label %></span></a>
+        <% }); %>
+      </div>
+    </div>
+    <% }); %>
+    <script>function bnToggleMenu(key){
+      var el = document.getElementById('bn-sub-' + key);
+      var wasOpen = el.classList.contains('open');
+      document.querySelectorAll('.bn-submenu.open').forEach(function(x){ x.classList.remove('open'); });
+      if (!wasOpen) el.classList.add('open');
+    }
+    document.addEventListener('click', function(e){
+      if (!e.target.closest('.bn-group')) document.querySelectorAll('.bn-submenu.open').forEach(function(x){ x.classList.remove('open'); });
     });
-    if (best && bestScore >= 1) best.classList.add('bn-active');
-  })();</script><% } %>
+    (function(){
+      var p = location.pathname + location.search, key = '';
+      if (p.indexOf('/admin/screen') === 0 || p.indexOf('/admin/bands') === 0) key = 'monitor';
+      else if (p.indexOf('/admin/fitness') === 0) key = 'care';
+      else if (p.indexOf('panel=alert') > -1 || p.indexOf('panel=report') > -1) key = 'monitor';
+      else if (p.indexOf('panel=attention') > -1) key = 'care';
+      else if (p.indexOf('panel=classes') > -1 || p.indexOf('panel=children') > -1 || p.indexOf('/admin/venues') === 0) key = 'edu';
+      else if (p.indexOf('panel=users') > -1 || p.indexOf('panel=roles') > -1 || p.indexOf('panel=ai') > -1 || p.indexOf('panel=push') > -1 || p.indexOf('panel=site') > -1 || p.indexOf('panel=logs') > -1) key = 'system';
+      else if (p.indexOf('/admin') === 0) key = 'monitor';
+      if (key) { var g = document.querySelector('.bn-group[data-bnkey=' + key + ']'); if (g) g.classList.add('bn-group-active'); }
+    })();</script>
+    <% } %>
+  </nav><% } %>
