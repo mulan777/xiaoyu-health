@@ -67,8 +67,40 @@
 
   var reloadingForUpdate = false;
 
+  /* 20260926 修复：版本自动刷新会把老师正在填写的表单整页冲掉。
+     现在只在「输入态干净」时自动刷新；有未提交输入就挂起，等用户离开或提交后再刷。
+     判定依据是用户是否真的敲过键，而不是输入框是否非空，避免把预填数据误判为脏。 */
+  function hasUserTyped() {
+    var tags = ['input', 'textarea', 'select'];
+    for (var t = 0; t < tags.length; t++) {
+      var els = document.getElementsByTagName(tags[t]);
+      for (var i = 0; i < els.length; i++) {
+        if (els[i].type === 'hidden') continue;
+        if (els[i].__uDirty === '1') return true;
+      }
+    }
+    return false;
+  }
+
+  document.addEventListener('input', function (e) {
+    if (e.target && e.target.tagName) { e.target.__uDirty = '1'; }
+  }, true);
+  document.addEventListener('change', function (e) {
+    if (e.target && e.target.tagName) { e.target.__uDirty = '1'; }
+  }, true);
+
+  /* 关标签/刷新时给出浏览器原生提示，避免误关丢数据 */
+  window.addEventListener('beforeunload', function (e) {
+    if (reloadingForUpdate) return;
+    if (!hasUserTyped()) return;
+    e.preventDefault();
+    e.returnValue = '';
+    return '';
+  });
+
   function reloadForUpdate() {
     if (reloadingForUpdate) return;
+    if (hasUserTyped()) return;
     reloadingForUpdate = true;
     window.location.reload();
   }
@@ -94,11 +126,24 @@
     }).catch(function () {});
   }
 
-  window.addEventListener('focus', checkForAppUpdate);
-  document.addEventListener('visibilitychange', function () {
-    if (!document.hidden) checkForAppUpdate();
+  /* 20260926：切走再切回时，以「切走那一刻」的输入状态为准。
+     用户离开页面后回来，若离开前已有未提交输入就一直不刷，
+     这样跨设备/跨时段的编辑不会因为一次 focus 被清空。 */
+  var dirtyOnBlur = false;
+  window.addEventListener('blur', function () { dirtyOnBlur = hasUserTyped(); });
+  window.addEventListener('focus', function () {
+    if (dirtyOnBlur || hasUserTyped()) return;
+    checkForAppUpdate();
   });
-  setInterval(checkForAppUpdate, 45000);
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) { dirtyOnBlur = hasUserTyped(); return; }
+    if (dirtyOnBlur || hasUserTyped()) return;
+    checkForAppUpdate();
+  });
+  setInterval(function () {
+    if (hasUserTyped()) return;
+    checkForAppUpdate();
+  }, 45000);
 })();
 </script>
 <% } %>

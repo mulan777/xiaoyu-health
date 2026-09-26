@@ -274,11 +274,16 @@
 <% } %>
 
 <style>
-  /* 冻结体测明细表前2列（姓名+性别）— 测试日期不再冻结 */
-  .data-table th:nth-child(1), .data-table td:nth-child(1) { width: 72px; min-width: 72px; max-width: 72px; }
-  .data-table th:nth-child(2), .data-table td:nth-child(2) { width: 52px; min-width: 52px; max-width: 52px; }
+  /* 冻结体测明细表前2列（姓名+性别）— 测试日期不再冻结
+     20260926：原先这里内联写死 72/52，而 style.css 的 .user-fitness-main 规则写的是 80/48。
+     内联样式的优先级高于任何类选择器，所以 style.css 那份从未生效，两边一直处于「看似冲突」的状态；
+     同时第二列的 left:72px 是手写的常量，一旦第一列宽度调整就会压列。
+     现在统一到两个变量上，宽度只在 :root 定义一次，left 由变量算出来。 */
+  :root { --ft-col1-w: 80px; --ft-col2-w: 48px; }
+  .data-table th:nth-child(1), .data-table td:nth-child(1) { width: var(--ft-col1-w); min-width: var(--ft-col1-w); max-width: var(--ft-col1-w); }
+  .data-table th:nth-child(2), .data-table td:nth-child(2) { width: var(--ft-col2-w); min-width: var(--ft-col2-w); max-width: var(--ft-col2-w); }
   .data-table th:nth-child(1), .data-table td:nth-child(1) { position: sticky; left: 0; }
-  .data-table th:nth-child(2), .data-table td:nth-child(2) { position: sticky; left: 72px; }
+  .data-table th:nth-child(2), .data-table td:nth-child(2) { position: sticky; left: var(--ft-col1-w); }
   /* 表头始终在最上层 */
   .data-table thead th:nth-child(1),
   .data-table thead th:nth-child(2) { z-index: 4; background: #f9fafb; }
@@ -367,26 +372,73 @@
       <div class="stat-card" onclick="openAttentionModal()" style="cursor:pointer;" title="点击查看重点关注名单"><div class="stat-icon amber"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div><div class="stat-info"><div class="stat-number"><%= activeAttentionChildren.length %></div><div class="stat-label">待关注</div></div></div>
     </div>
 
-    <section class="card chart-card home-growth-card">
-      <div class="section-head" style="margin-bottom:6px;">
-        <div>
-          <h3>班级生长趋势</h3>
-          <div class="muted no-margin">按测试日期展示本班幼儿身高 / 体重 / BMI 均值趋势</div>
-        </div>
+    <!-- 20260926 新增：教师首屏「今日待办」。
+         以前老师进工作台要自己翻「录入」页才知道哪个批次还差人、翻「关注」页才知道谁需要盯。
+         这里把三件事直接摊在第一屏：未录完的批次、需重点关注的幼儿、今天的生日提醒。
+         数据全部复用页面已有的变量，并对未传入的情况做了兜底，不会因为服务端少传一个变量而报错。 -->
+    <%
+      const _todoBatchDate = (typeof entryBatchDate !== 'undefined' && entryBatchDate) ? entryBatchDate : '';
+      const _todoMissing = (typeof entryBatchMissingChildren !== 'undefined' && Array.isArray(entryBatchMissingChildren)) ? entryBatchMissingChildren : [];
+      const _todoBatchDates = (Array.isArray(fitnessBatchDates) && fitnessBatchDates.length) ? fitnessBatchDates : [];
+      const _todoAttention = typeof activeAttentionChildren !== 'undefined' ? activeAttentionChildren : [];
+      const _todoBirthdays = typeof birthdayChildren !== 'undefined' ? birthdayChildren : [];
+      const _todoCount = (_todoMissing.length ? 1 : 0) + _todoAttention.length + _todoBirthdays.length;
+    %>
+    <section class="card todo-card" aria-label="今日待办">
+      <div class="todo-head">
+        <h3>今日待办</h3>
+        <span class="todo-count <%= _todoCount ? 'is-todo' : '' %>"><%= _todoCount ? ('共 ' + _todoCount + ' 项') : '已清空' %></span>
       </div>
-      <% if (Array.isArray(scopeTrendData) && scopeTrendData.length >= 2) { %>
-      <script type="application/json" id="userGrowthData"><%- JSON.stringify(scopeTrendData) %></script>
-      <div id="userGrowthChart" class="chart-el" style="width:100%;height:300px;" role="img" aria-label="班级生长趋势"></div>
+
+      <% if (!_todoCount) { %>
+      <div class="todo-empty">今天的活儿都干完啦，去喝口水吧 ☕</div>
       <% } else { %>
-      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:200px;color:#94a3b8;background:#f8fafc;border-radius:8px;border:2px dashed #e2e8f0;">
-        <span style="font-size:14px;font-weight:500;margin-bottom:4px;">暂无足够数据</span>
-        <span style="font-size:12px;">至少需要 2 次不同日期的测试记录才能生成趋势</span>
-      </div>
+
+      <% if (_todoMissing.length) { %>
+      <a class="todo-row todo-urgent" href="/user?view=entry<%= _todoBatchDate ? ('&entryBatchDate=' + encodeURIComponent(_todoBatchDate)) : '' %>">
+        <span class="todo-ico">📝</span>
+        <span class="todo-text">
+          <b><%= _todoBatchDate ? (_todoBatchDate + ' 批次还有 ' + _todoMissing.length + ' 人未录') : ('有 ' + _todoMissing.length + ' 名幼儿待补录') %></b>
+          <i><%= _todoMissing.slice(0, 4).map(function (c) { return dn(c); }).filter(Boolean).join('、') %><%= _todoMissing.length > 4 ? (' 等 ' + _todoMissing.length + ' 人') : '' %></i>
+        </span>
+        <span class="todo-go">去录入 ›</span>
+      </a>
+      <% } else if (_todoBatchDates.length) { %>
+      <a class="todo-row todo-done" href="/user?view=entry">
+        <span class="todo-ico">✅</span>
+        <span class="todo-text">
+          <b><%= _todoBatchDate ? (_todoBatchDate + ' 批次已录齐') : '所有批次均已录齐' %></b>
+          <i>可以开始下一个批次的录入</i>
+        </span>
+        <span class="todo-go">录入 ›</span>
+      </a>
       <% } %>
-      <div style="text-align:center;margin-top:12px;">
-        <a class="btn small primary" href="/user?view=records">查看完整数据分析 ›</a>
+
+      <% if (_todoAttention.length) { %>
+      <button type="button" class="todo-row todo-warn" onclick="openAttentionModal()">
+        <span class="todo-ico">❤️</span>
+        <span class="todo-text">
+          <b><%= _todoAttention.length %> 名幼儿需重点关注</b>
+          <i><%= _todoAttention.slice(0, 4).map(function (c) { return dn(c); }).filter(Boolean).join('、') %><%= _todoAttention.length > 4 ? (' 等 ' + _todoAttention.length + ' 人') : '' %></i>
+        </span>
+        <span class="todo-go">看名单 ›</span>
+      </button>
+      <% } %>
+
+      <% _todoBirthdays.forEach(function (child) { %>
+      <div class="todo-row todo-birthday">
+        <span class="todo-ico">🎂</span>
+        <span class="todo-text">
+          <b><%= dn(child) %> 今天生日</b>
+          <i>记得带一句祝福</i>
+        </span>
       </div>
+      <% }); %>
+
+      <% } %>
     </section>
+
+    <!-- 20260926：首页生长趋势卡已按杰哥要求移除（今日待办已承担首屏信息，趋势图保留在体测记录视图） -->
     </div><!-- /home-wrap -->
 <% } %>
 
@@ -395,8 +447,8 @@
   <div class="stat-card"><div class="stat-icon blue"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-7 8-7s8 3 8 7"/></svg></div><div class="stat-info"><div class="stat-number"><%= childCollection.length %></div><div class="stat-label">班级幼儿</div></div></div>
   <div class="stat-card"><div class="stat-icon green"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div><div class="stat-info"><div class="stat-number"><%= typeof totalFitnessRecordsCount !== "undefined" ? totalFitnessRecordsCount : (typeof allFitnessRecords !== "undefined" ? allFitnessRecords.length : 0) %></div><div class="stat-label">体测记录</div></div></div>
   <div class="stat-card" onclick="openAttentionModal()" style="cursor:pointer;" title="点击查看重点关注名单"><div class="stat-icon amber"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div><div class="stat-info"><div class="stat-number"><%= activeAttentionChildren.length %></div><div class="stat-label">待关注</div></div></div>
+    </div><!-- /stats-row -->
 <% } %>
-</div>
 
 <!-- 待关注名单弹窗：点击"待关注"卡片弹出，显示姓名/马甲类型/关注原因 -->
 <div class="attention-modal-overlay" id="attentionModal" style="display:none;" onclick="if(event.target===this)closeAttentionModal()">
@@ -771,8 +823,8 @@
           wMin -= wRange * 0.15; wMax += wRange * 0.15; wRange = wMax - wMin;
                   %>
 
-                <script type="application/json" id="userGrowthData"><%- JSON.stringify(scopeItems) %></script>
-        <div id="userGrowthChart" class="chart-el" style="width:100%;height:300px;" role="img" aria-label="班级生长趋势"></div>
+                <script type="application/json" id="userGrowthDataRecords"><%- JSON.stringify(scopeItems) %></script>
+        <div id="userGrowthChartRecords" class="chart-el" style="width:100%;height:300px;" role="img" aria-label="班级生长趋势"></div>
         <div style="display:flex;flex-wrap:wrap;gap:10px 18px;justify-content:center;margin-top:10px;">
           <span style="display:inline-flex;align-items:center;gap:4px;font-size:12px;color:#475569;">
             <span style="width:10px;height:10px;background:#f97316;border-radius:50%;"></span>身高 (cm) 左轴
@@ -1230,7 +1282,6 @@
     <% } %>
   </div>
 
-  <div id="fitnessEntryLiveMessage" class="alert" style="display:none;margin-bottom:12px;"></div>
   <form method="post" action="/user/fitness/add" id="fitnessEntryForm" class="form-grid" style="grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));">
     <input type="hidden" name="entryBatchDate" value="<%= selectedEntryBatchDate %>" />
     <label><span>选择幼儿</span>
@@ -1290,17 +1341,20 @@
       <input type="date" name="manualChildBirthDate" id="fitnessEntryManualChildBirthDate" />
     </label>
     <label><span>测试日期</span><input type="date" name="testDate" id="fitnessEntryTestDate" value="<%= selectedEntryTestDate %>" required /></label>
-    <label><span>身高(CM)</span><input type="number" name="heightCm" step="0.1" placeholder="如 110.5" /></label>
-    <label><span>体重(KG)</span><input type="number" name="weightKg" step="0.01" placeholder="如 18.50" /></label>
-    <label><span>握力(KG)</span><input type="number" name="gripKg" step="0.01" placeholder="如 7.0" /></label>
-    <label><span>立定跳远(CM)</span><input type="number" name="longJumpCm" step="0.1" placeholder="如 85" /></label>
-    <label><span>坐位体前屈(CM)</span><input type="number" name="sitReachCm" step="0.1" placeholder="如 9" /></label>
-    <label><span>双脚连续跳(秒)</span><input type="number" name="doubleJumpSec" step="0.01" placeholder="如 7.5" /></label>
-    <label><span>15米绕障碍跑(秒)</span><input type="number" name="obstacleRunSec" step="0.01" placeholder="如 8.0" /></label>
-    <label><span>走平衡木(秒)</span><input type="number" name="balanceBeamSec" step="0.01" placeholder="如 15" /></label>
+    <label><span>身高(CM)<i class="req-mark">*</i></span><input type="number" inputmode="decimal" name="heightCm" step="0.1" placeholder="如 110.5" /></label>
+    <label><span>体重(KG)<i class="req-mark">*</i></span><input type="number" inputmode="decimal" name="weightKg" step="0.01" placeholder="如 18.50" /></label>
+    <label><span>握力(KG)</span><input type="number" inputmode="decimal" name="gripKg" step="0.01" placeholder="如 7.0" /></label>
+    <label><span>立定跳远(CM)<i class="req-mark">*</i></span><input type="number" inputmode="decimal" name="longJumpCm" step="0.1" placeholder="如 85" /></label>
+    <label><span>坐位体前屈(CM)<i class="req-mark">*</i></span><input type="number" inputmode="decimal" name="sitReachCm" step="0.1" placeholder="如 9" /></label>
+    <label><span>双脚连续跳(秒)</span><input type="number" inputmode="decimal" name="doubleJumpSec" step="0.01" placeholder="如 7.5" /></label>
+    <label><span>15米绕障碍跑(秒)</span><input type="number" inputmode="decimal" name="obstacleRunSec" step="0.01" placeholder="如 8.0" /></label>
+    <label><span>走平衡木(秒)</span><input type="number" inputmode="decimal" name="balanceBeamSec" step="0.01" placeholder="如 15" /></label>
     <div style="grid-column: 1 / -1;">
+      <!-- 20260926：提示条原先在表单上方，手机端要滚回顶部才看得到报错，
+           老师常常不知道是哪里没填。挪到提交按钮正上方，就近提示。 -->
+      <div id="fitnessEntryLiveMessage" class="alert" style="display:none;margin-bottom:10px;"></div>
       <button class="btn primary" type="submit" id="fitnessEntrySubmitButton">提交并自动计算得分</button>
-      <div class="muted" style="margin-top:8px;">如果同一幼儿在同一天已经录过，本次提交会自动覆盖原记录。</div>
+      <div class="muted" style="margin-top:8px;">带 <i class="req-mark">*</i> 的 4 项为必填（身高、体重、立定跳远、坐位体前屈）；握力、连续跳、障碍跑、平衡木暂时没测可以留空，之后再补录。<br />如果同一幼儿在同一天已经录过，本次提交会自动覆盖原记录。</div>
     </div>
   </form>
 </section>
@@ -1488,6 +1542,15 @@
     { name: 'balanceBeamSec', label: '\u8d70\u5e73\u8861\u6728(\u79d2)' }
   ];
   var defaultFitnessEntrySubmitText = fitnessEntrySubmitButton ? fitnessEntrySubmitButton.textContent : '提交并自动计算得分';
+  /* 20260926：原来 8 项指标全部 required + 提交前逐项拦截，老师只要有一项没测就整表交不了，
+     结果只能「编一个数」才能提交，反而污染数据。现改为 4 项核心指标必填，其余可留空。 */
+  var fitnessEntryRequiredNames = ['heightCm', 'weightKg', 'longJumpCm', 'sitReachCm'];
+  function isFitnessEntryRequired(name) {
+    return fitnessEntryRequiredNames.indexOf(name) > -1;
+  }
+  function fitnessEntryRequiredFields() {
+    return fitnessEntryMetricFields.filter(function (f) { return isFitnessEntryRequired(f.name); });
+  }
 
   function isManualEntryMode() {
     return !!(fitnessEntryChildSelect && fitnessEntryChildSelect.value === '__manual__');
@@ -1516,9 +1579,10 @@
       fitnessEntryManualBirthDateInput.required = shouldShow;
       if (!shouldShow) fitnessEntryManualBirthDateInput.value = '';
     }
+    /* 20260926：只给核心指标挂 required，其余留空也能提交 */
     fitnessEntryMetricFields.forEach(function (field) {
       if (!fitnessEntryForm || !fitnessEntryForm.elements[field.name]) return;
-      fitnessEntryForm.elements[field.name].required = true;
+      fitnessEntryForm.elements[field.name].required = isFitnessEntryRequired(field.name);
     });
   }
 
@@ -1661,7 +1725,7 @@
       }
     }
 
-    var missingFields = fitnessEntryMetricFields.filter(function (field) {
+    var missingFields = fitnessEntryRequiredFields().filter(function (field) {
       var input = fitnessEntryForm && fitnessEntryForm.elements ? fitnessEntryForm.elements[field.name] : null;
       return !input || String(input.value || '').trim() === '';
     });
@@ -2399,8 +2463,10 @@ function initUserCharts() {
   }
 
   /* ---------- 2. 生长趋势（全班/男/女 三口径） ---------- */
-  var growthJson = document.getElementById('userGrowthData');
-  var growthEl = document.getElementById('userGrowthChart');
+  /* 20260926：原两处（home / records 分支）用了同一个 id，同一 DOM 里会重复。
+     现在分别取名，JS 兼容两种分支取其一。 */
+  var growthJson = document.getElementById('userGrowthData') || document.getElementById('userGrowthDataRecords');
+  var growthEl = document.getElementById('userGrowthChart') || document.getElementById('userGrowthChartRecords');
   if (growthJson && growthEl) {
     try {
       var items = (function () { try { return JSON.parse(growthJson.textContent || '[]'); } catch (e) { return []; } })();

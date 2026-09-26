@@ -2775,7 +2775,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0); }
 @media (max-width: 720px) {
 body:not(.admin-page),
   main.container:not(.admin-container) { min-height: 0 !important;
-    padding-bottom: 0 !important;
+    padding-bottom: calc(78px + env(safe-area-inset-bottom, 0px)) !important;
     margin-bottom: 0 !important; }
 }
 :root { --bg:        #f0f4ff;
@@ -2789,6 +2789,14 @@ body:not(.admin-page),
   --primary-l: #818cf8;
   --primary-d: #4f46e5;
   --primary-s: #eef2ff;
+  /* 20260926：本文件有两份 :root（第 1 行与这里），本份在级联中胜出，
+     因此上面这几个才是实际生效的值。但页面里另有 16 处按第一份的名字引用
+     var(--primary)、2 处 var(--primary-soft)、还有 .btn.primary 被硬编码成 #4f46e5，
+     导致「主按钮的蓝」和旁边链接/徽标的蓝不是同一个值。
+     这里补上别名，让两套命名指向同一组颜色；按钮的硬编码已在下文移除。 */
+  --primary-dark: var(--primary-d);
+  --primary-soft: var(--primary-s);
+  --primary-hover: var(--primary-d);
   --accent:    #f59e0b;
   --accent-s:  #fffbeb;
   --success:   #10b981;
@@ -3209,9 +3217,14 @@ label { font-size:13px;font-weight:600;
 .band-stat .stat-label,
 .band-metric-label,
 .band-band-card .m-label { font-size: 12px !important; }
-.btn.primary, .btn-primary,
-.btn.primary:hover, .btn-primary:hover { background: #4f46e5 !important;   
-  border-color: #4f46e5 !important;
+/* 20260926：原先这里用 #4f46e5 写死并 !important，与 --primary(#6366f1) 不一致，
+   同一个页面上主按钮和其他主色元素颜色不同。改回变量，hover 用深一档。
+   （两份 :root 都定义了 --primary，后一份胜出，所以这里取到的就是实际主色。） */
+.btn.primary, .btn-primary { background: var(--primary) !important;
+  border-color: var(--primary) !important;
+  color: #fff !important; }
+.btn.primary:hover, .btn-primary:hover { background: var(--primary-d, var(--primary)) !important;
+  border-color: var(--primary-d, var(--primary)) !important;
   color: #fff !important; }
 .btn.secondary:hover, .btn-outline:hover,
 .child-compare-link:hover,
@@ -4369,3 +4382,89 @@ table.modern-class-table td:nth-child(8) .table-row-actions form.inline-form { w
 .home-wrap .dashboard-head h1 { font-size:26px; }
 .home-wrap .teacher-care-card { margin-top:18px;padding:18px 18px; }
 }
+
+/* ===== 20260926 移动端可用性修复（追加，不改动上方既有规则） ===== */
+
+/* 1) iOS Safari 聚焦自动放大：输入框字号低于 16px 时触发。
+   原 16px 修正只在 ≤640px 生效，641–1024px（手机横屏 / 平板）之间仍是 14px → 页面被放大。
+   这里把区间补到 1024px。 */
+@media (max-width: 1024px) {
+  input[type="text"], input[type="number"], input[type="password"],
+  input[type="email"], input[type="date"], input[type="time"],
+  input[type="datetime-local"], input[type="search"], input[type="tel"],
+  select, textarea { font-size: 16px; }
+}
+
+/* 2) 触控目标补到 44px：这三类是老师每天高频点击/取消的选择器与按钮，
+   原先只有 padding 撑高，实际约 40–42px。
+   注意只加最小高度，不改 padding/字号，避免影响桌面端观感。 */
+.venue-resource-level-btn,
+.venue-resource-nav-btn,
+.venue-attention-child-btn,
+.venue-resource-mode-btn { min-height: 44px; }
+
+/* 「取消预约」这类危险操作既是全宽目标又不可逆，给足高度并做视觉区分 */
+.venue-zone-actions .btn,
+.venue-text-actions .btn { min-height: 44px; }
+
+/* 3) 可打印：无打印样式时，24 列宽表会被裁切且 sticky 列压在滚动内容上。
+   打印时解除 sticky 与最小宽度，让浏览器按纸张宽度重排。 */
+@media print {
+  .data-table, .admin-table { min-width: 0 !important; width: 100% !important; }
+  .data-table th, .data-table td,
+  .admin-table th, .admin-table td {
+    position: static !important;
+    left: auto !important;
+    white-space: normal !important;
+    font-size: 9px !important;
+    padding: 3px 4px !important;
+  }
+  .table-wrap { overflow: visible !important; }
+  .mobile-bottom-nav, .mobile-menu-toggle, .mobile-logout,
+  .admin-sidebar, .topbar, .screen-shortcut { display: none !important; }
+  body, main.container, .container { padding-bottom: 0 !important; margin: 0 !important; }
+  a[href]:after { content: ""; }
+  @page { size: A4 landscape; margin: 8mm; }
+}
+
+/* 4) 降低动效偏好 */
+@media (prefers-reduced-motion: reduce) {
+  *, *:before, *:after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* 20260926 教师端录入表单：必填项星标 */
+.req-mark{font-style:normal;color:#dc2626;margin-left:2px;font-weight:700}
+
+/* ===== 20260926 教师首屏「今日待办」 ===== */
+.todo-card{margin:10px 0}
+.todo-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.todo-head h3{margin:0;font-size:15px}
+.todo-count{font-size:12px;color:#16a34a;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:999px;padding:2px 10px}
+.todo-count.is-todo{color:#b45309;background:#fffbeb;border-color:#fde68a}
+.todo-empty{font-size:13px;color:#94a3b8;padding:10px 2px}
+.todo-row{display:flex;align-items:center;gap:10px;width:100%;box-sizing:border-box;text-align:left;
+  padding:10px 12px;margin-top:6px;border:1px solid #eef2f7;border-left-width:3px;border-radius:12px;
+  background:#fbfdff;text-decoration:none;color:inherit;font:inherit;cursor:pointer}
+.todo-row:first-of-type{margin-top:0}
+.todo-row.todo-urgent{border-left-color:#ef4444;background:#fff7f7}
+.todo-row.todo-warn{border-left-color:#f59e0b;background:#fffbf3}
+.todo-row.todo-birthday{border-left-color:#ec4899;background:#fff7fb}
+.todo-row.todo-done{border-left-color:#22c55e;background:#f7fffa}
+.todo-ico{font-size:18px;flex:0 0 24px;text-align:center}
+.todo-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.todo-text b{font-size:13.5px;font-weight:600;color:#0f172a}
+.todo-text i{font-style:normal;font-size:11.5px;color:#94a3b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.todo-go{flex:0 0 auto;font-size:12px;color:#4f46e5;white-space:nowrap}
+@media (max-width:860px){
+  .todo-row{min-height:44px;padding:11px 12px}
+  .todo-text b{font-size:13px}
+}
+
+/* 20260926 体测明细宽表：桌面 1200px，窄屏降到 900px（对应 admin-fitness.ejs 原内联 min-width） */
+.fitness-wide-table{min-width:1200px}
+@media (max-width:900px){ .fitness-wide-table{min-width:900px} }

@@ -1,20 +1,43 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <% 
+  <%
     const siteName = (settings && settings.siteName) || '小鱼健康平台';
     const siteDescription = (settings && (settings.heroDesc || settings.subtitle)) || '幼儿园体适能教研管理平台，支持体测评分、场地预约、成长档案。';
-    const siteUrl = 'https://www.jiangxiyey.cn/';
-    const shareImage = 'https://www.jiangxiyey.cn/static/share-cover.jpg?v=20260910';
+    /* 20260926：域名不再写死，优先用设置项，其次跟随当前请求的 host，便于自托管/换域名 */
+    const _reqHost = (typeof currentHost !== 'undefined' && currentHost) ? String(currentHost) : '';
+    const _siteOrigin = (settings && settings.siteUrl)
+      ? String(settings.siteUrl).replace(/\/+$/, '')
+      : (_reqHost ? ('https://' + _reqHost) : '');
+    const siteUrl = _siteOrigin ? (_siteOrigin + '/') : '/';
+    const shareImage = _siteOrigin ? (_siteOrigin + '/static/share-cover.jpg?v=20260910') : '/static/share-cover.jpg?v=20260910';
+    const logoImage = _siteOrigin ? (_siteOrigin + '/static/site-logo.jpg?v=20260910') : '/static/site-logo.jpg?v=20260910';
     const cssVer = typeof cssVersion !== 'undefined' ? cssVersion : Date.now();
+    /* 20260926：14 个管理面板原先共用一个静态标题，多标签页无法区分。按 panel/view 生成副标题。 */
+    const _panelTitles = {
+      overview:'工作台概览', ai:'AI 智能接入', push:'消息推送', alert:'心率警报',
+      report:'健康日报', users:'用户管理', classes:'班级管理', children:'幼儿档案管理',
+      logs:'系统日志', attention:'重点关注管理', roles:'角色权限管理', site:'站点配置'
+    };
+    const _viewTitles = { records:'体测数据', entry:'体测录入', attention:'重点关注', home:'工作台' };
+    let pageTitle = siteName;
+    if (typeof currentUser !== 'undefined' && currentUser) {
+      const _p = (typeof currentPanel !== 'undefined' && currentPanel) ? String(currentPanel) : '';
+      const _v = (typeof userView !== 'undefined' && userView) ? String(userView) : '';
+      if (currentUser.role === 'user') {
+        if (_v && _viewTitles[_v]) pageTitle = _viewTitles[_v] + ' · ' + siteName;
+      } else if (_p && _panelTitles[_p]) {
+        pageTitle = _panelTitles[_p] + ' · ' + siteName;
+      }
+    }
   %>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title><%= siteName %></title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title><%= typeof pageTitleOverride !== 'undefined' && pageTitleOverride ? pageTitleOverride : pageTitle %></title>
   <meta name="description" content="<%= siteDescription %>" />
     <meta itemprop="name" content="<%= siteName %>" />
   <meta itemprop="description" content="<%= siteDescription %>" />
-  <meta itemprop="image" content="https://www.jiangxiyey.cn/static/site-logo.jpg?v=20260910" />
+  <meta itemprop="image" content="<%= logoImage %>" />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="<%= siteName %>" />
   <meta property="og:title" content="<%= siteName %>" />
@@ -40,7 +63,7 @@
 </head>
 <body class="<%= typeof pageClass !== 'undefined' ? pageClass : '' %>">
   <div id="wechat-share-thumbnail" style="position:fixed;top:-9999px;left:-9999px;width:300px;height:300px;overflow:hidden;opacity:0;pointer-events:none;z-index:-999;">
-    <img src="https://www.jiangxiyey.cn/static/site-logo.jpg?v=20260910" alt="logo" width="300" height="300" style="width:300px;height:300px;" />
+    <img src="<%= logoImage %>" alt="logo" width="300" height="300" style="width:300px;height:300px;" />
   </div>
   <!-- 20260921 修复：汉堡按钮挪出顶栏（v3.6 把 .topbar 手机端 display:none 后按钮陪葬，侧边栏无入口）。固定左上角 -->
   <% if (currentUser && currentUser.role !== 'user') { %><button class="mobile-menu-toggle" type="button" aria-label="打开菜单" onclick="document.body.classList.toggle('mobile-nav-open')"><span></span><span></span><span></span></button><% } %>
@@ -74,13 +97,28 @@
     <% if (currentUser) { %><div class="mobile-nav-backdrop" onclick="document.body.classList.remove('mobile-nav-open')"></div><% } %>
   <% if (currentUser) { %><nav class="mobile-bottom-nav" aria-label="移动端主导航">
     <% if (currentUser.role === 'user') { %>
-    <a href="/user" class="<%= typeof userBandAccess !== 'undefined' && userBandAccess ? 'bn-home' : '' %>"><span class="mi mi-home"></span><em>首页</em></a>
-    <% if (userBandAccess) { %><a href="/user/screen"><span class="mi mi-screen"></span><em>大屏</em></a><% } %>
-    <a href="/user?view=records"><span class="mi mi-data"></span><em>数据</em></a>
-    <a href="/user?view=entry"><span class="mi mi-entry"></span><em>录入</em></a>
-    <a href="/user?view=attention"><span class="mi mi-alert"></span><em>关注</em></a>
-    <a href="/user/venues"><span class="mi mi-calendar"></span><em>预约</em></a>
-    <% if (userBandAccess) { %><a href="/user/bands"><span class="mi mi-band"></span><em>手环</em></a><% } %>
+    <% /* 20260926：原先 7 项在 ≤375px 溢出被裁（最小 52px×7=364px > 可用宽度），「手环」点不到。
+       现收为 5 项固定 + 1 项「更多」；大屏/手环有权限时才进「更多」，无权限则只有 5 项。
+       每项输出 data-bn，由底部脚本按 location 计算高亮，替换原先从未生效的 bn-active。 */ %>
+    <% const _hasBand = (typeof userBandAccess !== 'undefined' && userBandAccess); %>
+    <a href="/user" data-bn="home"><span class="mi mi-home"></span><em>首页</em></a>
+    <a href="/user?view=records" data-bn="records"><span class="mi mi-data"></span><em>数据</em></a>
+    <a href="/user?view=entry" data-bn="entry"><span class="mi mi-entry"></span><em>录入</em></a>
+    <a href="/user?view=attention" data-bn="attention"><span class="mi mi-alert"></span><em>关注</em></a>
+    <% if (_hasBand) { %>
+    <a href="/user/venues" data-bn="venues"><span class="mi mi-calendar"></span><em>预约</em></a>
+    <div class="bn-group">
+      <button type="button" class="bn-group-btn" data-bn="more" onclick="bnToggleMenu('more')"><span class="mi mi-more"></span><em>更多</em></button>
+      <div class="bn-submenu" id="bn-sub-more">
+        <a href="/user/screen"><span class="bn-sub-ico">🖥️</span><span>班级数据大屏</span></a>
+        <a href="/user/bands"><span class="bn-sub-ico">⌚</span><span>手环健康监测</span></a>
+        <a href="/report"><span class="bn-sub-ico">📋</span><span>健康日报</span></a>
+        <a href="/alert"><span class="bn-sub-ico">🚨</span><span>心率警报</span></a>
+      </div>
+    </div>
+    <% } else { %>
+    <a href="/user/venues" data-bn="venues"><span class="mi mi-calendar"></span><em>预约</em></a>
+    <% } %>
     <% } else { %>
     <%
       const bnGroups = [
@@ -88,6 +126,7 @@
           {perm:'ops.overview', href:'/admin?panel=overview', label:'工作台概览', icon:'\uD83D\uDCCA'},
           {perm:'data.fitness', href:'/admin/screen', target:'_blank', label:'全园感知大屏 \u2197', icon:'\uD83D\uDDA5\uFE0F'},
           {perm:'data.bands', href:'/admin/bands', label:'手环健康监测', icon:'\u231A'},
+          {perm:'data.bands', href:'/admin/bands/trace', label:'操场活动轨迹', icon:'\uD83C\uDFC3'},
           {perm:'data.bands', href:'/admin?panel=alert', label:'心率警报', icon:'\uD83D\uDEA8'},
           {perm:'data.bands', href:'/admin?panel=report', label:'健康日报', icon:'\uD83D\uDCCB'},
           {perm:'data.bands', href:'/admin/bands/command', label:'手环下发', icon:'\uD83D\uDCF3'}
@@ -121,17 +160,27 @@
       </div>
     </div>
     <% }); %>
-    <script>function bnToggleMenu(key){
+
+    <% } %>
+        <script>function bnToggleMenu(key){
       var el = document.getElementById('bn-sub-' + key);
+      if (!el) return;
       var wasOpen = el.classList.contains('open');
       document.querySelectorAll('.bn-submenu.open').forEach(function(x){ x.classList.remove('open'); });
       if (!wasOpen) el.classList.add('open');
     }
+    /* 20260926：点了二级菜单里的项就立即收起，避免菜单悬在页面上 */
+    document.addEventListener('click', function(e){
+      var a = e.target.closest && e.target.closest('.bn-submenu a');
+      if (a) { document.querySelectorAll('.bn-submenu.open').forEach(function(x){ x.classList.remove('open'); }); }
+    });
     document.addEventListener('click', function(e){
       if (!e.target.closest('.bn-group')) document.querySelectorAll('.bn-submenu.open').forEach(function(x){ x.classList.remove('open'); });
     });
     (function(){
-      var p = location.pathname + location.search, key = '';
+      var p = location.pathname + location.search;
+      /* ===== 管理端：4 大项高亮 ===== */
+      var key = '';
       if (p.indexOf('/admin/screen') === 0 || p.indexOf('/admin/bands') === 0) key = 'monitor';
       else if (p.indexOf('/admin/fitness') === 0) key = 'care';
       else if (p.indexOf('panel=alert') > -1 || p.indexOf('panel=report') > -1) key = 'monitor';
@@ -139,7 +188,28 @@
       else if (p.indexOf('panel=classes') > -1 || p.indexOf('panel=children') > -1 || p.indexOf('/admin/venues') === 0) key = 'edu';
       else if (p.indexOf('panel=users') > -1 || p.indexOf('panel=roles') > -1 || p.indexOf('panel=ai') > -1 || p.indexOf('panel=push') > -1 || p.indexOf('panel=site') > -1 || p.indexOf('panel=logs') > -1) key = 'system';
       else if (p.indexOf('/admin') === 0) key = 'monitor';
-      if (key) { var g = document.querySelector('.bn-group[data-bnkey=' + key + ']'); if (g) g.classList.add('bn-group-active'); }
-    })();</script>
-    <% } %>
+      if (key) {
+        var g = document.querySelector('.bn-group[data-bnkey="' + key + '"]');
+        if (g) g.classList.add('bn-group-active');
+      }
+      /* ===== 教师端：底部 5 项高亮（20260926 新增，此前 bn-active 有样式但从未输出） ===== */
+      var tKey = '';
+      if (p.indexOf('/user/screen') === 0 || p.indexOf('/user/bands') === 0) tKey = 'more';
+      else if (p.indexOf('/user/venues') === 0) tKey = 'venues';
+      else if (p.indexOf('view=records') > -1) tKey = 'records';
+      else if (p.indexOf('view=entry') > -1) tKey = 'entry';
+      else if (p.indexOf('view=attention') > -1) tKey = 'attention';
+      else if (p.indexOf('/user') === 0) tKey = 'home';
+      if (tKey) {
+        var links = document.querySelectorAll('.mobile-bottom-nav [data-bn]');
+        for (var i = 0; i < links.length; i++) {
+          if (links[i].getAttribute('data-bn') === tKey) {
+            links[i].classList.add('bn-active');
+            var grp = links[i].closest('.bn-group');
+            if (grp) grp.classList.add('bn-group-active');
+          }
+        }
+      }
+    })();
+    /* 20260926：bnToggleMenu 与高亮脚本移出 admin 分支——原先定义困在管理端分支里，教师端点「更多」报 not defined */</script>
   </nav><% } %>

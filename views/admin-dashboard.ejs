@@ -64,6 +64,7 @@
           {perm:'ops.overview', panel:'overview', label:'工作台概览', icon:'📊'},
           {perm:'data.fitness', href:'/admin/screen', target:'_blank', label:'全园感知大屏 ↗', icon:'🖥️', badge:'新窗口'},
           {perm:'data.bands', href:'/admin/bands', label:'手环健康监测', icon:'⌚'},
+          {perm:'data.bands', href:'/admin/bands/trace', label:'操场活动轨迹', icon:'🏃'},
           {perm:'data.bands', panel:'alert', label:'心率警报', icon:'🚨'},
           {perm:'data.bands', panel:'report', label:'健康日报', icon:'📋'}
         ].filter(i => hasPerm(i.perm));
@@ -289,9 +290,9 @@
               <span>清空当前密钥</span>
             </label>
             <label><span>模型名称</span><input type="text" name="aiModel" value="<%= ai.aiModel || '' %>" placeholder="如 deepseek-reasoner / deepseek-chat / qwen-plus" /><small class="muted">带思维链推荐：deepseek-reasoner；快速输出选 deepseek-chat。</small></label>
-            <label><span>最大输出 Token</span><input type="number" name="aiMaxTokens" value="<%= ai.aiMaxTokens || '0' %>" min="0" max="32000" /><small class="muted">填 0 表示不限制（交给模型默认上限），适合思维链型模型。</small></label>
-            <label><span>温度 Temperature</span><input type="number" name="aiTemperature" value="<%= ai.aiTemperature || '0.6' %>" step="0.1" min="0" max="2" /><small class="muted">deepseek-reasoner 不支持温度参数，但填了不会报错。</small></label>
-            <label><span>超时（毫秒）</span><input type="number" name="aiTimeoutMs" value="<%= ai.aiTimeoutMs || '600000' %>" min="5000" max="1800000" /><small class="muted">现为“空闲超时”，收到任何数据即重置。思维链型建议 600000（10分钟）以上。</small></label>
+            <label><span>最大输出 Token</span><input type="number" inputmode="decimal" name="aiMaxTokens" value="<%= ai.aiMaxTokens || '0' %>" min="0" max="32000" /><small class="muted">填 0 表示不限制（交给模型默认上限），适合思维链型模型。</small></label>
+            <label><span>温度 Temperature</span><input type="number" inputmode="decimal" name="aiTemperature" value="<%= ai.aiTemperature || '0.6' %>" step="0.1" min="0" max="2" /><small class="muted">deepseek-reasoner 不支持温度参数，但填了不会报错。</small></label>
+            <label><span>超时（毫秒）</span><input type="number" inputmode="decimal" name="aiTimeoutMs" value="<%= ai.aiTimeoutMs || '600000' %>" min="5000" max="1800000" /><small class="muted">现为“空闲超时”，收到任何数据即重置。思维链型建议 600000（10分钟）以上。</small></label>
             <label><span>系统提示词</span><textarea name="aiSystemPrompt" rows="3"><%= ai.aiSystemPrompt || '' %></textarea><small class="muted">作为 system role 传给模型。</small></label>
             <div class="action-row" style="display:flex;gap:8px;flex-wrap:wrap;">
               <button class="btn primary" type="submit">保存 AI 接入设置</button>
@@ -360,7 +361,7 @@
             </label>
             <label>
               <span>心率报警阈值（次/分）</span>
-              <input type="number" name="bandHrAlert" min="60" max="260" value="<%= Number(settings.bandHrAlert || 180) %>" />
+              <input type="number" inputmode="decimal" name="bandHrAlert" min="60" max="260" value="<%= Number(settings.bandHrAlert || 180) %>" />
               <small class="muted">建议 170~190；越小越敏感。幼儿剧烈运动心率约 170~190。</small>
             </label>
             <h3 style="margin-top:18px">📊 每日健康日报</h3>
@@ -550,7 +551,9 @@
               </div>
             </form>
             <div class="muted" style="margin:10px 0 14px;">当前筛选结果：<strong><%= userPaginationData.total %></strong> 人，当前显示第 <strong><%= userPaginationData.startIndex || 0 %></strong> - <strong><%= userPaginationData.endIndex || 0 %></strong> 条</div>
-            <form method="post" action="/admin/users/batch" class="batch-toolbar" id="users-batch-form">
+            <!-- 20260926：批量操作里含「批量删除」，且没有任何二次确认，误点即不可恢复。
+     加 onsubmit 按当前选中的动作给出对应文案；未勾选任何行时也在这里拦下。 -->
+<form method="post" action="/admin/users/batch" class="batch-toolbar" id="users-batch-form" onsubmit="return confirmBatchAction(this, 'users-batch-form')">
               <input type="hidden" name="userKeyword" value="<%= userKeywordRaw %>" />
               <input type="hidden" name="userClassId" value="<%= userClassFilter %>" />
               <input type="hidden" name="userPage" value="<%= userPaginationData.currentPage %>" />
@@ -872,7 +875,7 @@
               <div class="form-row-2col">
                 <div class="form-field">
                   <label for="modalCapacity">班级容量限制（人）</label>
-                  <input type="number" id="modalCapacity" name="capacity" min="0" value="0" placeholder="0 表示不设上限" class="modern-input" />
+                  <input type="number" inputmode="decimal" id="modalCapacity" name="capacity" min="0" value="0" placeholder="0 表示不设上限" class="modern-input" />
                   <span class="field-hint">填 0 为不限制幼儿容量</span>
                 </div>
                 <div class="form-field">
@@ -997,7 +1000,7 @@
               </div>
             </form>
             <div class="muted" style="margin:10px 0 14px;">当前筛选结果：<strong><%= childPaginationData.total %></strong> 人，当前显示第 <strong><%= childPaginationData.startIndex || 0 %></strong> - <strong><%= childPaginationData.endIndex || 0 %></strong> 条</div>
-            <form method="post" action="/admin/children/batch" class="batch-toolbar" id="children-batch-form">
+            <form method="post" action="/admin/children/batch" class="batch-toolbar" id="children-batch-form" onsubmit="return confirmBatchAction(this, 'children-batch-form')">
               <input type="hidden" name="childKeyword" value="<%= childKeywordRaw %>" />
               <input type="hidden" name="childClassId" value="<%= childClassFilter %>" />
               <input type="hidden" name="childPage" value="<%= childPaginationData.currentPage %>" />
@@ -2004,6 +2007,30 @@
 </div>
 
 <%- include('partials/footer') %>
+
+<script>
+/* 20260926：批量操作二次确认。
+   两个批量表单里的「批量删除」是不可逆的，原先点一下就直接提交。
+   这里按当前选中的动作生成文案；删除类动作把勾选人数也说清楚，避免删错范围。 */
+function confirmBatchAction(form, formId) {
+  var sel = form.querySelector('select[name="batchAction"]');
+  if (!sel) return true;
+  var action = sel.value;
+  var NL = String.fromCharCode(10);
+  /* 勾选框在表格里，用 form 属性关联到本表单，因此取的是全文档范围 */
+  var checked = document.querySelectorAll('input[name="selectedIds"][form="' + formId + '"]:checked');
+  var n = checked.length;
+  if (!n) { alert('请先勾选要操作的行'); return false; }
+  var label = { delete: '删除', disable: '禁用', enable: '启用', setClass: '设置班级', clearClass: '清空班级', moveClass: '调整班级' }[action] || action;
+  var extra = (action === 'setClass' || action === 'clearClass' || action === 'moveClass')
+    ? (form.querySelector('select[name="batchClassId"]') && form.querySelector('select[name="batchClassId"]').value ? '' : NL + '（未选择目标班级，提交后班级会变为空）')
+    : '';
+  var warn = (action === 'delete' || action === 'disable' || action === 'clearClass')
+    ? NL + NL + '此操作不可撤销，请确认范围无误。'
+    : '';
+  return confirm('确认对已勾选的 ' + n + ' 行执行「' + label + '」操作？' + extra + warn);
+}
+</script>
 
 <script>
 function toggleNavGroup(btn) {

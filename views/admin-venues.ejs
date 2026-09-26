@@ -222,13 +222,12 @@
               <td><span class="status-badge <%= round.status === 'open' ? 'ok' : round.status === 'closed' ? 'off' : '' %>"><%= round.status === 'open' ? '开放中' : round.status === 'closed' ? '已关闭' : '待开放' %></span></td>
               <td>
                 <div class="venue-round-summary">
-                  <% if (true) { %>
+                  <!-- 20260926：原先是 <% if (true) %> / else 的死分支，else 里的「查看预约」入口永远不渲染。
+                       三个统计徽标保留，同时把被埋掉的预约明细入口补回来（排在徽标后面，不挤占信息）。 -->
                   <span class="status-badge" style="background:#eef4ff;color:#2156c4;">总预约 <%= round.bookingSummary.totalCount %></span>
                   <span class="status-badge ok">确认 <%= round.bookingSummary.confirmedCount %></span>
                   <span class="status-badge" style="background:#fff1f1;color:#d53c4b;">取消 <%= round.bookingSummary.cancelledCount %></span>
-                <% } else { %>
-                <a class="btn small round-action-btn is-primary readonly-keep" href="/admin/venues/bookings?roundId=<%= round.id %>">查看预约</a>
-                <% } %>
+                  <a class="btn small round-action-btn is-primary readonly-keep" href="/admin/venues/bookings?roundId=<%= round.id %>">查看预约</a>
                 </div>
               </td>
               <td>
@@ -288,8 +287,8 @@
     <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px;"><input type="checkbox" id="layoutSelectAll" /> 全选</label>
     <span style="color:var(--muted);font-size:12px;" id="layoutSelectedCount">已选 0 个</span>
     <span style="color:var(--border);font-size:12px;">|</span>
-    <label style="font-size:12px;">宽 <input type="number" id="batchWidth" value="100" min="40" max="600" style="width:60px;" /></label>
-    <label style="font-size:12px;">高 <input type="number" id="batchHeight" value="65" min="30" max="600" style="width:60px;" /></label>
+    <label style="font-size:12px;">宽 <input type="number" inputmode="decimal" id="batchWidth" value="100" min="40" max="600" style="width:60px;" /></label>
+    <label style="font-size:12px;">高 <input type="number" inputmode="decimal" id="batchHeight" value="65" min="30" max="600" style="width:60px;" /></label>
     <button class="btn small" type="button" id="batchResizeBtn">统一大小</button>
     <button class="btn small" type="button" id="batchAutoArrangeBtn">自动排列</button>
   </div>
@@ -297,11 +296,11 @@
     <summary style="cursor:pointer;font-weight:600;">+ 新增背景层</summary>
     <form method="post" action="/admin/venues/backgrounds/add" enctype="multipart/form-data" class="form-grid compact-venue-form" style="margin-top:12px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));" data-background-form="add">
       <label><span>名称</span><input type="text" name="name" value="背景层" /></label>
-      <label><span>X</span><input type="number" name="mapX" value="0" min="0" /></label>
-      <label><span>Y</span><input type="number" name="mapY" value="0" min="0" /></label>
-      <label><span>宽</span><input type="number" name="mapWidth" value="<%= layoutBoardWidth %>" min="80" /></label>
-      <label><span>高</span><input type="number" name="mapHeight" value="<%= layoutBoardHeight %>" min="80" /></label>
-      <label><span>层级</span><input type="number" name="sortOrder" value="1" min="1" /></label>
+      <label><span>X</span><input type="number" inputmode="decimal" name="mapX" value="0" min="0" /></label>
+      <label><span>Y</span><input type="number" inputmode="decimal" name="mapY" value="0" min="0" /></label>
+      <label><span>宽</span><input type="number" inputmode="decimal" name="mapWidth" value="<%= layoutBoardWidth %>" min="80" /></label>
+      <label><span>高</span><input type="number" inputmode="decimal" name="mapHeight" value="<%= layoutBoardHeight %>" min="80" /></label>
+      <label><span>层级</span><input type="number" inputmode="decimal" name="sortOrder" value="1" min="1" /></label>
       <label><span>固定</span><select name="isFixed"><option value="0">否</option><option value="1">是</option></select></label>
       <label><span>状态</span><select name="enabled"><option value="1">启用</option><option value="0">停用</option></select></label>
       <label style="grid-column:1/-1;"><span>背景图</span><input type="file" name="image" accept="image/*" data-background-image-input /></label>
@@ -377,10 +376,10 @@
     <form method="post" action="/admin/venues/add" enctype="multipart/form-data" class="form-grid compact-venue-form venue-hotspot-form" data-form-label="新增场地">
       <h4 style="grid-column:1/-1;margin:0 0 4px 0;">新增场地</h4>
       <label><span>名称 *</span><input type="text" name="name" required placeholder="如：东门" /></label>
-      <label><span>小班名额</span><input type="number" name="capSmall" value="1" min="0" /></label>
-      <label><span>中班名额</span><input type="number" name="capMiddle" value="2" min="0" /></label>
-      <label><span>大班名额</span><input type="number" name="capLarge" value="2" min="0" /></label>
-      <label><span>排序</span><input type="number" name="sortOrder" value="1" /></label>
+      <label><span>小班名额</span><input type="number" inputmode="decimal" name="capSmall" value="1" min="0" /></label>
+      <label><span>中班名额</span><input type="number" inputmode="decimal" name="capMiddle" value="2" min="0" /></label>
+      <label><span>大班名额</span><input type="number" inputmode="decimal" name="capLarge" value="2" min="0" /></label>
+      <label><span>排序</span><input type="number" inputmode="decimal" name="sortOrder" value="1" /></label>
       <label><span>背景图</span><input type="file" name="image" accept="image/*" /></label>
       <input type="hidden" name="hotspotPoints" value="[]" data-hotspot-points />
       <input type="hidden" name="hotspotHintX" value="" data-hotspot-hint-x />
@@ -392,8 +391,8 @@
       <input type="hidden" name="hotspotHintLength" value="54" data-hotspot-hint-length />
       <input type="hidden" name="hotspotHintBounceMs" value="1500" data-hotspot-hint-bounce />
       <label><span>全屏场景图</span><input type="file" name="detailImage" accept="image/*" /></label>
-      <label><span>场景宽(px)</span><input type="number" name="detailViewWidth" value="960" min="480" max="1600" /></label>
-      <label><span>场景高(px)</span><input type="number" name="detailViewHeight" value="640" min="320" max="1200" /></label>
+      <label><span>场景宽(px)</span><input type="number" inputmode="decimal" name="detailViewWidth" value="960" min="480" max="1600" /></label>
+      <label><span>场景高(px)</span><input type="number" inputmode="decimal" name="detailViewHeight" value="640" min="320" max="1200" /></label>
       <div class="venue-hotspot-field" style="grid-column:1/-1;">
         <div class="venue-hotspot-field-head">
           <strong>背景热区</strong>
@@ -475,11 +474,11 @@
       </div>
       <div class="hotspot-editor-style-grid">
         <label><span>箭头文字</span><input id="hotspotStyleLabel" type="text" value="" placeholder="如：模块4" /></label>
-        <label><span>文字大小</span><input id="hotspotStyleLabelSize" type="number" value="14" min="10" max="36" /></label>
+        <label><span>文字大小</span><input id="hotspotStyleLabelSize" type="number" inputmode="numeric" value="14" min="10" max="36" /></label>
         <label><span>箭头颜色</span><input id="hotspotStyleColor" type="color" value="#2563eb" /></label>
-        <label><span>箭头大小</span><input id="hotspotStyleSize" type="number" value="28" min="12" max="96" /></label>
-        <label><span>箭头长度</span><input id="hotspotStyleLength" type="number" value="54" min="16" max="200" /></label>
-        <label><span>跳动频率</span><input id="hotspotStyleBounce" type="number" value="1500" min="400" max="4000" step="50" /></label>
+        <label><span>箭头大小</span><input id="hotspotStyleSize" type="number" inputmode="numeric" value="28" min="12" max="96" /></label>
+        <label><span>箭头长度</span><input id="hotspotStyleLength" type="number" inputmode="numeric" value="54" min="16" max="200" /></label>
+        <label><span>跳动频率</span><input id="hotspotStyleBounce" type="number" inputmode="numeric" value="1500" min="400" max="4000" step="50" /></label>
       </div>
       <div class="hotspot-zoom-panel">
         <span class="muted">查看比例</span>
@@ -546,13 +545,13 @@
     <% const elementStageImage = venue.detail_image_path || venue.image_path || ''; %>
     <form method="post" action="/admin/venues/<%= venue.id %>/edit" enctype="multipart/form-data" class="form-grid compact-venue-form venue-hotspot-form" data-form-label="<%= venue.name %>" data-venue-id="<%= venue.id %>">
       <label><span>名称</span><input type="text" name="name" value="<%= venue.name %>" required /></label>
-      <label><span>小班名额</span><input type="number" name="capSmall" value="<%= venue.cap_small %>" min="0" /></label>
-      <label><span>中班名额</span><input type="number" name="capMiddle" value="<%= venue.cap_middle %>" min="0" /></label>
-      <label><span>大班名额</span><input type="number" name="capLarge" value="<%= venue.cap_large %>" min="0" /></label>
-      <label><span>排序</span><input type="number" name="sortOrder" value="<%= venue.sort_order %>" /></label>
+      <label><span>小班名额</span><input type="number" inputmode="decimal" name="capSmall" value="<%= venue.cap_small %>" min="0" /></label>
+      <label><span>中班名额</span><input type="number" inputmode="decimal" name="capMiddle" value="<%= venue.cap_middle %>" min="0" /></label>
+      <label><span>大班名额</span><input type="number" inputmode="decimal" name="capLarge" value="<%= venue.cap_large %>" min="0" /></label>
+      <label><span>排序</span><input type="number" inputmode="decimal" name="sortOrder" value="<%= venue.sort_order %>" /></label>
       <label><span>更换背景图</span><input type="file" name="image" accept="image/*" /></label>
-      <label><span>图片宽(px)</span><input type="number" name="imageWidth" value="<%= venue.image_width || 280 %>" /></label>
-      <label><span>图片高(px)</span><input type="number" name="imageHeight" value="<%= venue.image_height || 180 %>" /></label>
+      <label><span>图片宽(px)</span><input type="number" inputmode="decimal" name="imageWidth" value="<%= venue.image_width || 280 %>" /></label>
+      <label><span>图片高(px)</span><input type="number" inputmode="decimal" name="imageHeight" value="<%= venue.image_height || 180 %>" /></label>
       <input type="hidden" name="hotspotPoints" value="<%= toJson(venue.hotspot_points) %>" data-hotspot-points />
       <input type="hidden" name="hotspotHintX" value="<%= venue.hotspot_hint_x == null ? '' : venue.hotspot_hint_x %>" data-hotspot-hint-x />
       <input type="hidden" name="hotspotHintY" value="<%= venue.hotspot_hint_y == null ? '' : venue.hotspot_hint_y %>" data-hotspot-hint-y />
@@ -563,8 +562,8 @@
       <input type="hidden" name="hotspotHintLength" value="<%= venue.hotspot_hint_length || 54 %>" data-hotspot-hint-length />
       <input type="hidden" name="hotspotHintBounceMs" value="<%= venue.hotspot_hint_bounce_ms || 1500 %>" data-hotspot-hint-bounce />
       <label><span>更新场景图</span><input type="file" name="detailImage" accept="image/*" /></label>
-      <label><span>场景宽(px)</span><input type="number" name="detailViewWidth" value="<%= venue.detail_view_width || 960 %>" min="480" max="1600" /></label>
-      <label><span>场景高(px)</span><input type="number" name="detailViewHeight" value="<%= venue.detail_view_height || 640 %>" min="320" max="1200" /></label>
+      <label><span>场景宽(px)</span><input type="number" inputmode="decimal" name="detailViewWidth" value="<%= venue.detail_view_width || 960 %>" min="480" max="1600" /></label>
+      <label><span>场景高(px)</span><input type="number" inputmode="decimal" name="detailViewHeight" value="<%= venue.detail_view_height || 640 %>" min="320" max="1200" /></label>
       <div class="venue-hotspot-field" style="grid-column:1/-1;">
         <div class="venue-hotspot-field-head">
           <strong>背景热区</strong>
@@ -684,7 +683,7 @@
             <summary style="cursor:pointer;font-size:13px;font-weight:600;"><%= guide.title %> <span class="status-badge <%= guide.enabled ? 'ok' : 'off' %>" style="font-size:10px;"><%= guide.enabled ? '启用' : '停用' %></span></summary>
             <form method="post" action="/admin/venues/skill-guides/<%= guide.id %>/edit" enctype="multipart/form-data" class="form-grid compact-venue-form" style="margin-top:10px;">
               <label><span>技能分类名称</span><input type="text" name="title" value="<%= guide.title %>" required /></label>
-              <label><span>排序</span><input type="number" name="sortOrder" value="<%= guide.sort_order || 1 %>" min="1" /></label>
+              <label><span>排序</span><input type="number" inputmode="decimal" name="sortOrder" value="<%= guide.sort_order || 1 %>" min="1" /></label>
               <label><span>状态</span><select name="enabled"><option value="1" <%= guide.enabled ? 'selected' : '' %>>启用</option><option value="0" <%= !guide.enabled ? 'selected' : '' %>>停用</option></select></label>
               <div class="venue-hotspot-field" style="grid-column:1/-1;"><div class="venue-hotspot-field-head"><strong>基础级</strong><span class="muted">小班只显示这一层。</span></div></div>
               <div style="grid-column:1/-1;"><label><span>基础级技能名称</span><textarea name="basicSkillNames" rows="2"><%= guide.basic_skill_names || '' %></textarea></label></div>
@@ -821,7 +820,7 @@
         <summary style="cursor:pointer;font-size:13px;font-weight:600;">+ 新增技能分级指导</summary>
         <form method="post" action="/admin/venues/<%= venue.id %>/skill-guides/add" enctype="multipart/form-data" class="form-grid compact-venue-form" style="margin-top:10px;">
           <label><span>技能分类名称</span><input type="text" name="title" required placeholder="如：投掷类技能" /></label>
-          <label><span>排序</span><input type="number" name="sortOrder" value="1" min="1" /></label>
+          <label><span>排序</span><input type="number" inputmode="decimal" name="sortOrder" value="1" min="1" /></label>
           <label><span>状态</span><select name="enabled"><option value="1">启用</option><option value="0">停用</option></select></label>
           <div class="venue-hotspot-field" style="grid-column:1/-1;"><div class="venue-hotspot-field-head"><strong>基础级</strong><span class="muted">小班前台只显示基础级。</span></div></div>
           <div style="grid-column:1/-1;"><label><span>基础级技能名称</span><textarea name="basicSkillNames" rows="2"></textarea></label></div>
@@ -902,11 +901,11 @@
               </div>
             </div>
             <label><span>名称</span><input type="text" name="elementName" value="<%= element.element_name %>" required data-element-name /></label>
-            <label><span>X</span><input type="number" name="posX" value="<%= element.pos_x %>" min="0" data-element-pos-x /></label>
-            <label><span>Y</span><input type="number" name="posY" value="<%= element.pos_y %>" min="0" data-element-pos-y /></label>
-            <label><span>宽</span><input type="number" name="boxWidth" value="<%= element.box_width %>" min="24" data-element-box-width /></label>
-            <label><span>高</span><input type="number" name="boxHeight" value="<%= element.box_height %>" min="24" data-element-box-height /></label>
-            <label><span>排序</span><input type="number" name="sortOrder" value="<%= element.sort_order || 1 %>" min="1" /></label>
+            <label><span>X</span><input type="number" inputmode="decimal" name="posX" value="<%= element.pos_x %>" min="0" data-element-pos-x /></label>
+            <label><span>Y</span><input type="number" inputmode="decimal" name="posY" value="<%= element.pos_y %>" min="0" data-element-pos-y /></label>
+            <label><span>宽</span><input type="number" inputmode="decimal" name="boxWidth" value="<%= element.box_width %>" min="24" data-element-box-width /></label>
+            <label><span>高</span><input type="number" inputmode="decimal" name="boxHeight" value="<%= element.box_height %>" min="24" data-element-box-height /></label>
+            <label><span>排序</span><input type="number" inputmode="decimal" name="sortOrder" value="<%= element.sort_order || 1 %>" min="1" /></label>
             <label><span>状态</span><select name="enabled"><option value="1" <%= element.enabled ? 'selected' : '' %>>启用</option><option value="0" <%= !element.enabled ? 'selected' : '' %>>停用</option></select></label>
             <label><span>图标</span><input type="file" name="icon" accept="image/*" /></label>
             <label><span>小班详情图</span><input type="file" name="detailImageSmall" accept="image/*" /></label>
@@ -944,11 +943,11 @@
             </div>
           </div>
           <label><span>标记名称</span><input type="text" name="elementName" required placeholder="如：攀爬区" data-element-name /></label>
-          <label><span>X</span><input type="number" name="posX" value="20" min="0" data-element-pos-x /></label>
-          <label><span>Y</span><input type="number" name="posY" value="20" min="0" data-element-pos-y /></label>
-          <label><span>宽</span><input type="number" name="boxWidth" value="44" min="24" data-element-box-width /></label>
-          <label><span>高</span><input type="number" name="boxHeight" value="44" min="24" data-element-box-height /></label>
-          <label><span>排序</span><input type="number" name="sortOrder" value="1" min="1" /></label>
+          <label><span>X</span><input type="number" inputmode="decimal" name="posX" value="20" min="0" data-element-pos-x /></label>
+          <label><span>Y</span><input type="number" inputmode="decimal" name="posY" value="20" min="0" data-element-pos-y /></label>
+          <label><span>宽</span><input type="number" inputmode="decimal" name="boxWidth" value="44" min="24" data-element-box-width /></label>
+          <label><span>高</span><input type="number" inputmode="decimal" name="boxHeight" value="44" min="24" data-element-box-height /></label>
+          <label><span>排序</span><input type="number" inputmode="decimal" name="sortOrder" value="1" min="1" /></label>
           <label><span>状态</span><select name="enabled"><option value="1">启用</option><option value="0">停用</option></select></label>
           <label><span>图标</span><input type="file" name="icon" accept="image/*" /></label>
           <label><span>小班详情图</span><input type="file" name="detailImageSmall" accept="image/*" /></label>
@@ -966,11 +965,11 @@
 <template id="backgroundForm_<%= bg.id %>">
     <form method="post" action="/admin/venues/backgrounds/<%= bg.id %>/edit" enctype="multipart/form-data" class="form-grid compact-venue-form" data-background-form="edit">
       <label><span>名称</span><input type="text" name="name" value="<%= bg.name || '' %>" /></label>
-      <label><span>X</span><input type="number" name="mapX" value="<%= bg.map_x %>" min="0" /></label>
-      <label><span>Y</span><input type="number" name="mapY" value="<%= bg.map_y %>" min="0" /></label>
-      <label><span>宽</span><input type="number" name="mapWidth" value="<%= bg.map_width %>" min="80" /></label>
-      <label><span>高</span><input type="number" name="mapHeight" value="<%= bg.map_height %>" min="80" /></label>
-      <label><span>层级</span><input type="number" name="sortOrder" value="<%= bg.sort_order || 1 %>" min="1" /></label>
+      <label><span>X</span><input type="number" inputmode="decimal" name="mapX" value="<%= bg.map_x %>" min="0" /></label>
+      <label><span>Y</span><input type="number" inputmode="decimal" name="mapY" value="<%= bg.map_y %>" min="0" /></label>
+      <label><span>宽</span><input type="number" inputmode="decimal" name="mapWidth" value="<%= bg.map_width %>" min="80" /></label>
+      <label><span>高</span><input type="number" inputmode="decimal" name="mapHeight" value="<%= bg.map_height %>" min="80" /></label>
+      <label><span>层级</span><input type="number" inputmode="decimal" name="sortOrder" value="<%= bg.sort_order || 1 %>" min="1" /></label>
       <label><span>固定</span><select name="isFixed"><option value="0" <%= !bg.is_fixed ? 'selected' : '' %>>否</option><option value="1" <%= bg.is_fixed ? 'selected' : '' %>>是</option></select></label>
       <label><span>状态</span><select name="enabled"><option value="1" <%= bg.enabled ? 'selected' : '' %>>启用</option><option value="0" <%= !bg.enabled ? 'selected' : '' %>>停用</option></select></label>
       <% if (bg.image_path) { %>

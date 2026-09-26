@@ -40,6 +40,9 @@ module.exports = function mountUserBandRoutes(app, screenHelpers) {
     const scopeInfo = await requireBandTeacher(req, res);
     if (!scopeInfo) return;
     const { classId, myClass } = scopeInfo;
+    /* 20260926 修复：下方 gwNames/res.render 引用了 settings，但此作用域原本没有——
+       教师端 /user/bands 因此 500（settings is not defined）。这里取一次。 */
+    const settings = await getSettings();
 
     const [mappings, bandOverview, latestRecords] = await Promise.all([
       dbQuery(`SELECT m.id, m.band_mac, m.remark, m.child_id, ch.name AS child_name
@@ -55,7 +58,7 @@ module.exports = function mountUserBandRoutes(app, screenHelpers) {
                                     JOIN children ch2 ON ch2.id = m2.child_id
                                     WHERE ch2.class_id = ?)
                ORDER BY g.last_time DESC`, [classId]),
-      dbQuery(`SELECT b.id, b.band_mac, b.bp_time, b.heart_rate, b.body_temp, b.systolic, b.diastolic,
+      dbQuery(`SELECT b.id, b.band_mac, b.gw_addr, b.bp_time, b.heart_rate, b.body_temp, b.systolic, b.diastolic,
                       b.spo2, b.steps, b.battery, b.sos,
                       m.child_id, ch.name AS child_name, c.name AS class_name, c.id AS class_id
                FROM band_records b
@@ -81,8 +84,12 @@ module.exports = function mountUserBandRoutes(app, screenHelpers) {
       };
     });
 
+    let gwNames = {};
+    try { gwNames = JSON.parse(settings.bandGatewayNames || '{}') || {}; } catch (e) { gwNames = {}; }
+    latestRecords.forEach((r) => { r.gw_name = gwNames[r.gw_addr] || ''; });
+
     res.render('admin-bands', {
-      settings: { bandEnabledClasses: JSON.stringify([classId]) },
+      settings: { bandEnabledClasses: JSON.stringify([classId]), bandGatewayNames: settings.bandGatewayNames || '[]' },
       classes: [myClass],
       enabledClassIds: [classId],
       mappings,
@@ -105,7 +112,7 @@ module.exports = function mountUserBandRoutes(app, screenHelpers) {
     const scopeInfo = await requireBandTeacher(req, res);
     if (!scopeInfo) return;
     const rows = await dbQuery(
-      `SELECT b.id, b.band_mac, b.bp_time, b.heart_rate, b.body_temp, b.systolic, b.diastolic,
+      `SELECT b.id, b.band_mac, b.gw_addr, b.bp_time, b.heart_rate, b.body_temp, b.systolic, b.diastolic,
               b.spo2, b.steps, b.battery, b.sos,
               m.child_id, ch.name AS child_name, c.name AS class_name, c.id AS class_id
        FROM band_records b

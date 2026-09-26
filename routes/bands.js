@@ -39,7 +39,7 @@ module.exports = function mountBandRoutes(app, upload) {
               JOIN (SELECT band_mac, MAX(bp_time) AS last_time, COUNT(*) AS total_records
                     FROM band_records GROUP BY band_mac) g ON g.band_mac = r.band_mac
               ORDER BY g.last_time DESC`),
-      dbQuery(`SELECT b.id, b.band_mac, b.bp_time, b.heart_rate, b.body_temp, b.systolic, b.diastolic,
+      dbQuery(`SELECT b.id, b.band_mac, b.gw_addr, b.bp_time, b.heart_rate, b.body_temp, b.systolic, b.diastolic,
                       b.spo2, b.steps, b.battery, b.sos,
                       m.child_id, ch.name AS child_name, c.name AS class_name, c.id AS class_id
                FROM band_records b
@@ -75,6 +75,11 @@ module.exports = function mountBandRoutes(app, upload) {
         minutes_ago: lastTime ? Math.max(0, Math.round((nowTs - lastTime) / 60000)) : null,
       };
     });
+
+    // 网关命名映射（site_settings.bandGatewayNames）
+    let gwNames = {};
+    try { gwNames = JSON.parse(settings.bandGatewayNames || '{}') || {}; } catch (e) { gwNames = {}; }
+    latestRecords.forEach((r) => { r.gw_name = gwNames[r.gw_addr] || ''; });
 
     res.render('admin-bands', {
       settings,

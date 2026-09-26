@@ -44,6 +44,7 @@ const mountUserRoutes = require('./routes/user');
 const mountBandRoutes = require('./routes/bands');
 const mountScreenRoutes = require('./routes/screen');
 const mountUserBandRoutes = require('./routes/user-bands');
+const mountBandTraceRoutes = require('./routes/band-trace');
 const mountWxRoutes = require('./routes/wx');
 const { initBandJobs } = require('./lib/band-jobs');
 
@@ -589,6 +590,7 @@ async function bootstrap() {
   };
   mountUserRoutes(app, upload, userRouteCtx);
   mountUserBandRoutes(app, screenHelpers);
+  mountBandTraceRoutes(app);
 
   // ========== 健康检查 ==========
   app.get('/health', asyncHandler(async (req, res) => {

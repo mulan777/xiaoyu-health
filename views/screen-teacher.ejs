@@ -1016,6 +1016,12 @@
       </div>
 
       <div class="header-right">
+        <!-- 20260926：大屏通常投在教室电视上，原先要按 F11 手动全屏（浏览器地址栏还在）。
+             这里给一个按钮，配合 F 键，进页面即可一键铺满。 -->
+        <button class="theme-toggle-btn" id="fullscreenBtn" type="button" onclick="toggleFullscreen()" title="全屏显示（快捷键 F）">
+          <span id="fsIcon">⛶</span>
+          <span id="fsLabel">全屏</span>
+        </button>
         <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" title="切换亮白/科技深色主题">
           <span id="themeIcon">🌓</span>
           <span id="themeLabel">科技暗黑</span>
@@ -1899,7 +1905,46 @@
     });
 
     load();
-    setInterval(load, 5000);   // 实时刷新: 5s 轮询 overview (接口 ~6ms, 无压力)
+    /* 20260926：原先无条件 5s 轮询，页面被切到后台（或投屏机器锁屏）时仍在打接口。
+       现在只在页面可见时轮询；重新可见时立刻补一次，避免看到过期数据。 */
+    var pollTimer = setInterval(function () {
+      if (document.hidden) return;
+      load();
+    }, 5000);
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden) load();
+    });
+
+    /* 20260926：全屏切换 + F 键快捷键。教室电视上打开即铺满，退出用 Esc 或再点一次。
+       注意：本段代码在下面的 IIFE 内部，而按钮用的是内联 onclick（在全局作用域求值），
+       因此必须显式挂到 window 上，否则点击会报 toggleFullscreen is not defined。
+       （页面顶部的 toggleTheme 之所以能直接调，是因为它在另一个顶层 <script> 里。） */
+    window.toggleFullscreen = function () {
+      var d = document;
+      var el = d.documentElement;
+      var isFs = d.fullscreenElement || d.webkitFullscreenElement;
+      if (!isFs) {
+        (el.requestFullscreen || el.webkitRequestFullscreen || function () {}).call(el);
+      } else {
+        (d.exitFullscreen || d.webkitExitFullscreen || function () {}).call(d);
+      }
+    };
+    function syncFullscreenBtn() {
+      var on = !!(document.fullscreenElement || document.webkitFullscreenElement);
+      var ic = document.getElementById('fsIcon');
+      var lb = document.getElementById('fsLabel');
+      if (ic) ic.textContent = on ? '⛗' : '⛶';
+      if (lb) lb.textContent = on ? '退出全屏' : '全屏';
+    }
+    document.addEventListener('fullscreenchange', syncFullscreenBtn);
+    document.addEventListener('webkitfullscreenchange', syncFullscreenBtn);
+    document.addEventListener('keydown', function (e) {
+      /* 只在没有输入焦点时响应，避免干扰大屏上的检索框 */
+      var t = e.target || {};
+      var tag = String(t.tagName || '').toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || tag === 'select' || t.isContentEditable) return;
+      if (e.key === 'f' || e.key === 'F') { toggleFullscreen(); }
+    });
 
     // 动态走势区间切换
     document.querySelectorAll('.trend-tab').forEach(function (btn) {

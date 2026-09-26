@@ -14,6 +14,8 @@
 <div class="focus-exit"><a href="/logout">退出</a></div>
 <% } %>
 <script>window.teacherView = <%= (typeof teacherView !== 'undefined' && teacherView) ? 'true' : 'false' %>;</script>
+<% var _gwNames = (function(){ try { return JSON.parse((settings && settings.bandGatewayNames) || '{}'); } catch(e) { return {}; } })(); %>
+<script>window.gwNames = <%- JSON.stringify(_gwNames).replace(/</g, '\\u003c') %>;</script>
 <script src="/static/echarts.min.js"></script>
 
 <%
@@ -472,7 +474,7 @@
   <table class="band-table">
     <thead>
       <tr>
-        <th>时间</th><th>手环 MAC</th><th>孩子</th><th>班级</th><th>心率</th><th>体温</th><th>血压</th><th>血氧</th><th>步数</th><th>电量</th><th>SOS</th>
+        <th>时间</th><th>手环 MAC</th><th>网关</th><th>孩子</th><th>班级</th><th>心率</th><th>体温</th><th>血压</th><th>血氧</th><th>步数</th><th>电量</th><th>SOS</th>
       </tr>
     </thead>
     <tbody id="recBody">
@@ -480,6 +482,7 @@
         <tr data-class="<%= r.class_name || '' %>">
           <td class="t-time"><%= _fmtT(r.bp_time) %></td>
           <td class="t-mac"><%= r.band_mac %></td>
+          <td class="t-gw"><%= (r.gw_name || r.gw_addr || "—") %></td>
           <td class="t-child"><% if (r.child_name) { %><%= r.child_display || (String(r.child_name||"").length>1 ? String(r.child_name).slice(0,-1)+"*" : r.child_name) %><% } else { %><span class="t-na">未绑定</span><% } %></td>
           <td><% if (r.class_name) { %><%= r.class_name %><% } else { %><span class="t-na">—</span><% } %></td>
           <td class="v-hr"><% if (r.heart_rate != null) { %><%= r.heart_rate %><% } else { %><span class="t-na">—</span><% } %></td>

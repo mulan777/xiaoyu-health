@@ -685,14 +685,14 @@
           </select>
         </label>
         <label><span>测试日期</span><input type="date" name="testDate" value="<%= formatDateOnly(new Date()) %>" required /></label>
-        <label><span>身高(CM)</span><input type="number" name="heightCm" step="0.1" placeholder="如 110.5" /></label>
-        <label><span>体重(KG)</span><input type="number" name="weightKg" step="0.01" placeholder="如 18.50" /></label>
-        <label><span>握力(KG)</span><input type="number" name="gripKg" step="0.01" placeholder="如 7.0" /></label>
-        <label><span>立定跳远(CM)</span><input type="number" name="longJumpCm" step="0.1" placeholder="如 85" /></label>
-        <label><span>坐位体前屈(CM)</span><input type="number" name="sitReachCm" step="0.1" placeholder="如 9" /></label>
-        <label><span>双脚连续跳(秒)</span><input type="number" name="doubleJumpSec" step="0.01" placeholder="如 7.5" /></label>
-        <label><span>15米绕障碍跑(秒)</span><input type="number" name="obstacleRunSec" step="0.01" placeholder="如 8.0" /></label>
-        <label><span>走平衡木(秒)</span><input type="number" name="balanceBeamSec" step="0.01" placeholder="如 15" /></label>
+        <label><span>身高(CM)</span><input type="number" inputmode="decimal" name="heightCm" step="0.1" placeholder="如 110.5" /></label>
+        <label><span>体重(KG)</span><input type="number" inputmode="decimal" name="weightKg" step="0.01" placeholder="如 18.50" /></label>
+        <label><span>握力(KG)</span><input type="number" inputmode="decimal" name="gripKg" step="0.01" placeholder="如 7.0" /></label>
+        <label><span>立定跳远(CM)</span><input type="number" inputmode="decimal" name="longJumpCm" step="0.1" placeholder="如 85" /></label>
+        <label><span>坐位体前屈(CM)</span><input type="number" inputmode="decimal" name="sitReachCm" step="0.1" placeholder="如 9" /></label>
+        <label><span>双脚连续跳(秒)</span><input type="number" inputmode="decimal" name="doubleJumpSec" step="0.01" placeholder="如 7.5" /></label>
+        <label><span>15米绕障碍跑(秒)</span><input type="number" inputmode="decimal" name="obstacleRunSec" step="0.01" placeholder="如 8.0" /></label>
+        <label><span>走平衡木(秒)</span><input type="number" inputmode="decimal" name="balanceBeamSec" step="0.01" placeholder="如 15" /></label>
         <div style="grid-column: 1 / -1;">
           <button class="btn primary" type="submit">提交并自动计算得分</button>
         </div>
@@ -733,7 +733,7 @@
             <a class="btn small" href="<%= currentFullHref %>">取消修正</a>
           </div>
         </div>
-        <form method="post" action="/admin/fitness/<%= editRecord.id %>/update" class="form-grid" style="grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));">
+        <form method="post" action="/admin/fitness/<%= editRecord.id %>/update" class="form-grid" style="grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));" onsubmit="return confirm('保存后会按新数值重新计算得分并覆盖原记录，确认提交？');">
           <input type="hidden" name="currentView" value="<%= viewMode %>" />
           <input type="hidden" name="currentChildId" value="<%= childId || '' %>" />
           <input type="hidden" name="currentClassId" value="<%= classId || '' %>" />
@@ -743,14 +743,14 @@
           <input type="hidden" name="currentDateFrom" value="<%= activeFilters.dateFrom || '' %>" />
           <input type="hidden" name="currentDateTo" value="<%= activeFilters.dateTo || '' %>" />
           <label><span>测试日期</span><input type="date" name="testDate" value="<%= editRecord.test_date ? formatDateOnly(editRecord.test_date) : '' %>" required /></label>
-          <label><span>身高(CM)</span><input type="number" name="heightCm" step="0.1" value="<%= editRecord.height_cm ?? '' %>" required /></label>
-          <label><span>体重(KG)</span><input type="number" name="weightKg" step="0.01" value="<%= editRecord.weight_kg ?? '' %>" required /></label>
-          <label><span>握力(KG)</span><input type="number" name="gripKg" step="0.01" value="<%= editRecord.grip_kg ?? '' %>" required /></label>
-          <label><span>立定跳远(CM)</span><input type="number" name="longJumpCm" step="0.1" value="<%= editRecord.long_jump_cm ?? '' %>" required /></label>
-          <label><span>坐位体前屈(CM)</span><input type="number" name="sitReachCm" step="0.1" value="<%= editRecord.sit_reach_cm ?? '' %>" required /></label>
-          <label><span>双脚连续跳(秒)</span><input type="number" name="doubleJumpSec" step="0.01" value="<%= editRecord.double_jump_sec ?? '' %>" required /></label>
-          <label><span>15米绕障碍跑(秒)</span><input type="number" name="obstacleRunSec" step="0.01" value="<%= editRecord.obstacle_run_sec ?? '' %>" required /></label>
-          <label><span>走平衡木(秒)</span><input type="number" name="balanceBeamSec" step="0.01" value="<%= editRecord.balance_beam_sec ?? '' %>" required /></label>
+          <label><span>身高(CM)</span><input type="number" inputmode="decimal" name="heightCm" step="0.1" value="<%= editRecord.height_cm ?? '' %>" required /></label>
+          <label><span>体重(KG)</span><input type="number" inputmode="decimal" name="weightKg" step="0.01" value="<%= editRecord.weight_kg ?? '' %>" required /></label>
+          <label><span>握力(KG)</span><input type="number" inputmode="decimal" name="gripKg" step="0.01" value="<%= editRecord.grip_kg ?? '' %>" required /></label>
+          <label><span>立定跳远(CM)</span><input type="number" inputmode="decimal" name="longJumpCm" step="0.1" value="<%= editRecord.long_jump_cm ?? '' %>" required /></label>
+          <label><span>坐位体前屈(CM)</span><input type="number" inputmode="decimal" name="sitReachCm" step="0.1" value="<%= editRecord.sit_reach_cm ?? '' %>" required /></label>
+          <label><span>双脚连续跳(秒)</span><input type="number" inputmode="decimal" name="doubleJumpSec" step="0.01" value="<%= editRecord.double_jump_sec ?? '' %>" required /></label>
+          <label><span>15米绕障碍跑(秒)</span><input type="number" inputmode="decimal" name="obstacleRunSec" step="0.01" value="<%= editRecord.obstacle_run_sec ?? '' %>" required /></label>
+          <label><span>走平衡木(秒)</span><input type="number" inputmode="decimal" name="balanceBeamSec" step="0.01" value="<%= editRecord.balance_beam_sec ?? '' %>" required /></label>
           <div style="grid-column: 1 / -1;">
             <button class="btn primary" type="submit">保存修正并重新计算</button>
           </div>
@@ -839,7 +839,10 @@
         <div class="empty-state">暂无体测记录。请通过上方表单录入，或下载模板后批量导入。</div>
       <% } else { %>
         <div class="table-wrap">
-          <table class="data-table admin-table" style="min-width:1200px;">
+          <!-- 20260926：原先这里内联 min-width:1200px，内联样式优先级高于任何选择器，
+           导致 style.css 里手机端的 .data-table{min-width:900px!important} 永远被压住，
+           手机上表格恒定 1200px 宽、横向滚动很长。改为走 CSS 变量，媒体查询可覆盖。 -->
+          <table class="data-table admin-table fitness-wide-table">
             <thead>
               <tr>
                 <th>班级</th>
@@ -1181,7 +1184,7 @@ function closeChildFitnessModal() {
   </div>
   <div class="venue-editor-body">
     <div id="fitnessEditMeta" class="muted" style="margin-bottom:12px;"></div>
-    <form id="fitnessEditForm" method="post" action="" class="form-grid" style="grid-template-columns:1fr 1fr;gap:10px;">
+    <form id="fitnessEditForm" method="post" action="" class="form-grid" style="grid-template-columns:1fr 1fr;gap:10px;" onsubmit="return confirm('保存后会按新数值重新计算得分并覆盖原记录，确认提交？');">
       <input type="hidden" name="currentView" value="<%= viewMode %>" />
       <input type="hidden" name="currentChildId" value="<%= childId || '' %>" />
       <input type="hidden" name="currentClassId" value="<%= classId || '' %>" />
@@ -1191,14 +1194,14 @@ function closeChildFitnessModal() {
       <input type="hidden" name="currentDateFrom" value="<%= activeFilters.dateFrom || '' %>" />
       <input type="hidden" name="currentDateTo" value="<%= activeFilters.dateTo || '' %>" />
       <label><span>测试日期</span><input type="date" name="testDate" id="fEditTestDate" required /></label>
-      <label><span>身高(CM)</span><input type="number" name="heightCm" id="fEditHeight" step="0.1" required /></label>
-      <label><span>体重(KG)</span><input type="number" name="weightKg" id="fEditWeight" step="0.01" required /></label>
-      <label><span>握力(KG)</span><input type="number" name="gripKg" id="fEditGrip" step="0.01" required /></label>
-      <label><span>立定跳远(CM)</span><input type="number" name="longJumpCm" id="fEditJump" step="0.1" required /></label>
-      <label><span>坐位体前屈(CM)</span><input type="number" name="sitReachCm" id="fEditSit" step="0.1" required /></label>
-      <label><span>双脚连续跳(秒)</span><input type="number" name="doubleJumpSec" id="fEditDJump" step="0.01" required /></label>
-      <label><span>15米绕障碍跑(秒)</span><input type="number" name="obstacleRunSec" id="fEditObstacle" step="0.01" required /></label>
-      <label><span>走平衡木(秒)</span><input type="number" name="balanceBeamSec" id="fEditBalance" step="0.01" required /></label>
+      <label><span>身高(CM)</span><input type="number" inputmode="decimal" name="heightCm" id="fEditHeight" step="0.1" required /></label>
+      <label><span>体重(KG)</span><input type="number" inputmode="decimal" name="weightKg" id="fEditWeight" step="0.01" required /></label>
+      <label><span>握力(KG)</span><input type="number" inputmode="decimal" name="gripKg" id="fEditGrip" step="0.01" required /></label>
+      <label><span>立定跳远(CM)</span><input type="number" inputmode="decimal" name="longJumpCm" id="fEditJump" step="0.1" required /></label>
+      <label><span>坐位体前屈(CM)</span><input type="number" inputmode="decimal" name="sitReachCm" id="fEditSit" step="0.1" required /></label>
+      <label><span>双脚连续跳(秒)</span><input type="number" inputmode="decimal" name="doubleJumpSec" id="fEditDJump" step="0.01" required /></label>
+      <label><span>15米绕障碍跑(秒)</span><input type="number" inputmode="decimal" name="obstacleRunSec" id="fEditObstacle" step="0.01" required /></label>
+      <label><span>走平衡木(秒)</span><input type="number" inputmode="decimal" name="balanceBeamSec" id="fEditBalance" step="0.01" required /></label>
       <div style="grid-column:1/-1;margin-top:8px;"><button class="btn primary full" type="submit">保存修正并重新计算</button></div>
     </form>
   </div>

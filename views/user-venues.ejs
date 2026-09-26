@@ -314,7 +314,8 @@
                       <strong><%= child.display_name || (String(child.name||"").length>1 ? String(child.name).slice(0,-1)+"*" : child.name) %></strong>
                       <div class="muted"><%= formatAttentionPeriod(child.attention_start_date, child.attention_end_date) %></div>
                     </div>
-                    <form method="post" action="/user/venues/attention/clear" class="inline-form">
+                    <!-- 20260926：取消关注会直接删掉关注记录和备注/标签，原先无确认 -->
+                    <form method="post" action="/user/venues/attention/clear" class="inline-form" onsubmit="return confirm('确定取消对 <%= dn(child) %> 的重点关注吗？已填写的关注原因和标签会一并删除。');">
                       <input type="hidden" name="childId" value="<%= child.id %>" />
                       <button class="btn small" type="submit">取消关注</button>
                     </form>
@@ -502,7 +503,9 @@
                     </div>
 
                     <% if (bookingMap[v.id]) { %>
-                      <form method="post" action="/user/venues/cancel" class="inline-form">
+                      <!-- 20260926：取消预约原先点一下立即生效，没有任何确认，误触即丢名额。
+                       这里加确认；取消后名额会释放给其他班级。 -->
+                      <form method="post" action="/user/venues/cancel" class="inline-form" onsubmit="return confirm('确定取消这次预约吗？取消后名额会立即释放给其他班级。');">
                         <input type="hidden" name="bookingId" value="<%= bookingMap[v.id].id %>" />
                         <button class="btn small" type="submit">取消预约</button>
                       </form>
@@ -575,7 +578,9 @@
                 >查看场地</button>
 
                 <% if (bookingMap[v.id]) { %>
-                  <form method="post" action="/user/venues/cancel" class="inline-form">
+                  <!-- 20260926：取消预约原先点一下立即生效，没有任何确认，误触即丢名额。
+                       这里加确认；取消后名额会释放给其他班级。 -->
+                      <form method="post" action="/user/venues/cancel" class="inline-form" onsubmit="return confirm('确定取消这次预约吗？取消后名额会立即释放给其他班级。');">
                     <input type="hidden" name="bookingId" value="<%= bookingMap[v.id].id %>" />
                     <button class="btn small" type="submit">取消预约</button>
                   </form>
@@ -1095,7 +1100,9 @@
               您所在 <strong><%= myGradeLabel %></strong> 可约：<strong><%= v._myPoolBooked %>/<%= v._myPoolCapacity %></strong>
             </div>
             <% if (bookingMap[v.id]) { %>
-              <form method="post" action="/user/venues/cancel" class="inline-form">
+              <!-- 20260926：取消预约原先点一下立即生效，没有任何确认，误触即丢名额。
+                       这里加确认；取消后名额会释放给其他班级。 -->
+                      <form method="post" action="/user/venues/cancel" class="inline-form" onsubmit="return confirm('确定取消这次预约吗？取消后名额会立即释放给其他班级。');">
                 <input type="hidden" name="bookingId" value="<%= bookingMap[v.id].id %>" />
                 <button class="btn" type="submit">取消预约</button>
               </form>
