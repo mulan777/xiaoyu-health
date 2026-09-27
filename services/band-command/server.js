@@ -7,6 +7,14 @@
  *  1. conn_addr_request（不带 send_infos）→ 等 sta_device_state=ready
  *  2. conn_send_data 发帧（devices+devices_num 键），type=request
  *  3. 回执走 GwData 的 sta_device_data（raw），帧回执 = a0+Command+Key(+状态)
+ *
+ * 【鉴权 · 部署必读，2026-09-27】
+ * 所有 /api/* 路由都要求请求头 X-Auth-Token == 环境变量 BAND_COMMAND_TOKEN（未配置时缺省 '521ZiJi.'），
+ * 校验失败返回 401 {error:'unauthorized'}。本服务直连 0.0.0.0 暴露，务必在进程环境里配置该 Token：
+ *  - pm2 / ecosystem.config.js：在 env 中加 BAND_COMMAND_TOKEN: '你的强口令'
+ *    （services/band-command/ecosystem.config.js 的 apps[0].env，或 `pm2 set` 后用 pm2 restart --update-env）
+ *  - 平台侧代理（routes/bands.js proxyBandCommand）必须带同样的头把 Token 转发进来，否则平台页面会 401。
+ *  - /api/health 为健康检查，免鉴权。
  */
 const mqtt = require('mqtt');
 const mysql = require('mysql2/promise');
@@ -18,6 +26,7 @@ const MQTT_URL = process.env.MQTT_URL || 'mqtt://127.0.0.1:7628';
 const MQTT_USER = process.env.MQTT_USER || 'user';
 const MQTT_PASS = process.env.MQTT_PASS || '521ZiJi123';
 const PORT = Number(process.env.BAND_COMMAND_PORT || 3079);
+const AUTH_TOKEN = String(process.env.BAND_COMMAND_TOKEN || '521ZiJi.'); // /api/* 鉴权口令（见文件头「鉴权」说明）
 const MYSQL = {
   host: process.env.MYSQL_HOST || '127.0.0.1',
   port: Number(process.env.MYSQL_PORT || 3306),
@@ -83,6 +92,9 @@ function publish(obj) {
   client.publish('SrvData', JSON.stringify(obj));
 }
 
+// 同一 mac 是否已有进行中的连接/写入命令（防单槽 pendingConn/pendingSend 被覆盖，2026-09-27）
+function isMacBusy(mac) { return pendingConn.has(mac) || pendingSend.has(mac); }
+
 // 连接手环（两步走第一步）：等 ready
 function connBand(mac, gwAddr, keepTime, timeoutMs) {
   return new Promise((resolve) => {
@@ -107,7 +119,7 @@ function connBand(mac, gwAddr, keepTime, timeoutMs) {
 function sendFrames(mac, gwAddr, buffers, keepTime) {
   return new Promise((resolve) => {
     const msgId = ++msgIdSeq;
-    const entry = { msgId, timer: null, resolve: null };
+    const entry = { msgId, gw_addr: gwAddr, timer: null, resolve: null };
     pendingSend.set(mac, entry);
     publish({
       pkt_type: 'command', gw_addr: gwAddr, data: {
@@ -129,6 +141,8 @@ function sendFrames(mac, gwAddr, buffers, keepTime) {
 /* ---------- 高层命令 ---------- */
 async function cmdVibrate(mac, seconds, triggerSource, cmdDesc) {
   seconds = Math.max(1, Math.min(60, seconds | 0));
+  // 同 mac 已有进行中命令 → 不覆盖槽位（覆盖会让前一个 Promise 永久挂起），2026-09-27
+  if (isMacBusy(mac)) return { ok: false, busy: true, error: '该手环已有进行中的命令，请稍后再试' };
   const gw = pickGw(mac);
   if (!gw) { const id = await insertCommand({ band_mac: mac, cmd_type: 'vibrate', cmd_desc: cmdDesc, trigger_source: triggerSource, payload: `${seconds}s` }); await updateCommand(id, { status: 'failed', error_msg: '手环不在任何网关覆盖内(120秒无广播)' }); return { ok: false, error: '手环不在网关覆盖范围', cmdId: id }; }
   const child = await loadChildByMac(mac);
@@ -157,6 +171,7 @@ async function cmdVibrate(mac, seconds, triggerSource, cmdDesc) {
 
 async function cmdHrInterval(mac, intervalCode) {
   const labels = { 1: '15分钟', 2: '30分钟', 3: '60分钟' };
+  if (isMacBusy(mac)) return { ok: false, busy: true, error: '该手环已有进行中的命令，请稍后再试' };
   const gw = pickGw(mac);
   const id = await insertCommand({ band_mac: mac, cmd_type: 'heart_rate_interval', cmd_desc: `心率自动检测间隔=${labels[intervalCode] || intervalCode}`, trigger_source: 'manual', payload: `code=${intervalCode}`, gw_addr: gw?.gw_addr });
   if (!gw) { await updateCommand(id, { status: 'failed', error_msg: '手环不在网关覆盖范围' }); return { ok: false, error: '手环不在线', cmdId: id }; }
@@ -172,6 +187,7 @@ async function cmdHrInterval(mac, intervalCode) {
 }
 
 async function cmdHrSwitch(mac, on) {
+  if (isMacBusy(mac)) return { ok: false, busy: true, error: '该手环已有进行中的命令，请稍后再试' };
   const gw = pickGw(mac);
   const id = await insertCommand({ band_mac: mac, cmd_type: 'heart_rate_switch', cmd_desc: on ? '打开心率自动检测' : '关闭心率自动检测', trigger_source: 'manual', payload: on ? 'on' : 'off', gw_addr: gw?.gw_addr });
   if (!gw) { await updateCommand(id, { status: 'failed', error_msg: '手环不在网关覆盖范围' }); return { ok: false, error: '手环不在线', cmdId: id }; }
@@ -223,15 +239,21 @@ function handleGwData(msg) {
   checkThreshold(infos);
 
   // response 包（GwData 上的 pkt_type=response）：conn_addr_request / conn_send_data 的 result
-  // 注意：网关不回显请求 msgId（自维护递增），只能按 resp 类型+当前 pending 匹配
+  // 网关回执带 gw_addr（和 msgId，若有）；必须按 gw_addr(+msgId) 匹配对应 pending，不匹配的跳过，
+  // 否则 A 网关的回执会 resolve 掉 B 网关的 pending（2026-09-27）
   if (pkt === 'response' && d.resp) {
+    const respMsgId = d.msgId != null ? d.msgId : (d.msg_id != null ? d.msg_id : (d.data && d.data.msgId));
     if (d.resp === 'conn_addr_request') {
       for (const [mac, p] of pendingConn.entries()) {
+        if (p.gw_addr && gw && p.gw_addr !== gw) continue;            // 来源网关不匹配 → 跳过
+        if (respMsgId != null && p.msgId != null && String(p.msgId) !== String(respMsgId)) continue; // msgId 不匹配 → 跳过
         if (d.result !== true) { clearTimeout(p.timer); pendingConn.delete(mac); p.resolve({ ok: false, error: `网关拒绝连接(reason=${d.reason})` }); }
         break; // result:true 时继续等 ready
       }
     } else if (d.resp === 'conn_send_data') {
       for (const [mac, entry] of pendingSend.entries()) {
+        if (entry.gw_addr && gw && entry.gw_addr !== gw) continue;    // 来源网关不匹配 → 跳过
+        if (respMsgId != null && entry.msgId != null && String(entry.msgId) !== String(respMsgId)) continue; // msgId 不匹配 → 跳过
         clearTimeout(entry.timer);
         pendingSend.delete(mac);
         entry.resolve && entry.resolve(d.result === true ? { ok: true } : { ok: false, error: `网关写入失败(reason=${d.reason})` });
@@ -306,22 +328,48 @@ client.on('error', (e) => console.error('[mqtt]', e.message));
 function json(res, code, obj) { res.writeHead(code, { 'content-type': 'application/json; charset=utf-8' }); res.end(JSON.stringify(obj)); }
 function body(req) { return new Promise((resolve, reject) => { let d = ''; req.on('data', c => d += c); req.on('end', () => { try { resolve(d ? JSON.parse(d) : {}); } catch (e) { reject(e); } }); }); }
 
+// 统一鉴权中间件：/api/* 一律要求 X-Auth-Token == BAND_COMMAND_TOKEN（/api/health 健康检查豁免）
+const AUTH_EXEMPT = new Set(['/api/health']);
+function requireAuth(req, res, url) {
+  const p = url.pathname;
+  if (!p.startsWith('/api/')) return true;      // 管理页静态资源不鉴权
+  if (AUTH_EXEMPT.has(p)) return true;          // 健康检查
+  const tok = req.headers['x-auth-token'];
+  if (String(tok || '') !== AUTH_TOKEN) { json(res, 401, { error: 'unauthorized' }); return false; }
+  return true;
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
   const p = url.pathname;
   try {
+    if (!requireAuth(req, res, url)) return;
     if (p === '/api/health') return json(res, 200, { ok: true, service: 'band-command', uptime_s: Math.round(process.uptime()), ...stats, gwKnown: gwByMac.size });
     if (p === '/api/settings') {
       if (req.method === 'GET') return json(res, 200, await getSettings());
       if (req.method === 'POST') {
         const b = await body(req);
         const s = await getSettings();
+        // 心率阈值显式校验：非数字 / <80 / >250 直接 400（原 Number(x)|0 会把非数字静默压成 80，2026-09-27）
+        let hrThreshold = Number(b.hr_threshold ?? s.hr_threshold);
+        if (b.hr_threshold !== undefined) {
+          if (!Number.isFinite(hrThreshold) || hrThreshold < 80 || hrThreshold > 250) {
+            return json(res, 400, { ok: false, error: 'hr_threshold 必须是 80-250 之间的数字' });
+          }
+        }
+        hrThreshold = Math.round(hrThreshold);
+        // hr_watch_enabled 显式判断：只有明确传 0/false/'0'/'false' 才关闭（原 truthy 判断下 '0' 关不掉，2026-09-27）
+        let watch = s.hr_watch_enabled;
+        if (b.hr_watch_enabled !== undefined) {
+          const v = b.hr_watch_enabled;
+          watch = (v === false || v === 0 || v === '0' || v === 'false' || v === null) ? 0 : 1;
+        }
         const next = {
           vibrate_seconds: Math.max(1, Math.min(60, Number(b.vibrate_seconds ?? s.vibrate_seconds) | 0)),
           hr_interval: [1, 2, 3].includes(Number(b.hr_interval)) ? Number(b.hr_interval) : s.hr_interval,
-          hr_threshold: Math.max(80, Math.min(220, Number(b.hr_threshold ?? s.hr_threshold) | 0)),
+          hr_threshold: hrThreshold,
           hr_cooldown_seconds: Math.max(30, Math.min(3600, Number(b.hr_cooldown_seconds ?? s.hr_cooldown_seconds) | 0)),
-          hr_watch_enabled: b.hr_watch_enabled === undefined ? s.hr_watch_enabled : (b.hr_watch_enabled ? 1 : 0),
+          hr_watch_enabled: watch,
         };
         await pool.query(`UPDATE band_command_settings SET vibrate_seconds=?, hr_interval=?, hr_threshold=?, hr_cooldown_seconds=?, hr_watch_enabled=? WHERE id=1`,
           [next.vibrate_seconds, next.hr_interval, next.hr_threshold, next.hr_cooldown_seconds, next.hr_watch_enabled]);
@@ -334,7 +382,7 @@ const server = http.createServer(async (req, res) => {
       if (!mac) return json(res, 400, { ok: false, error: 'band_mac 必填' });
       const s = await getSettings();
       const r = await cmdVibrate(mac, Number(b.seconds || s.vibrate_seconds), 'manual', b.desc || null);
-      return json(res, r.ok ? 200 : 500, r);
+      return json(res, r.ok ? 200 : (r.busy ? 409 : 500), r);
     }
     if (p === '/api/heart-rate/interval' && req.method === 'POST') {
       const b = await body(req);
@@ -342,14 +390,16 @@ const server = http.createServer(async (req, res) => {
       const code = Number(b.code || 1);
       if (!mac || ![1, 2, 3].includes(code)) return json(res, 400, { ok: false, error: 'band_mac 与 code(1/2/3) 必填' });
       const r = await cmdHrInterval(mac, code);
-      return json(res, r.ok ? 200 : 500, r);
+      return json(res, r.ok ? 200 : (r.busy ? 409 : 500), r);
     }
     if (p === '/api/heart-rate/switch' && req.method === 'POST') {
       const b = await body(req);
       const mac = String(b.band_mac || '').toLowerCase().replace(/[^a-f0-9]/g, '');
       if (!mac) return json(res, 400, { ok: false, error: 'band_mac 必填' });
-      const r = await cmdHrSwitch(mac, !!b.on);
-      return json(res, r.ok ? 200 : 500, r);
+      // on 必填布尔：缺省静默关心率 = 静默改配置，直接 400（2026-09-27）
+      if (typeof b.on !== 'boolean') return json(res, 400, { ok: false, error: 'on 必填（true/false）' });
+      const r = await cmdHrSwitch(mac, b.on);
+      return json(res, r.ok ? 200 : (r.busy ? 409 : 500), r);
     }
     if (p === '/api/bands' && req.method === 'GET') {
       // 在线手环列表（120 秒内见过广播的）+ 绑定孩子 + 最新心率

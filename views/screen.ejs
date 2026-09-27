@@ -282,6 +282,135 @@
       min-height: 0;
     }
 
+    /* ============ 生长趋势：顶部紧凑三指标摘要条 + 下方双轴柱状图 ============
+       2026-09-27 v7：三张竖向大卡（每行 标签+徽章|大数字|进度条）改为
+       顶部 ~56px 单行摘要条（#growthSummary），下方恢复 ECharts 双轴柱状图
+       （身高柱 + 体重柱，两批体测对比）。 */
+    .growth-summary {
+      flex: 0 0 auto;
+      height: 76px;
+      min-height: 76px;
+      display: flex;
+      align-items: stretch;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+    .gs-card {
+      flex: 1 1 0;
+      min-width: 0;
+      /* v8b：竖排两行——上行"标签胶囊+徽章"同排，下行"大数字(+注释)"，高度64px内分层清晰不交叠 */
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: center;
+      gap: 2px;
+      padding: 4px 10px;
+      border-radius: 8px;
+      background: var(--gc-soft, rgba(148, 163, 184, 0.08));
+      border: none;
+      box-shadow: none;
+      overflow: hidden;
+    }
+    /* 每卡主题色：--gc 主色 / --gc-soft 标签底色 */
+    .gs-card.gc-height { --gc: #0284c7; --gc-soft: rgba(2, 132, 199, 0.10); }
+    .gs-card.gc-weight { --gc: #7c3aed; --gc-soft: rgba(124, 58, 237, 0.10); }
+    .gs-card.gc-bmi    { --gc: #059669; --gc-soft: rgba(5, 150, 105, 0.10); }
+
+    .gs-row1 {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      min-width: 0;
+    }
+    .gs-label {
+      font-size: 10px;
+      font-weight: 600;
+      line-height: 1.2;
+      padding: 1px 5px;
+      border-radius: 999px;
+      color: var(--gc);
+      background: var(--gc-soft);
+      white-space: nowrap;
+    }
+    .gs-row2 {
+      display: flex;
+      align-items: baseline;
+      justify-content: flex-start;
+      gap: 5px;
+      width: 100%;
+      min-width: 0;
+    }
+    
+    .gs-value {
+      display: flex;
+      align-items: baseline;
+      gap: 1px;
+      font-size: clamp(15px, 1.1vw, 20px);
+      font-weight: 800;
+      line-height: 1;
+      margin-top: 1px;
+      letter-spacing: -0.01em;
+      color: var(--text-main);
+      font-variant-numeric: tabular-nums;
+      font-feature-settings: "tnum" 1;
+      white-space: nowrap;
+    }
+    .gs-value .gs-unit { font-size: 0.52em; font-weight: 700; opacity: 0.7; }
+    .gs-note {
+      font-size: 9.5px;
+      line-height: 1.2;
+      font-weight: 600;
+      color: #059669;
+      white-space: nowrap;
+    }
+    .gs-badge {
+      font-weight: 700;
+      font-size: 9px;
+      line-height: 1.5;
+      padding: 1px 5px;
+      border-radius: 5px;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+    .gs-badge.up   { color: #059669; background: rgba(5, 150, 105, 0.12); }
+    .gs-badge.down { color: #e11d48; background: rgba(225, 29, 72, 0.10); }
+    .gs-badge.flat { color: var(--text-muted); background: rgba(148, 163, 184, 0.16); }
+
+    /* 下方双轴柱状图：flex:1 撑满摘要条之外的剩余高度
+       （height:auto 覆盖 .chart-container 的 height:100%，由 flex 决定高度） */
+    #growthChart {
+      flex: 1 1 0;
+      min-height: 0;
+      height: auto;
+      width: 100%;
+    }
+
+    .growth-empty {
+      flex: 1;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12.5px;
+      color: var(--text-muted);
+    }
+
+    /* 暗黑下三指标摘要条：深色玻璃卡 + 提亮主题色 */
+    body.theme-dark .gs-card {
+      background: var(--gc-soft, rgba(148, 163, 184, 0.08)) !important;
+      border: none !important;
+      box-shadow: none !important;
+    }
+    body.theme-dark .gs-card.gc-height { --gc: #38bdf8; --gc-soft: rgba(56, 189, 248, 0.12); }
+    body.theme-dark .gs-card.gc-weight { --gc: #a78bfa; --gc-soft: rgba(167, 139, 250, 0.12); }
+    body.theme-dark .gs-card.gc-bmi    { --gc: #34d399; --gc-soft: rgba(52, 211, 153, 0.12); }
+    body.theme-dark .gs-card .gs-value { color: #f8fafc !important; }
+    body.theme-dark .gs-card .gs-label { background: rgba(255, 255, 255, 0.08); }
+    body.theme-dark .gs-note { color: #34d399 !important; }
+    body.theme-dark .gs-badge.up   { color: #34d399 !important; background: rgba(52, 211, 153, 0.14); }
+    body.theme-dark .gs-badge.down { color: #fb7185 !important; background: rgba(251, 113, 133, 0.14); }
+
     .col-stack {
       display: flex;
       flex-direction: column;
@@ -440,6 +569,29 @@
       margin-bottom: 2px;
       flex: 0 0 auto;
     }
+    /* 2026-09-27 v7：空态不再收起整块高度（原 flex:0 0 auto 会让下方
+       「重点预警事件 / 实时监测流」向上跳），始终保持 flex:1，
+       只在原图表位置居中显示 #curveEmpty 占位文案。 */
+    #curveEmpty {
+      position: absolute;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      color: var(--text-muted);
+      text-align: center;
+      padding: 0 12px;
+      box-sizing: border-box;
+    }
+    .trend-block.is-empty #curveEmpty { display: flex; }
+    /* 图表用 flex:1 撑满「头部 + 区间 pills」之外的剩余高度。
+       display:none 的空态下 flex 仍占位，因此块高不随有无数据变化。 */
+    #curveChart {
+      flex: 1 1 auto;
+      height: auto;
+      min-height: 0;
+    }
 
     .trend-tabs {
       display: inline-flex;
@@ -463,6 +615,130 @@
       color: #ffffff;
       border-color: transparent;
     }
+
+    /* ============ 运动强度实时画像：即时区间汇总 pill ============ */
+    .intensity-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 2px 0 4px;
+      flex: 0 0 auto;
+    }
+    .intensity-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #475569;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 999px;
+      padding: 1px 9px 1px 6px;
+      line-height: 1.7;
+    }
+    .intensity-pill .ip-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 2px;
+      flex: 0 0 auto;
+    }
+    .intensity-pill b {
+      font-size: 12px;
+      color: #0f172a;
+      font-variant-numeric: tabular-nums;
+    }
+    .intensity-pill.zero { opacity: 0.55; }
+    body.theme-dark .intensity-pill {
+      background: rgba(15, 28, 48, 0.85) !important;
+      border-color: rgba(56, 189, 248, 0.22) !important;
+      color: #94a3b8 !important;
+    }
+    body.theme-dark .intensity-pill b { color: #f8fafc !important; }
+
+    /* ============ 操场实时热力图：南操场俯视平面 + 三分区紧凑名单 ============
+       2026-09-27 重做：原先三张并排圆角大卡片（"这是表格吧"）改为
+       ECharts 画跑道环平面 + 发光热力斑块，下方一行图例 + 分区名单。
+       桌面端=平面图(100%撑满) + 底部一行；手机端=横向紧凑条（平面图太小不可读）。 */
+    .heatmap-wrap {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    /* 桌面临场平面图；手机端由媒体查询隐藏 */
+    .heat-plane {
+      flex: 1;
+      min-height: 0;
+      width: 100%;
+    }
+    /* 手机端紧凑条：桌面默认不显示 */
+    .heat-bars { display: none; }
+    .heat-bar {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 10px;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+      background: #f8fafc;
+    }
+    .heat-bar .hb-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      flex: 0 0 auto;
+      background: #cbd5e1;
+    }
+    .heat-bar .hb-name { font-size: 12px; font-weight: 700; color: #334155; flex: 0 0 auto; }
+    .heat-bar .hb-num {
+      font-size: 13px;
+      font-weight: 800;
+      color: #0f172a;
+      font-variant-numeric: tabular-nums;
+      margin-left: auto;
+    }
+    .heat-bar .hb-sum { font-size: 10.5px; color: #64748b; flex: 0 0 auto; }
+    /* 分区名单：一行紧凑（西区:张三、李四 | 中区:… | 东区:…），丢弃三张大卡片 */
+    .heat-roster {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 2px 8px;
+      flex: 0 0 auto;
+      font-size: 10.5px;
+      line-height: 1.6;
+      min-height: 15px;
+    }
+    .heat-roster .hr-zone { display: inline-flex; align-items: baseline; gap: 3px; white-space: nowrap; }
+    .heat-roster .hr-zone .hr-zdot { width: 6px; height: 6px; border-radius: 50%; flex: 0 0 auto; align-self: center; }
+    .heat-roster .hr-name { font-weight: 700; color: #475569; }
+    .heat-roster .hr-kids { color: #64748b; }
+    .heat-roster .hr-sep { color: #cbd5e1; }
+    .heat-roster .hr-none { color: #94a3b8; }
+    .heat-legend {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      font-size: 10.5px;
+      color: var(--text-muted);
+      flex: 0 0 auto;
+    }
+    .heat-legend .hl-item { display: inline-flex; align-items: center; gap: 4px; }
+    .heat-legend .hl-swatch { width: 12px; height: 8px; border-radius: 2px; display: inline-block; }
+    body.theme-dark .heat-bar {
+      background: rgba(15, 28, 48, 0.85) !important;
+      border-color: rgba(56, 189, 248, 0.22) !important;
+    }
+    body.theme-dark .heat-bar .hb-name { color: #cbd5e1 !important; }
+    body.theme-dark .heat-bar .hb-num { color: #f8fafc !important; }
+    body.theme-dark .heat-bar .hb-sum { color: #94a3b8 !important; }
+    body.theme-dark .heat-roster .hr-name { color: #cbd5e1 !important; }
+    body.theme-dark .heat-roster .hr-kids { color: #94a3b8 !important; }
+    body.theme-dark .heat-roster .hr-sep { color: #475569 !important; }
+    body.theme-dark .heat-roster .hr-none { color: #64748b !important; }
 
     /* 异常报警与最近上报 */
     .center-bottom-row {
@@ -918,6 +1194,26 @@
       }
       .brand-section {
         justify-content: flex-start !important;
+        min-width: 0 !important;
+        gap: 8px !important;
+      }
+      /* 390px 下标题与副标题原会撑破品牌区、把右侧按钮挤成一条，
+         这里允许标题换行 + 副标题省略，给 header-right 让出宽度 */
+      .brand-meta {
+        min-width: 0 !important;
+        flex: 1 1 auto !important;
+      }
+      .brand-meta h1 {
+        font-size: 15px !important;
+        line-height: 1.25 !important;
+        flex-wrap: wrap !important;
+        white-space: normal !important;
+      }
+      .brand-meta .sub-title {
+        font-size: 10px !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
       }
       .scope-bar {
         width: 100% !important;
@@ -929,14 +1225,22 @@
       .scope-bar::-webkit-scrollbar {
         display: none;
       }
+      /* 操作按钮 + 时钟：允许换行，按钮文案在 390px 下收起只留图标，避免与时钟互挤 */
       .header-right {
         display: flex !important;
+        flex-wrap: wrap !important;
         justify-content: space-between !important;
         align-items: center !important;
+        gap: 8px !important;
         width: 100% !important;
         border-top: 1px dashed rgba(226, 232, 240, 0.8) !important;
         padding-top: 8px !important;
       }
+      .theme-toggle-btn { padding: 5px 10px !important; font-size: 11px !important; }
+      .theme-toggle-btn span:not([id$="Icon"]) { display: none !important; }
+      .live-indicator { padding: 3px 7px !important; font-size: 11px !important; }
+      .clock-display .time { font-size: 19px !important; }
+      .clock-display .date { font-size: 10.5px !important; }
       body.theme-dark .header-right {
         border-top-color: rgba(51, 65, 85, 0.6) !important;
       }
@@ -961,6 +1265,38 @@
         height: 250px !important;
         min-height: 250px !important;
       }
+      /* 手机端：三指标摘要条保持单行横排（窄屏压缩字号，不换行） */
+      .growth-summary {
+        flex: none !important;
+        height: auto !important;
+        min-height: 0 !important;
+        display: flex !important;
+        flex-direction: row !important;
+        gap: 5px !important;
+        margin-bottom: 8px !important;
+      }
+      .growth-summary .gs-card {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        justify-content: center !important;
+        gap: 2px !important;
+        padding: 5px 7px !important;
+        min-height: 58px !important;
+      }
+      .gs-card {
+        padding: 0 7px !important;
+        gap: 4px !important;
+      }
+      .gs-label { font-size: 9.5px !important; padding: 1px 5px !important; }
+      .gs-value { font-size: clamp(13px, 4vw, 18px) !important; }
+      .gs-badge { font-size: 9px !important; padding: 1px 4px !important; }
+      .gs-note { font-size: 9px !important; }
+      /* 手机端生长趋势柱状图：固定高度，保证双轴柱正常渲染 */
+      #growthChart {
+        flex: none !important;
+        height: 210px !important;
+        min-height: 210px !important;
+      }
       .center-top-metrics {
         grid-template-columns: repeat(2, 1fr) !important;
         gap: 8px !important;
@@ -970,9 +1306,31 @@
         height: auto !important;
         gap: 12px !important;
       }
-      #curveChart {
-        height: 230px !important;
+      /* 2026-09-27 v7：手机端给 .trend-block 固定高度（原高度由 flex 决定，
+         窄屏下会塌陷到 0，导致有数据时 #curveChart 高度为 0 不渲染），
+         #curveChart 用 flex:1 撑满头部与 pills 之外的剩余高度。 */
+      .trend-block {
+        flex: none !important;
+        height: 300px !important;
+        min-height: 300px !important;
       }
+      #curveChart {
+        flex: 1 1 auto !important;
+        height: auto !important;
+        min-height: 0 !important;
+      }
+      /* 2026-09-27 v7：手机端不再退化为紧凑条，与电脑端一致显示操场俯视平面图。
+         固定 200px 高度（宽 100%）保证跑道几何有足够像素绘制。 */
+      .heat-plane {
+        display: block !important;
+        flex: none !important;
+        width: 100% !important;
+        height: 200px !important;
+        min-height: 200px !important;
+      }
+      .heat-bars { display: none !important; }
+      .heatmap-wrap { height: auto !important; min-height: 0 !important; }
+      .heat-roster { font-size: 11px; }
       #feedList {
         max-height: 240px !important;
       }
@@ -1042,7 +1400,7 @@
       <!-- 左列：体测综合概况 -->
       <section class="col-stack">
         <!-- 评级分布环形图 -->
-        <div class="tech-panel" style="flex: 0.85;">
+        <div class="tech-panel" style="flex: 1;">
           <div class="panel-header">
             <div class="panel-title">
               <span class="panel-title-bar"></span>
@@ -1055,8 +1413,8 @@
           </div>
         </div>
 
-        <!-- 生长趋势面积图（身高/体重/BMI） -->
-        <div class="tech-panel" style="flex: 1.15;">
+        <!-- 生长趋势（2026-09-27 v7：顶部三指标摘要条 + 下方双轴柱状图） -->
+        <div class="tech-panel" style="flex: 0.9;">
           <div class="panel-header">
             <div class="panel-title">
               <span class="panel-title-bar"></span>
@@ -1065,6 +1423,9 @@
             <span class="panel-tag" id="growthTag"></span>
           </div>
           <div class="panel-body">
+            <!-- 顶部紧凑三指标摘要条（平均身高 / 平均体重 / BMI，高度 ~56px） -->
+            <div class="growth-summary" id="growthSummary"></div>
+            <!-- 下方 ECharts 双轴柱状图（身高柱 + 体重柱，两批体测对比） -->
             <div class="chart-container" id="growthChart"></div>
           </div>
         </div>
@@ -1162,19 +1523,22 @@
             <!-- 动态注入 -->
           </div>
 
-          <!-- 实时动态走势曲线（清晰图例与双 Y 轴分布） -->
-          <div class="trend-block">
+          <!-- 运动强度实时画像（2026-09-27 替换原「动态健康走势」三线图） -->
+          <div class="trend-block" id="trendBlock">
             <div class="trend-header">
-              <span id="trendTitle">动态健康走势 (近1小时)</span>
+              <span id="trendTitle">运动强度实时画像 (近1小时)</span>
               <span class="trend-tabs">
                 <button type="button" class="trend-tab active" data-min="60">近1小时</button>
                 <button type="button" class="trend-tab" data-min="360">近6小时</button>
                 <button type="button" class="trend-tab" data-min="1440">近24小时</button>
               </span>
             </div>
+            <div class="intensity-pills" id="intensityPills">
+              <!-- 最新桶各心率区间人数 -->
+            </div>
             <div class="chart-container" id="curveChart"></div>
-            <div id="curveEmpty" style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;font-size:12px;color:var(--text-muted);">
-              等待手环数据上报中…
+            <div id="curveEmpty">
+              等待手环上报心率数据
             </div>
           </div>
 
@@ -1204,8 +1568,39 @@
 
       <!-- 右列：体能结构与关注名单 -->
       <section class="col-stack">
-        <!-- 体能六维雷达 -->
-        <div class="tech-panel" style="flex: 1.25;">
+        <!-- 南操场实时热力图（2026-09-27 重做：跑道平面 + 发光斑块；原为三分区卡片） -->
+        <div class="tech-panel" style="flex: 0.9;">
+          <div class="panel-header">
+            <div class="panel-title">
+              <span class="panel-title-bar"></span>
+              <span>操场实时热力图</span>
+            </div>
+            <span class="panel-tag" id="heatTag">近3分钟</span>
+          </div>
+          <div class="panel-body" style="padding: 6px 8px;">
+            <div class="heatmap-wrap">
+              <!-- 桌面端：南操场俯视平面（跑道环 + 三区发光热力斑块），100% 撑满消灭右下空白 -->
+              <div class="heat-plane" id="heatPlane"></div>
+              <!-- 手机端：横向紧凑条（三区一行：区名 + 人数 + 色点），桌面隐藏 -->
+              <div class="heat-bars" id="heatBars">
+                <!-- 三分区动态注入 -->
+              </div>
+              <!-- 底部一行：图例 + 各区分栏小名单 -->
+              <div class="heat-legend">
+                <span class="hl-item"><span class="hl-swatch" style="background:#94a3b8;"></span>无人</span>
+                <span class="hl-item"><span class="hl-swatch" style="background:#22c55e;"></span>1-5人</span>
+                <span class="hl-item"><span class="hl-swatch" style="background:#eab308;"></span>6-12人</span>
+                <span class="hl-item"><span class="hl-swatch" style="background:#f97316;"></span>13人以上</span>
+              </div>
+              <div class="heat-roster" id="heatRoster">
+                <!-- 西区:张三、李四 | 中区:… | 东区:… -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 体能六维雷达（2026-09-27 应杰哥要求从原右列恢复，后端 radarChartData 一直在返回） -->
+        <div class="tech-panel" style="flex: 1.05;">
           <div class="panel-header">
             <div class="panel-title">
               <span class="panel-title-bar"></span>
@@ -1219,7 +1614,7 @@
         </div>
 
         <!-- 重点关注幼儿（支持完整滑动浏览，杜绝显示不全） -->
-        <div class="tech-panel" style="flex: 1;">
+        <div class="tech-panel" style="flex: 0.95;">
           <div class="panel-header">
             <div class="panel-title">
               <span class="panel-title-bar"></span>
@@ -1278,6 +1673,10 @@
     if (typeof load === 'function') {
       load();
     }
+    // 操场平面按主题换配色（发光/描边在暗色下更明显），用最近一帧数据立即重绘
+    if (typeof window.refreshHeatmapTheme === 'function') {
+      window.refreshHeatmapTheme();
+    }
     if (window.dispatchEvent) {
       window.dispatchEvent(new Event('resize'));
     }
@@ -1304,7 +1703,11 @@
     }
     function setOpt(id, opt) {
       var c = initChart(id);
-      if (c) c.setOption(opt, true);
+      if (!c) return;
+      c.setOption(opt, true);
+      /* 2026-09-27 v7：容器可能在 echarts 实例创建后（面板布局/手机端媒体查询生效）
+         才拿到真实尺寸，实例会停留在 0x0。每次更新后按当前 DOM 尺寸校正一次。 */
+      try { c.resize(); } catch (e) {}
     }
 
     // 时钟（固定东八区，避免访客浏览器时区不同导致大屏时间错乱）
@@ -1365,7 +1768,7 @@
       document.getElementById('screenTitle').textContent = '小鱼健康 · ' + d.scopeLabel + '感知大屏';
       document.getElementById('screenSub').textContent = d.scope === 'all' ? '全园体测 × 手环健康动态感知中心' : '班级体测 × 手环健康动态监测（' + d.scopeLabel + '）';
       var trendLabel = state.trendMin <= 60 ? '近1小时' : (state.trendMin <= 360 ? '近6小时' : '近24小时');
-      document.getElementById('trendTitle').textContent = '动态健康走势 (' + trendLabel + ')';
+      document.getElementById('trendTitle').textContent = '运动强度实时画像 (' + trendLabel + ')';
       document.getElementById('footUpdated').textContent = d.updatedAt ? d.updatedAt.slice(11) : '--';
       document.getElementById('footChildren').textContent = d.totals.children;
       document.getElementById('footFitness').textContent = d.totals.fitnessRecords;
@@ -1373,6 +1776,7 @@
 
       renderRating(d);
       renderGrowth(d);
+      renderIntensity(d);
       renderRadar(d);
       renderBands(d);
       renderAttention(d);
@@ -1464,37 +1868,123 @@
       });
     }
 
-    // ---------- 2. 生长趋势立体胶囊柱状图（方案一：高光立体圆柱对比） ----------
+    // ---------- 2. 生长趋势：顶部三指标摘要条 + 下方双轴柱状图（2026-09-27 v7 改版） ----------
+    // 摘要条 = 平均身高 / 平均体重 / BMI（末批 vs 首批 徽章，BMI 下降为绿色"更匀称"）
+    // 图表   = 身高柱 + 体重柱双 Y 轴，两批体测（如 04-07 / 05-25）对比
     function renderGrowth(d) {
       var gt = d.growthTrend || [];
+      var el = document.getElementById('growthChart');
+      if (!el) return;
+
+      function num(v) {
+        if (v === null || v === undefined || v === '') return null;
+        var n = Number(v);
+        return isNaN(n) ? null : n;
+      }
+
+      // 顶部涨跌摘要：末批 vs 首批
       var tagParts = [];
       if (gt.length >= 2) {
-        var lastH = gt[gt.length - 1].height, firstH = gt[0].height;
-        var lastW = gt[gt.length - 1].weight, firstW = gt[0].weight;
-        var lastBmi = gt[gt.length - 1].bmi, firstBmi = gt[0].bmi;
-        if (lastH != null && firstH != null) {
-          var dH = (Number(lastH) - Number(firstH));
+        var first = gt[0], lastG = gt[gt.length - 1];
+        if (num(lastG.height) !== null && num(first.height) !== null) {
+          var dH = num(lastG.height) - num(first.height);
           tagParts.push('<span style="color:#0284c7;font-weight:700;">身高 ' + (dH >= 0 ? '+' : '') + dH.toFixed(1) + 'cm</span>');
         }
-        if (lastW != null && firstW != null) {
-          var dW = (Number(lastW) - Number(firstW));
+        if (num(lastG.weight) !== null && num(first.weight) !== null) {
+          var dW = num(lastG.weight) - num(first.weight);
           tagParts.push('<span style="color:#7c3aed;font-weight:700;">体重 ' + (dW >= 0 ? '+' : '') + dW.toFixed(1) + 'kg</span>');
         }
-        if (lastBmi != null && firstBmi != null) {
-          var dBmi = (Number(lastBmi) - Number(firstBmi));
+        if (num(lastG.bmi) !== null && num(first.bmi) !== null) {
+          var dBmi = num(lastG.bmi) - num(first.bmi);
           tagParts.push('<span style="color:#059669;font-weight:700;">BMI ' + (dBmi >= 0 ? '+' : '') + dBmi.toFixed(2) + '</span>');
         }
       }
-      document.getElementById('growthTag').innerHTML = tagParts.join(' · ');
+      var tagEl = document.getElementById('growthTag');
+      if (tagEl) tagEl.innerHTML = tagParts.join(' · ');
 
+      // ---------- 顶部紧凑三指标摘要条（单行小卡，高度约 56px） ----------
+      var sumEl = document.getElementById('growthSummary');
+      var hasPrev = gt.length >= 2;
+      var prev = hasPrev ? gt[gt.length - 2] : null;
+      var cur = gt.length ? gt[gt.length - 1] : null;
+
+      // invert=true 时"下降"为好（绿色），用于 BMI
+      function badge(delta, digits, unit, invert) {
+        if (delta === null) return '<span class="gs-badge flat">首批</span>';
+        if (Math.abs(delta) < Math.pow(10, -digits) / 2) {
+          return '<span class="gs-badge flat">持平</span>';
+        }
+        var good = invert ? delta < 0 : delta > 0;
+        var cls = good ? 'up' : 'down';
+        var text = (delta > 0 ? '▲' : '▼')
+                 + (invert ? (delta > 0 ? '+' : '') + delta.toFixed(digits)
+                           : Math.abs(delta).toFixed(digits))
+                 + (unit || '');
+        return '<span class="gs-badge ' + cls + '">' + text + '</span>';
+      }
+
+      function sumCard(spec) {
+        var curV = cur ? num(cur[spec.key]) : null;
+        if (curV === null) return '';
+        var prevV = hasPrev ? num(prev[spec.key]) : null;
+        var delta = (prevV === null) ? null : (curV - prevV);
+        var note = (spec.invert && delta !== null && delta < 0)
+          ? '<div class="gs-note">更匀称</div>' : '';
+        return ''
+          + '<div class="gs-card ' + spec.cls + '">'
+          +   '<div class="gs-row1">'
+          +     '<span class="gs-label">' + spec.label + '</span>'
+          +     badge(delta, spec.digits, spec.badgeUnit || '', spec.invert)
+          +   '</div>'
+          +   '<div class="gs-row2">'
+          +     '<span class="gs-value">' + curV.toFixed(spec.digits)
+          +       (spec.unit ? '<span class="gs-unit">' + spec.unit + '</span>' : '')
+          +     '</span>'
+          +     note
+          +   '</div>'
+          + '</div>';
+      }
+
+      if (sumEl) {
+        if (!gt.length) {
+          sumEl.innerHTML = '';
+          sumEl.style.display = 'none';
+        } else {
+          var sumSpecs = [
+            /* badgeUnit 传空：卡宽窄，徽章只留数值（▲1.5），完整单位见面板右上角 growthTag */
+            { key: 'height', label: '平均身高', unit: 'cm', digits: 1, cls: 'gc-height', invert: false, badgeUnit: '' },
+            { key: 'weight', label: '平均体重', unit: 'kg', digits: 1, cls: 'gc-weight', invert: false, badgeUnit: '' },
+            { key: 'bmi',    label: '平均 BMI', unit: '',   digits: 1, cls: 'gc-bmi',    invert: true,  badgeUnit: '' }
+          ];
+          var sumHtml = sumSpecs.map(sumCard).filter(Boolean).join('');
+          sumEl.innerHTML = sumHtml;
+          sumEl.style.display = sumHtml ? 'flex' : 'none';
+        }
+      }
+
+      // 空数据：图表区给占位（容器内 HTML，避免 echarts 空轴）
+      if (!gt.length) {
+        if (charts['growthChart']) {
+          try { charts['growthChart'].dispose(); } catch (e) {}
+          delete charts['growthChart'];
+        }
+        el.innerHTML = '<div class="growth-empty">暂无对比数据（等待下次体测）</div>';
+        return;
+      }
+      // 恢复为 ECharts 容器：清掉可能残留的占位节点
+      if (el.firstElementChild && el.firstElementChild.className === 'growth-empty') {
+        el.innerHTML = '';
+      }
+
+      // ---------- 双轴柱状图（身高柱 + 体重柱，两批体测对比） ----------
       var hs = gt.map(function (g) { return g.height; }).filter(function (v) { return v != null; });
       var ws = gt.map(function (g) { return g.weight; }).filter(function (v) { return v != null; });
 
-      var avgH = hs.length ? (hs.reduce(function(a,b){return a+b;},0)/hs.length) : 112;
+      var avgH = hs.length ? (hs.reduce(function (a, b) { return a + b; }, 0) / hs.length) : 112;
       var yMin1 = Math.max(80, Math.floor((avgH - 20) / 10) * 10);
       var yMax1 = Math.ceil((avgH + 15) / 10) * 10;
 
-      var avgW = ws.length ? (ws.reduce(function(a,b){return a+b;},0)/ws.length) : 20;
+      var avgW = ws.length ? (ws.reduce(function (a, b) { return a + b; }, 0) / ws.length) : 20;
       var yMin2 = Math.max(5, Math.floor((avgW - 10) / 5) * 5);
       var yMax2 = Math.ceil((avgW + 10) / 5) * 5;
 
@@ -1505,14 +1995,12 @@
           trigger: 'axis',
           axisPointer: {
             type: 'shadow',
-            shadowStyle: {
-              color: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(79, 70, 229, 0.05)'
-            }
+            shadowStyle: { color: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(79, 70, 229, 0.05)' }
           },
           backgroundColor: isDark ? '#1e293b' : '#ffffff',
           borderColor: isDark ? '#334155' : '#e2e8f0',
           textStyle: { color: isDark ? '#f1f5f9' : '#0f172a', fontSize: 11 },
-          extraCssText: 'box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2), 0 8px 10px -6px rgba(0,0,0,0.1); border-radius: 10px; backdrop-filter: blur(8px); border: 1px solid ' + (isDark ? 'rgba(255,255,255,0.12)' : 'rgba(79,70,229,0.15)'),
+          extraCssText: 'box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2), 0 8px 10px -6px rgba(0,0,0,0.1); border-radius: 10px; border: 1px solid ' + (isDark ? 'rgba(255,255,255,0.12)' : 'rgba(79,70,229,0.15)'),
           formatter: function (params) {
             var idx = params[0].dataIndex;
             var itemData = gt[idx] || {};
@@ -1627,10 +2115,7 @@
       });
     }
 
-    // ---------- 3. 体能六维雷达 ----------
-
-
-    // ---------- 3. 体能六维雷达 ----------
+    // ---------- 3. 体能六维雷达（2026-09-27 恢复渲染，radarChartData 后端一直在返回） ----------
     function renderRadar(d) {
       var rd = d.radarChartData || { metrics: [], series: [] };
       document.getElementById('radarTag').innerHTML = d.prevBatch?.day ? '对比 <b>' + d.prevBatch.day + '</b>' : '最新批次';
@@ -1680,6 +2165,119 @@
           })
         }]
       });
+    }
+
+    // ---------- 3.5 运动强度实时画像（心率区间堆叠面积 + 即时汇总 pills） ----------
+    /* 2026-09-27：原「动态健康走势」的 avgHr/avgSpo2/avgTp 三线图已下线，
+       overview 里的 curveData 仍在返回，只是前端不再渲染。 */
+    var INTENSITY_COLORS = {
+      warmup: '#10b981',    // 热身 <100
+      burn: '#0284c7',      // 燃脂增肌 100-139
+      aerobic: '#f59e0b',   // 有氧强化 140-169
+      extreme: '#e11d48'    // 极限 ≥170
+    };
+
+    function renderIntensity(d) {
+      var it = d.intensityData || { zones: [], times: [], series: [], latest: null };
+      var zones = it.zones || [];
+      var times = it.times || [];
+
+      // 即时汇总 pill（最新桶）
+      var pillsBox = document.getElementById('intensityPills');
+      var latest = it.latest || {};
+      if (pillsBox) {
+        if (zones.length && times.length) {
+          pillsBox.innerHTML = zones.map(function (z) {
+            var n = Number(latest[z.key]) || 0;
+            return '<span class="intensity-pill' + (n ? '' : ' zero') + '">'
+              + '<span class="ip-dot" style="background:' + (INTENSITY_COLORS[z.key] || '#94a3b8') + ';"></span>'
+              + z.label + ' <b>' + n + '</b>人</span>';
+          }).join('');
+        } else {
+          pillsBox.innerHTML = '<span class="intensity-pill zero">等待手环上报心率数据</span>';
+        }
+      }
+
+      var emptyEl = document.getElementById('curveEmpty');
+      var chartEl = document.getElementById('curveChart');
+      var hasData = times.length && (it.series || []).some(function (s) {
+        return (s.data || []).some(function (n) { return Number(n) > 0; });
+      });
+
+      // 2026-09-27 v7：空态只切换 #curveEmpty / #curveChart 的显隐，
+      // 不再给 .trend-block 收起高度（原 flex:0 0 auto 会把下方两个 feed 区顶上去）
+      var blockEl = document.getElementById('trendBlock');
+      if (blockEl) blockEl.classList.toggle('is-empty', !hasData);
+
+      if (hasData) {
+        emptyEl.style.display = 'none';
+        chartEl.style.display = 'block';
+
+        var isDark = document.body.classList.contains('theme-dark');
+        setOpt('curveChart', {
+          tooltip: {
+            trigger: 'axis',
+            backgroundColor: isDark ? '#1e293b' : '#ffffff',
+            borderColor: isDark ? '#334155' : '#e2e8f0',
+            textStyle: { color: isDark ? '#f1f5f9' : '#0f172a', fontSize: 11 },
+            extraCssText: 'box-shadow: 0 4px 12px rgba(0,0,0,0.08); border-radius: 8px;',
+            formatter: function (params) {
+              var total = params.reduce(function (s, p) { return s + (Number(p.value) || 0); }, 0);
+              var head = '<div style="font-weight:700;margin-bottom:4px;">' + params[0].axisValue + ' · 合计 ' + total + ' 人</div>';
+              return head + params.map(function (p) {
+                return '<div style="display:flex;justify-content:space-between;gap:14px;font-size:11px;line-height:1.8;">'
+                  + '<span>' + p.marker + p.seriesName + '</span><b>' + (Number(p.value) || 0) + ' 人</b></div>';
+              }).join('');
+            }
+          },
+          legend: {
+            top: 0,
+            left: 'center',
+            icon: 'roundRect',
+            itemWidth: 9,
+            itemHeight: 9,
+            itemGap: 12,
+            textStyle: { color: isDark ? '#94a3b8' : '#475569', fontSize: 10 }
+          },
+          grid: { left: 8, right: 12, top: 30, bottom: 4, containLabel: true },
+          xAxis: {
+            type: 'category',
+            data: times,
+            boundaryGap: false,
+            axisLabel: { color: isDark ? '#64748b' : '#94a3b8', fontSize: 9.5, interval: 0, hideOverlap: true, margin: 6 },
+            axisLine: { lineStyle: { color: isDark ? 'rgba(255,255,255,0.12)' : '#e2e8f0' } }
+          },
+          yAxis: {
+            type: 'value',
+            name: '人数',
+            minInterval: 1,
+            nameTextStyle: { color: isDark ? '#94a3b8' : '#64748b', fontSize: 10.5, padding: [0, 0, 0, 6] },
+            axisLine: { show: false },
+            axisTick: { show: false },
+            axisLabel: { color: isDark ? '#64748b' : '#94a3b8', fontSize: 10 },
+            splitLine: { lineStyle: { color: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9', type: 'dashed' } }
+          },
+          series: (it.series || []).map(function (s) {
+            var color = INTENSITY_COLORS[s.key] || '#94a3b8';
+            return {
+              name: s.label,
+              type: 'line',
+              stack: 'intensity',
+              smooth: true,
+              showSymbol: false,
+              lineStyle: { width: 1.6, color: color },
+              itemStyle: { color: color },
+              areaStyle: { color: color, opacity: 0.55 },
+              emphasis: { focus: 'series' },
+              data: s.data || []
+            };
+          })
+        });
+      } else {
+        if (charts.curveChart) { charts.curveChart.dispose(); delete charts.curveChart; }
+        chartEl.style.display = 'none';
+        emptyEl.style.display = 'flex';
+      }
     }
 
     // ---------- 4. 手环动态监测核心（5 卡片 + 双轴趋势曲线） ----------
@@ -1733,102 +2331,6 @@
         totalStepsSub.textContent = '等待手环上报步数';
       }
 
-      // 动态走势折线：过滤掉无效的前缀空点，并且合理配置双 Y 轴与网格边距
-      var rawCurve = d.curveData || [];
-      // 找到有实际心率/血氧数据的有效点
-      var validPoints = rawCurve.filter(function (c) { return c.avgHr != null || c.avgSpo2 != null; });
-      var api = validPoints.length >= 2 ? validPoints : rawCurve;
-
-      var emptyEl = document.getElementById('curveEmpty');
-      var chartEl = document.getElementById('curveChart');
-
-      if (api && api.length && api.some(function (c) { return c.avgHr != null || c.avgSpo2 != null; })) {
-        emptyEl.style.display = 'none';
-        chartEl.style.display = 'block';
-
-        setOpt('curveChart', {
-          tooltip: {
-            trigger: 'axis',
-            backgroundColor: '#ffffff',
-            borderColor: '#e2e8f0',
-            textStyle: { color: '#0f172a', fontSize: 11 },
-            extraCssText: 'box-shadow: 0 4px 12px rgba(0,0,0,0.08); border-radius: 8px;'
-          },
-          legend: {
-            top: 0,
-            left: 'center',
-            icon: 'circle',
-            itemWidth: 8,
-            itemHeight: 8,
-            itemGap: 16,
-            textStyle: { color: '#475569', fontSize: 10.5, fontWeight: 500 }
-          },
-          grid: { left: 10, right: 44, top: 32, bottom: 8, containLabel: true },
-          xAxis: {
-            type: 'category',
-            data: api.map(function (c) { return c.t; }),
-            boundaryGap: false,
-            // 标签尽量密集显示(1h模式=每分钟1个标签)，放不下时自动隐藏重叠项，避免"看起来还是5分钟"
-            axisLabel: { color: '#94a3b8', fontSize: 9.5, interval: 0, hideOverlap: true, margin: 6 },
-            axisLine: { lineStyle: { color: '#e2e8f0' } }
-          },
-          yAxis: [
-            {
-              type: 'value',
-              name: '心率 (bpm)',
-              scale: true,
-              nameTextStyle: { color: '#64748b', fontSize: 10.5, padding: [0, 0, 0, 8] },
-              axisLine: { show: false },
-              axisTick: { show: false },
-              axisLabel: { color: '#94a3b8', fontSize: 10 },
-              splitLine: { lineStyle: { color: '#f1f5f9', type: 'dashed' } }
-            },
-            {
-              type: 'value',
-              name: '血氧 (%)',
-              min: 90,
-              max: 100,
-              nameTextStyle: { color: '#64748b', fontSize: 10.5, padding: [0, 8, 0, 0] },
-              axisLine: { show: false },
-              axisTick: { show: false },
-              axisLabel: { color: '#94a3b8', fontSize: 10 },
-              splitLine: { show: false }
-            }
-          ],
-          series: [
-            {
-              name: '均值心率',
-              type: 'line',
-              smooth: true,
-              showSymbol: false,
-              lineStyle: { width: 2.2, color: '#e11d48' },
-              itemStyle: { color: '#e11d48' },
-              areaStyle: {
-                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                  { offset: 0, color: 'rgba(225, 29, 72, 0.18)' },
-                  { offset: 1, color: 'rgba(225, 29, 72, 0.0)' }
-                ])
-              },
-              data: api.map(function (c) { return c.avgHr; })
-            },
-            {
-              name: '均值血氧',
-              type: 'line',
-              yAxisIndex: 1,
-              smooth: true,
-              showSymbol: false,
-              lineStyle: { width: 2.2, color: '#0284c7' },
-              itemStyle: { color: '#0284c7' },
-              data: api.map(function (c) { return c.avgSpo2; })
-            }
-          ]
-        });
-      } else {
-        if (charts.curveChart) { charts.curveChart.dispose(); delete charts.curveChart; }
-        chartEl.style.display = 'none';
-        emptyEl.style.display = 'flex';
-      }
-
       // 异常事件渲染（持久化事件表，2026-09-16: 记录不消失，进行中/已恢复双状态）
       function fmtDur(sec) {
         var s = Math.max(0, Math.round(sec || 0));
@@ -1878,6 +2380,314 @@
       }
     }
 
+    // ---------- 4.5 操场实时热力图（独立端点 /admin/screen/api/heatmap，30s 轮询） ----------
+    /* 2026-09-27 重做：原先三张并排卡片被杰哥吐槽"这是表格吧"，改为
+       ECharts 画南操场俯视平面（圆角矩形跑道环 + 内场），三区放发光热力斑块，
+       斑块大小与颜色随人数走「绿→黄→橙→红」，人数越多越大越红。 */
+    var heatLastData = null;
+
+    /* 拥挤度色阶：0人=灰 / 1-5=绿 / 6-12=黄 / 13-19=橙 / 20+=红（人越多越红） */
+    function heatLevel(n) {
+      if (!n || n <= 0) return 0;
+      if (n <= 5) return 1;
+      if (n <= 12) return 2;
+      if (n <= 19) return 3;
+      return 4;
+    }
+    var HEAT_LIGHT = ['#94a3b8', '#22c55e', '#eab308', '#f97316', '#ef4444'];
+    var HEAT_DARK = ['#64748b', '#4ade80', '#facc15', '#fb923c', '#f87171'];
+    function heatColor(n, isDark) {
+      return (isDark ? HEAT_DARK : HEAT_LIGHT)[heatLevel(n)];
+    }
+    function heatGlow(n) {
+      // 人越多光晕越红（13人以上即转红，20+最盛）
+      return heatLevel(n) >= 4 ? 'rgba(239, 68, 68, 0.85)'
+        : heatLevel(n) === 3 ? 'rgba(249, 115, 22, 0.7)'
+          : 'rgba(234, 179, 8, 0.55)';
+    }
+
+    /* 确定性伪随机：刷新之间抖动位置稳定，不会看着"跳来跳去" */
+    function heatRnd(seed) {
+      var x = Math.sin(seed * 127.1 + 311.7) * 43758.5453;
+      return x - Math.floor(x);
+    }
+    /* 中文字宽估算（用于给分区标签计算 chip 宽度，避免三块标签互压） */
+    function heatTextW(t) {
+      var w = 0;
+      for (var i = 0; i < t.length; i++) w += (t.charCodeAt(i) > 255 ? 10.5 : 6);
+      return w;
+    }
+
+    /* 南操场俯视几何：外圈圆角矩形 = 跑道路面，内圈圆角矩形 = 内场（草地） */
+    function heatGeom(W, H) {
+      var labelH = Math.max(24, Math.min(30, H * 0.20));   // 顶部让给三区标签
+      var ay = labelH + 2;
+      var ah = Math.max(40, H - ay - 2);
+      var trackW = W * 0.90;
+      var trackX = (W - trackW) / 2;
+      var trackH = Math.min(ah, trackW * 0.40);
+      var trackY = ay + (ah - trackH) / 2;
+      var ring = trackH * 0.22;                            // 跑道环宽度
+      return {
+        labelH: labelH, trackX: trackX, trackY: trackY, trackW: trackW, trackH: trackH,
+        ring: ring, ix: trackX + ring, iy: trackY + ring,
+        iw: trackW - ring * 2, ih: trackH - ring * 2
+      };
+    }
+
+    function heatPlaneOption(zones, W, H, isDark) {
+      var g = heatGeom(W, H);
+      var font = '-apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif';
+      // 地面配色：中性地坪，避免与"红=拥挤"的红撞色
+      var roadFill = isDark ? 'rgba(30, 58, 95, 0.55)' : '#eef2f7';
+      var roadStroke = isDark ? 'rgba(56, 189, 248, 0.35)' : '#cbd5e1';
+      var laneStroke = isDark ? 'rgba(148, 163, 184, 0.28)' : '#dbe3ec';
+      var fieldFill = isDark ? 'rgba(8, 40, 64, 0.62)' : '#f3faf5';
+      var fieldStroke = isDark ? 'rgba(16, 185, 129, 0.25)' : '#d9e9dd';
+      var markStroke = isDark ? 'rgba(56, 189, 248, 0.22)' : '#e2e8f0';
+      var labelFill = isDark ? '#94a3b8' : '#64748b';
+      var chipBg = isDark ? 'rgba(15, 28, 48, 0.92)' : 'rgba(255, 255, 255, 0.92)';
+
+      // 三区归一化 x（0.30/0.50/0.70 保证都落在内场直道上，标签不会压到圆弧段）
+      var ZX = [0.30, 0.50, 0.70];
+      var series = [];
+      var labels = [];
+
+      for (var i = 0; i < 3; i++) {
+        var z = zones[i] || { zone: ['西区', '中区', '东区'][i], count: 0 };
+        var n = Number(z.count) || 0;
+        var zx = g.trackX + g.trackW * ZX[i];
+        var color = heatColor(n, isDark);
+        var lv = heatLevel(n);
+        var pts = [];
+
+        if (n > 0) {
+          // 斑块光晕：直径随人数放大，人越多越大越红（撑满内场高度即代表"挤爆"）
+          var halo = Math.min(g.ih * 0.92, Math.max(24, 26 + Math.min(n, 36) * 1.05));
+          series.push({
+            type: 'scatter',
+            silent: true,
+            z: 2,
+            data: [[zx, g.iy + g.ih / 2]],
+            symbolSize: halo,
+            itemStyle: {
+              color: color,
+              opacity: isDark ? 0.30 : 0.22,
+              shadowBlur: isDark ? 34 : 22,
+              shadowColor: heatGlow(n)
+            }
+          });
+          // 在场手环：小圆点沿内场纵向铺开（最多 10 个，其余并入光晕）
+          var laneCount = Math.min(n, 10);
+          var dot = Math.max(9, Math.min(15, 9 + n * 0.8));
+          for (var k = 0; k < laneCount; k++) {
+            var ly = g.iy + g.ih * (k + 1) / (laneCount + 1);
+            var jx = (heatRnd(i * 20 + k * 2 + 1) - 0.5) * (g.iw * 0.05);
+            var jy = (heatRnd(i * 20 + k * 2 + 2) - 0.5) * (g.ih * 0.10);
+            pts.push([zx + jx, ly + jy]);
+          }
+          series.push({
+            type: 'scatter',
+            silent: true,
+            z: 3,
+            data: pts,
+            symbolSize: dot,
+            itemStyle: {
+              color: color,
+              opacity: 0.95,
+              shadowBlur: isDark ? 14 : 7,
+              shadowColor: heatGlow(n)
+            }
+          });
+        } else {
+          // 人数为 0：一颗灰色小点
+          series.push({
+            type: 'scatter',
+            silent: true,
+            z: 2,
+            data: [[zx, g.iy + g.ih / 2]],
+            symbolSize: 7,
+            itemStyle: { color: isDark ? '#475569' : '#cbd5e1', opacity: 0.9 }
+          });
+        }
+
+        // 分区标签 chip（上方预留带内，两行=区名/人数，宽度按字数算避免互压）
+        var line1 = z.zone || ['西区', '中区', '东区'][i];
+        var line2 = n > 0 ? (n + '人') : '无人';
+        var chipW = Math.max(34, Math.min(52, heatTextW(line1) + 14));
+        labels.push({
+          type: 'group',
+          left: zx,
+          top: g.labelH / 2,
+          z: 10,
+          children: [
+            {
+              type: 'rect',
+              shape: { x: -chipW / 2, y: -13, width: chipW, height: 26, r: 7 },
+              style: {
+                fill: chipBg,
+                stroke: lv > 0 ? color : (isDark ? '#334155' : '#e2e8f0'),
+                lineWidth: lv > 0 ? 1.2 : 1
+              }
+            },
+            {
+              type: 'text',
+              style: {
+                x: 0, y: -5.5, text: line1, fill: labelFill,
+                font: '700 10.5px ' + font, textAlign: 'center', textVerticalAlign: 'middle'
+              }
+            },
+            {
+              type: 'text',
+              style: {
+                x: 0, y: 6.5, text: line2,
+                fill: lv > 0 ? color : (isDark ? '#64748b' : '#94a3b8'),
+                font: '800 11px ' + font, textAlign: 'center', textVerticalAlign: 'middle'
+              }
+            }
+          ]
+        });
+      }
+
+      var elements = [
+        // 跑道路面（圆角矩形，圆角=半高 → 标准田径场跑道形）
+        {
+          type: 'rect',
+          z: 0,
+          shape: { x: g.trackX, y: g.trackY, width: g.trackW, height: g.trackH, r: g.trackH / 2 },
+          style: {
+            fill: roadFill, stroke: roadStroke, lineWidth: 1,
+            shadowBlur: isDark ? 18 : 0, shadowColor: 'rgba(56, 189, 248, 0.35)'
+          }
+        },
+        // 跑道分道线
+        {
+          type: 'rect',
+          z: 1,
+          silent: true,
+          shape: {
+            x: g.trackX + g.ring / 2, y: g.trackY + g.ring / 2,
+            width: g.trackW - g.ring, height: g.trackH - g.ring, r: (g.trackH - g.ring) / 2
+          },
+          style: { fill: 'none', stroke: laneStroke, lineWidth: 1, lineDash: [4, 5] }
+        },
+        // 内场（草地）
+        {
+          type: 'rect',
+          z: 1,
+          shape: { x: g.ix, y: g.iy, width: g.iw, height: g.ih, r: Math.max(2, g.ih / 2) },
+          style: { fill: fieldFill, stroke: fieldStroke, lineWidth: 1 }
+        },
+        // 内场中圈
+        {
+          type: 'circle',
+          z: 1,
+          silent: true,
+          shape: { cx: W / 2, cy: H / 2, r: Math.max(6, Math.min(g.iw, g.ih) * 0.16) },
+          style: { fill: 'none', stroke: markStroke, lineWidth: 1 }
+        },
+        // 中线
+        {
+          type: 'line',
+          z: 1,
+          silent: true,
+          shape: { x1: W / 2, y1: g.iy, x2: W / 2, y2: g.iy + g.ih },
+          style: { stroke: markStroke, lineWidth: 1, lineDash: [3, 4] }
+        }
+      ];
+      return {
+        animation: false,
+        grid: { left: 0, right: 0, top: 0, bottom: 0 },
+        xAxis: { type: 'value', min: 0, max: W, show: false },
+        yAxis: { type: 'value', min: 0, max: H, show: false, inverse: true },
+        graphic: elements.concat(labels),
+        series: series
+      };
+    }
+
+    /* 桌面端：南操场俯视平面 */
+    function renderHeatPlane(zones) {
+      var el = document.getElementById('heatPlane');
+      if (!el) return;
+      var W = el.clientWidth, H = el.clientHeight;
+      if (!W || !H) {
+        // 面板尚未完成布局（如首屏或极窄屏），容器尺寸为 0，跳过以免 echarts 告警；
+        // 后续 resize / 30s 轮询会带着真实尺寸重画
+        return;
+      }
+      var isDark = document.body.classList.contains('theme-dark');
+      var c = initChart('heatPlane');
+      if (!c) return;
+      c.resize();                       // 尺寸可能已随窗口/主题变化
+      c.setOption(heatPlaneOption(zones, W, H, isDark), true);
+    }
+
+    /* 手机端：横向紧凑条（三区一行：色点 + 区名 + 人数） */
+    function renderHeatBars(zones) {
+      var box = document.getElementById('heatBars');
+      if (!box) return;
+      if (!zones.length) {
+        box.innerHTML = '<div class="heat-bar"><span class="hb-sum">暂无南操场网关数据</span></div>';
+        return;
+      }
+      var isDark = document.body.classList.contains('theme-dark');
+      box.innerHTML = zones.map(function (z, i) {
+        var n = Number(z.count) || 0;
+        var color = heatColor(n, isDark);
+        return '<div class="heat-bar">'
+          + '<span class="hb-dot" style="background:' + color + ';box-shadow:0 0 6px ' + heatGlow(n) + ';"></span>'
+          + '<span class="hb-name">' + (z.zone || ('区' + (i + 1))) + '</span>'
+          + '<span class="hb-sum">' + (z.avgRssi != null && n ? (z.avgRssi + 'dBm') : (n ? '信号采样中' : '无人活动')) + '</span>'
+          + '<span class="hb-num" style="color:' + (n ? color : '') + ';">' + n + ' 人</span>'
+          + '</div>';
+      }).join('');
+    }
+
+    /* 底部一行：西区:张三、李四 | 中区:… | 东区:… */
+    function renderHeatRoster(zones) {
+      var box = document.getElementById('heatRoster');
+      if (!box) return;
+      var isDark = document.body.classList.contains('theme-dark');
+      box.innerHTML = zones.map(function (z, i) {
+        var n = Number(z.count) || 0;
+        var kids = (z.bands || []).filter(Boolean).slice(0, 3);
+        var body = kids.length
+          ? '<span class="hr-kids">' + kids.join('、') + (n > kids.length ? ' 等' + n + '人' : '') + '</span>'
+          : '<span class="hr-none">' + (n > 0 ? '名单同步中' : '无人活动') + '</span>';
+        return (i ? '<span class="hr-sep">|</span>' : '')
+          + '<span class="hr-zone">'
+          + '<span class="hr-zdot" style="background:' + heatColor(n, isDark) + ';"></span>'
+          + '<span class="hr-name">' + (z.zone || ('区' + (i + 1))) + ':</span>'
+          + body + '</span>';
+      }).join('');
+    }
+
+    /* 主题切换时由外层 toggleTheme 调用：换配色重绘，不必等下一轮 30s 轮询 */
+    window.refreshHeatmapTheme = function () {
+      if (heatLastData) renderHeatmap(heatLastData);
+    };
+
+    function renderHeatmap(data) {
+      heatLastData = data;
+      var zones = (data && data.zones) || [];
+      var tag = document.getElementById('heatTag');
+      if (tag) {
+        tag.innerHTML = zones.length
+          ? '近3分钟 · <b>' + ((data.updatedAt || '').slice(11, 19) || '--') + '</b>'
+          : '近3分钟';
+      }
+      renderHeatPlane(zones);
+      renderHeatBars(zones);
+      renderHeatRoster(zones);
+    }
+
+    function loadHeatmap() {
+      fetch('/admin/screen/api/heatmap', { headers: { 'X-Requested-With': 'fetch' }, credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .then(function (d) { if (d && d.ok) renderHeatmap(d); })
+        .catch(function (e) { console.error('[screen/heatmap]', e); });
+    }
+
     // ---------- 5. 重点关注名单（修复完整显示与内滚动） ----------
     function renderAttention(d) {
       var list = d.attentionChildren || [];
@@ -1903,6 +2713,9 @@
       Object.keys(charts).forEach(function (k) {
         if (charts[k]) charts[k].resize();
       });
+      /* 操场平面是自绘几何（坐标按容器像素算），resize 后必须按新尺寸重画，
+         否则只是把旧的像素坐标拉伸（手机转屏/窗口缩放会变形）。 */
+      if (heatLastData) renderHeatmap(heatLastData);
     });
 
     load();
@@ -1912,8 +2725,14 @@
       if (document.hidden) return;
       load();
     }, 5000);
+    /* 20260927：操场热力图独立 30s 轮询（数据源是近 3 分钟记录，5s 刷新没有意义） */
+    loadHeatmap();
+    setInterval(function () {
+      if (document.hidden) return;
+      loadHeatmap();
+    }, 30000);
     document.addEventListener('visibilitychange', function () {
-      if (!document.hidden) load();
+      if (!document.hidden) { load(); loadHeatmap(); }
     });
 
     /* 20260926：全屏切换 + F 键快捷键。教室电视上打开即铺满，退出用 Esc 或再点一次。

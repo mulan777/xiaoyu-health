@@ -7,6 +7,14 @@ const { asyncHandler } = require('../lib/helpers');
 const { dbQuery, getSettings } = require('../lib/db');
 const { buildFitnessSummaries, buildRadarChartData } = require('../lib/fitness-analytics');
 const { buildDisplayMap } = require('../lib/name-masking');
+const { SOUTH_GW_ZONES } = require('../lib/positioning');
+
+// 南操场网关 → 展示分区名（顺序与 SOUTH_GW_ZONES 一致：西/中/东，避免两处硬编码漂移）
+const HEATMAP_ZONE_LABEL = { '1区(西)': '西区', '2区(中)': '中区', '3区(东)': '东区' };
+const HEATMAP_ZONES = Object.keys(SOUTH_GW_ZONES).map((gw) => ({
+  gw: String(gw).toLowerCase(),
+  zone: HEATMAP_ZONE_LABEL[SOUTH_GW_ZONES[gw]] || SOUTH_GW_ZONES[gw]
+}));
 
 let _sdCache = { at: 0, map: new Map() };
 async function loadStudentDisplayMap() {
@@ -86,6 +94,48 @@ function prevBatchRecords(items, latestDay) {
   return { day, records: list.filter((item) => dateOnly(item.test_date) === day) };
 }
 
+// 心率区间定义（与前端 pill/系列颜色一一对应）：热身 / 燃脂增肌 / 有氧强化 / 极限
+const HR_ZONES = [
+  { key: 'warmup', label: '热身 <100', min: 0, max: 99 },
+  { key: 'burn', label: '燃增 100-139', min: 100, max: 139 },
+  { key: 'aerobic', label: '有氧强化 140-169', min: 140, max: 169 },
+  { key: 'extreme', label: '极限 ≥170', min: 170, max: Infinity }
+];
+
+/**
+ * 把 intensityAgg（桶×区间 的手环计数行）整理成 { zones, times, series }
+ * 行形如 { t, hr, bands }，hr 是该桶内该手环的最高心率（用于判定所属区间）。
+ */
+function buildIntensityData(rows) {
+  const times = [];
+  const buckets = new Map(); // t -> { warmup: n, burn: n, ... }
+  for (const r of rows || []) {
+    const t = r.t || '';
+    if (!t) continue;
+    let bucket = buckets.get(t);
+    if (!bucket) {
+      bucket = { warmup: 0, burn: 0, aerobic: 0, extreme: 0 };
+      buckets.set(t, bucket);
+      times.push(t);
+    }
+    const hr = Number(r.hr);
+    const zone = HR_ZONES.find((z) => hr >= z.min && hr <= z.max);
+    if (zone) bucket[zone.key] += Number(r.bands) || 0;
+  }
+  const totals = HR_ZONES.reduce((acc, z) => {
+    acc[z.key] = times.reduce((s, t) => s + (buckets.get(t)[z.key] || 0), 0);
+    return acc;
+  }, {});
+  return {
+    zones: HR_ZONES.map((z) => ({ key: z.key, label: z.label })),
+    times,
+    series: HR_ZONES.map((z) => ({ key: z.key, label: z.label, data: times.map((t) => buckets.get(t)[z.key] || 0) })),
+    // 当前即时汇总（最新桶）
+    latest: times.length ? Object.assign({ t: times[times.length - 1] }, buckets.get(times[times.length - 1])) : null,
+    total: totals
+  };
+}
+
 module.exports = function mountScreenRoutes(app) {
   // 旧路径 301 → 统一目录（2026-09-10，收藏/投屏链接不失效）
   app.get('/screen', (req, res) => res.redirect(301, '/admin/screen'));
@@ -120,12 +170,21 @@ module.exports = function mountScreenRoutes(app) {
    *   bandClassId     手环数据过滤（0=全部手环，>0=仅该班手环——教师端大屏用）
    * 返回 res.json 同构的数据对象。
    */
-  async function buildScreenOverview(scope, classId, intervalMin, bandClassId) {
+  async function buildScreenOverview(scope, classId, intervalMin, bandClassId, date) {
     // 动态走势区间与分桶: 近1h=1min桶(60点) / 近6h=5min桶(72点) / 近24h=15min桶(96点)
     intervalMin = Math.min(1440, Math.max(30, Number(intervalMin) || 60));
+    // 历史日期回放（2026-09-28）：传 date=YYYY-MM-DD 时把 NOW() 窗口平移到该日的同一时刻
+    let timeWindowSql = "r.bp_time >= DATE_SUB(NOW(), INTERVAL " + intervalMin + " MINUTE)";
+    if (date && /^\d{4}-\d{2}-\d{2}$/.test(String(date))) {
+      const d = String(date);
+      timeWindowSql = "r.bp_time >= DATE_SUB('" + d + " 23:59:59', INTERVAL " + intervalMin + " MINUTE) AND r.bp_time <= '" + d + " 23:59:59'";
+    }
     const bucketSec = intervalMin <= 60 ? 60 : (intervalMin <= 360 ? 300 : 900);
     const timeFmt = intervalMin > 360 ? "'%m-%d %H:%i'" : "'%H:%i'";
-    const [records, bandBuckets, bandOverview, attentionAll, recentBands, totals, settings] = await Promise.all([
+    const bandScopeSql = bandClassId
+      ? 'AND r.band_mac IN (SELECT m2.band_mac FROM band_mapping m2 JOIN children ch2 ON ch2.id = m2.child_id WHERE ch2.class_id = ' + Number(bandClassId) + ')'
+      : '';
+    const [records, bandBuckets, intensityAgg, bandOverview, attentionAll, recentBands, totals, settings] = await Promise.all([
       loadScopedFitnessRecords(scope, classId),
       // 聚合曲线: 按区间分桶, 全部手环平均值
       dbQuery(
@@ -134,9 +193,28 @@ module.exports = function mountScreenRoutes(app) {
                 AVG(CASE WHEN r.spo2 > 0 THEN r.spo2 END) AS avg_spo2,
                 AVG(CASE WHEN r.body_temp > 0 THEN r.body_temp END) AS avg_tp
            FROM band_records r
-          WHERE r.bp_time >= DATE_SUB(NOW(), INTERVAL ${intervalMin} MINUTE)
+          WHERE ${timeWindowSql}
             ${bandClassId ? 'AND r.band_mac IN (SELECT m2.band_mac FROM band_mapping m2 JOIN children ch2 ON ch2.id = m2.child_id WHERE ch2.class_id = ' + Number(bandClassId) + ')' : ''}
           GROUP BY FLOOR(UNIX_TIMESTAMP(r.bp_time) / ${bucketSec})
+          ORDER BY t ASC`),
+      // 运动强度画像（2026-09-27）：同一分桶下按心率区间统计「手环数」（不是条数，避免高频上报的手环刷屏）
+      dbQuery(
+        `SELECT t, MAX(hr) AS hr, COUNT(DISTINCT band_mac) AS bands FROM (
+            SELECT DATE_FORMAT(FROM_UNIXTIME(${bucketSec} * FLOOR(UNIX_TIMESTAMP(r.bp_time) / ${bucketSec})), ${timeFmt}) AS t,
+                   FLOOR(UNIX_TIMESTAMP(r.bp_time) / ${bucketSec}) AS bk,
+                   r.band_mac,
+                   MAX(r.heart_rate) AS hr
+              FROM band_records r
+             WHERE ${timeWindowSql}
+               AND r.heart_rate > 0
+               ${bandScopeSql}
+             GROUP BY bk, t, r.band_mac
+          ) x
+          GROUP BY t, bk, CASE
+              WHEN hr >= 170 THEN 'extreme'
+              WHEN hr >= 140 THEN 'aerobic'
+              WHEN hr >= 100 THEN 'burn'
+              ELSE 'warmup' END
           ORDER BY t ASC`),
       dbQuery(
         `SELECT b.band_mac,
@@ -384,6 +462,9 @@ module.exports = function mountScreenRoutes(app) {
         avgSpo2: r.avg_spo2 != null ? Number(r.avg_spo2).toFixed(0) : null,
         avgTp: r.avg_tp != null ? Number(r.avg_tp).toFixed(1) : null
       })),
+      // 运动强度实时画像：4 区间手环数堆叠（前端堆叠面积图）
+      // 注意不能按桶内行数算——同一手环一分钟可能上报多条，会把「人数」放大成「条数」
+      intensityData: buildIntensityData(intensityAgg),
       attentionChildren,
       attentionTotal,
       totals: Array.isArray(totals) ? (totals[0] || {}) : totals
@@ -394,9 +475,78 @@ module.exports = function mountScreenRoutes(app) {
   app.get('/admin/screen/api/overview', requireLogin, asyncHandler(async (req, res) => {
     const scope = req.query.scope === 'class' ? 'class' : 'all';
     const classId = scope === 'class' ? (Number(req.query.classId) || 0) : 0;
-    const data = await buildScreenOverview(scope, classId, req.query.intervalMin, 0);
+    const data = await buildScreenOverview(scope, classId, req.query.intervalMin, 0, req.query.date);
     res.json(Object.assign({ ok: true }, data));
   }));
 
-  return { buildScreenOverview };
+  // ========== 南操场实时热力图（30s 轮询） ==========
+  /**
+   * 近 3 分钟 band_records 按南操场网关分组 → 三分区实时人数 / 平均 RSSI / 在场幼儿（脱敏）
+   * 人数口径：DISTINCT band_mac（一台手环算一人），0 人分区前端显示「无人活动」。
+   */
+  app.get('/admin/screen/api/heatmap', requireLogin, asyncHandler(async (req, res) => {
+    const gws = HEATMAP_ZONES.map((z) => z.gw);
+    const placeholders = gws.map(() => '?').join(',');
+    // 每网关每手环一行：平均 RSSI 滤单条噪声（与 lib/positioning 的桶聚合同思路）
+    const rows = await dbQuery(
+      `SELECT LOWER(r.gw_addr) AS gw,
+              r.band_mac,
+              AVG(r.rssi) AS avg_rssi,
+              MAX(r.bp_time) AS last_time
+         FROM band_records r
+        WHERE r.bp_time >= DATE_SUB(NOW(), INTERVAL 3 MINUTE)
+          AND r.rssi IS NOT NULL
+          AND LOWER(r.gw_addr) IN (${placeholders})
+        GROUP BY LOWER(r.gw_addr), r.band_mac
+        ORDER BY avg_rssi DESC`,
+      gws);
+
+    // 手环 → 幼儿（姓名/班级），出口前统一脱敏
+    const macs = [...new Set((rows || []).map((r) => String(r.band_mac).toLowerCase()))];
+    const mappingByMac = new Map();
+    if (macs.length) {
+      const mappingRows = await dbQuery(
+        `SELECT LOWER(m.band_mac) AS band_mac, ch.name AS child_name, c.name AS class_name
+           FROM band_mapping m
+           JOIN children ch ON ch.id = m.child_id
+           LEFT JOIN classes c ON c.id = ch.class_id
+          WHERE LOWER(m.band_mac) IN (${macs.map(() => '?').join(',')})`,
+        macs);
+      const dm = await loadStudentDisplayMap();
+      for (const m of mappingRows || []) {
+        mappingByMac.set(String(m.band_mac).toLowerCase(), {
+          name: maskChildName(dm, m.class_name, m.child_name),
+          class_name: m.class_name || ''
+        });
+      }
+    }
+
+    const byGw = new Map();
+    for (const r of rows || []) {
+      const gw = String(r.gw).toLowerCase();
+      if (!byGw.has(gw)) byGw.set(gw, []);
+      byGw.get(gw).push(r);
+    }
+
+    const round1 = (v) => (v == null || !Number.isFinite(Number(v)) ? null : Number(Number(v).toFixed(1)));
+    const zones = HEATMAP_ZONES.map((z) => {
+      const list = byGw.get(z.gw) || [];
+      const rssis = list.map((r) => round1(r.avg_rssi)).filter((v) => v != null);
+      const bands = list.slice(0, 8).map((r) => {
+        const info = mappingByMac.get(String(r.band_mac).toLowerCase());
+        return info ? info.name : '';
+      }).filter(Boolean);
+      return {
+        zone: z.zone,
+        gw: z.gw,
+        count: list.length,
+        avgRssi: rssis.length ? round1(rssis.reduce((s, v) => s + v, 0) / rssis.length) : null,
+        bands
+      };
+    });
+
+    res.json({ ok: true, zones, updatedAt: fmtDateTime(new Date()) });
+  }));
+
+  return { buildScreenOverview, buildIntensityData };
 };

@@ -178,6 +178,8 @@ module.exports = function mountBandRoutes(app, upload) {
 // ========== 手环下发管理（代理到 band-command 服务 127.0.0.1:3079，2026-09-23）==========
 // 页面：/admin/bands/command；API：/admin/bands/command/api/* → http://127.0.0.1:3079/api/*
 const BAND_COMMAND_BASE = process.env.BAND_COMMAND_URL || 'http://127.0.0.1:3079';
+// band-command 服务 /api/* 需 X-Auth-Token（2026-09-27 加鉴权）；此处代理代填，须与服务端 BAND_COMMAND_TOKEN 一致
+const BAND_COMMAND_TOKEN = String(process.env.BAND_COMMAND_TOKEN || '521ZiJi.');
 
 function mountBandCommandRoutes(app) {
   const adminOnly = requireRole('admin');
@@ -193,7 +195,7 @@ function mountBandCommandRoutes(app) {
 async function proxyBandCommand(req, res) {
   const sub = req.path.replace(/^\/admin\/bands\/command\/api/, '') || '/';
   const url = BAND_COMMAND_BASE + '/api' + sub + (req._parsedUrl && req._parsedUrl.search ? req._parsedUrl.search : '');
-  const init = { method: req.method, headers: { 'content-type': 'application/json' }, signal: AbortSignal.timeout(45000) };
+  const init = { method: req.method, headers: { 'content-type': 'application/json', 'x-auth-token': BAND_COMMAND_TOKEN }, signal: AbortSignal.timeout(45000) };
   if (req.method !== 'GET' && req.method !== 'HEAD') {
     init.body = JSON.stringify(req.body || {});
   }
