@@ -59,6 +59,7 @@
   <!-- v1 基础样式（兼容） -->
   <link rel="stylesheet" href="/static/style.css?v=<%= cssVer %>" />
   <link rel="stylesheet" href="/static/mobile-saas.css?v=<%= cssVer %>" />
+  <link rel="stylesheet" href="/static/tablet-responsive.css?v=20261010b" />
   <!-- 样式已合并进 style.css (原 v1+v2) -->
 </head>
 <body class="<%= typeof pageClass !== 'undefined' ? pageClass : '' %>">
@@ -112,6 +113,8 @@
       <div class="bn-submenu" id="bn-sub-more">
         <a href="/user/screen"><span class="bn-sub-ico">🖥️</span><span>班级数据大屏</span></a>
         <a href="/user/bands"><span class="bn-sub-ico">⌚</span><span>手环健康监测</span></a>
+        <a href="/user/exercise-focus"><span class="bn-sub-ico">📋</span><span>每周锻炼监测</span></a>
+        <a href="/user/bands/trace"><span class="bn-sub-ico">🏃</span><span>操场活动轨迹</span></a>
         <a href="/report"><span class="bn-sub-ico">📋</span><span>健康日报</span></a>
         <a href="/alert"><span class="bn-sub-ico">🚨</span><span>心率警报</span></a>
       </div>
@@ -124,16 +127,17 @@
       const bnGroups = [
         {key:'monitor', label:'态势', icon:'mi-radar', items:[
           {perm:'ops.overview', href:'/admin?panel=overview', label:'工作台概览', icon:'\uD83D\uDCCA'},
-          {perm:'data.fitness', href:'/admin/screen', target:'_blank', label:'全园感知大屏 \u2197', icon:'\uD83D\uDDA5\uFE0F'},
+          {perm:'data.fitness', href:'/admin/screen', target:'_blank', label:'全园感知大屏', icon:'\uD83D\uDDA5\uFE0F'},
           {perm:'data.bands', href:'/admin/bands', label:'手环健康监测', icon:'\u231A'},
           {perm:'data.bands', href:'/admin/bands/trace', label:'操场活动轨迹', icon:'\uD83C\uDFC3'},
           {perm:'data.bands', href:'/admin?panel=alert', label:'心率警报', icon:'\uD83D\uDEA8'},
           {perm:'data.bands', href:'/admin?panel=report', label:'健康日报', icon:'\uD83D\uDCCB'},
-          {perm:'data.bands', href:'/admin/bands/command', label:'手环下发', icon:'\uD83D\uDCF3'}
+          {perm:'data.bands.view', href:'/admin/bands/command', label:'手环下发管理', icon:'\uD83D\uDCF3'}
         ]},
         {key:'care', label:'体测', icon:'mi-run', items:[
           {perm:'data.fitness', href:'/admin/fitness', label:'体测数据管理', icon:'\uD83C\uDFC3'},
-          {perm:'booking.attention', href:'/admin?panel=attention', label:'重点关注管理', icon:'\u2764\uFE0F'}
+          {perm:'booking.attention', href:'/admin?panel=attention', label:'重点关注管理', icon:'\u2764\uFE0F'},
+          {perm:'booking.attention.view', href:'/admin/exercise-focus', label:'每周锻炼监测', icon:'\uD83D\uDCCB'}
         ]},
         {key:'edu', label:'教务', icon:'mi-school', items:[
           {perm:'data.classes', href:'/admin?panel=classes', label:'班级管理', icon:'\uD83C\uDFEB'},
@@ -182,7 +186,7 @@
       /* ===== 管理端：4 大项高亮 ===== */
       var key = '';
       if (p.indexOf('/admin/screen') === 0 || p.indexOf('/admin/bands') === 0) key = 'monitor';
-      else if (p.indexOf('/admin/fitness') === 0) key = 'care';
+      else if (p.indexOf('/admin/fitness') === 0 || p.indexOf('/admin/exercise-focus') === 0) key = 'care';
       else if (p.indexOf('panel=alert') > -1 || p.indexOf('panel=report') > -1) key = 'monitor';
       else if (p.indexOf('panel=attention') > -1) key = 'care';
       else if (p.indexOf('panel=classes') > -1 || p.indexOf('panel=children') > -1 || p.indexOf('/admin/venues') === 0) key = 'edu';
@@ -198,7 +202,7 @@
       else if (p.indexOf('/user/venues') === 0) tKey = 'venues';
       else if (p.indexOf('view=records') > -1) tKey = 'records';
       else if (p.indexOf('view=entry') > -1) tKey = 'entry';
-      else if (p.indexOf('view=attention') > -1) tKey = 'attention';
+      else if (p.indexOf('view=attention') > -1 || p.indexOf('/user/exercise-focus') === 0) tKey = 'attention';
       else if (p.indexOf('/user') === 0) tKey = 'home';
       if (tKey) {
         var links = document.querySelectorAll('.mobile-bottom-nav [data-bn]');

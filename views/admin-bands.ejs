@@ -296,7 +296,11 @@
     <div class="hero-date"><%= nowIso %> · 每 30 秒自动更新</div>
   </div>
   <div class="admin-hero-actions">
+    <% if (typeof teacherView !== 'undefined' && teacherView || hasPerm('booking.attention.view')) { %><a class="btn secondary" href="<%= typeof teacherView !== 'undefined' && teacherView ? '/user/exercise-focus' : '/admin/exercise-focus' %>">每周锻炼监测</a><% } %>
     <div class="status-chip"><%= bandList.filter(b => b.online).length %> 只手环在线</div>
+    <% if (currentUser && currentUser.role !== 'user' && hasPerm('data.bands.view')) { %>
+    <a class="btn secondary" href="/admin/bands/command">手环下发管理</a>
+    <% } %>
     <button class="btn primary" onclick="location.reload()">刷新</button>
   </div>
 </section>

@@ -1,0 +1,31 @@
+<dialog id="screenDetails" class="sd-dialog" aria-labelledby="sdTitle">
+  <div class="sd-header">
+    <div><div class="sd-eyebrow">手表监测明细</div><h2 id="sdTitle">监测明细</h2><p id="sdScope"></p></div>
+    <button type="button" class="sd-close" id="sdClose" aria-label="关闭明细">×</button>
+  </div>
+  <div class="sd-tabs" role="tablist" aria-label="明细内容">
+    <button type="button" id="sdMeasurementsTab" role="tab" aria-controls="sdMeasurements">手表明细</button>
+    <button type="button" id="sdAlertsTab" role="tab" aria-controls="sdAlerts">预警记录</button>
+  </div>
+  <section id="sdMeasurements" role="tabpanel" aria-labelledby="sdMeasurementsTab">
+    <div class="sd-tools">
+      <label class="sd-search">查找手表<input id="sdSearch" type="search" placeholder="班级、幼儿或手表 MAC" autocomplete="off"></label>
+      <label>显示范围<select id="sdReadingFilter"><option value="all">全部手表</option><option value="valid">参与均值的手表</option><option value="alerts">本时段有过预警</option><option value="missing">未上报或未计入均值</option></select></label>
+    </div>
+    <p id="sdSummary" class="sd-summary" aria-live="polite"></p>
+    <p class="sd-note">数值为所选时段每天 09:00–11:00 内各手表的最后一次上报。手表编号使用设备 MAC；“未计入均值”沿用大屏有效值规则。</p>
+    <div class="sd-table-wrap"><table class="sd-table"><thead><tr><th>班级 / 幼儿</th><th>手表编号 / MAC</th><th id="sdValueHeading">测量值</th><th>上报时间</th><th>本时段体征预警</th><th>操作</th></tr></thead><tbody id="sdRows"></tbody></table></div>
+  </section>
+  <section id="sdAlerts" role="tabpanel" aria-labelledby="sdAlertsTab" hidden>
+    <div class="sd-tools">
+      <label>预警时间<select id="sdAlertRange"><option value="selected">大屏所选时段</option><option value="all">全部历史</option></select></label>
+      <label>预警状态<select id="sdAlertStatus"><option value="all">全部状态</option><option value="active">进行中</option><option value="resolved">已恢复</option></select></label>
+      <button type="button" id="sdClearBand" class="sd-button" hidden>查看全部手表</button>
+      <button type="button" id="sdRetry" class="sd-button">刷新记录</button>
+    </div>
+    <p id="sdAlertSummary" class="sd-summary" role="status" aria-live="polite"></p>
+    <div class="sd-table-wrap"><table class="sd-table"><thead><tr><th>班级 / 幼儿</th><th>手表编号 / MAC</th><th>预警类型 / 数值</th><th>首次 / 最近触发</th><th>状态 / 恢复时间</th><th>触发次数</th></tr></thead><tbody id="sdAlertRows"></tbody></table></div>
+    <div class="sd-pager"><button type="button" id="sdPrev" class="sd-button">上一页</button><span id="sdPage"></span><button type="button" id="sdNext" class="sd-button">下一页</button></div>
+  </section>
+  <div class="sd-footer">已恢复的预警会保留，可切换“全部历史”查询。<span id="sdUpdated"></span></div>
+</dialog>

@@ -129,7 +129,7 @@ body:has(.screen-shortcut) .user-pill-tab-nav{display:none!important}
   /* 管理端容器底部留出底部导航高度，避免内容被遮挡 */
   .container.admin-container{padding-bottom:120px!important}
   /* 汉堡按钮固定左上后，管理端 hero 徽标/标题避开按钮区域 */
-  .container .admin-hero{padding-left:58px!important}
+  .container .admin-hero{padding-left:14px!important} /* 20260927: 58px是为已隐藏的汉堡按钮留的，改14px与趋势卡对齐 */
   /* 使用建议卡：手机端压缩行距与字号，减少首屏占用 */
   .tips.compact{font-size:12.5px;line-height:1.55}
 }

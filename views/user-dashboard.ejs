@@ -330,9 +330,17 @@
         <span class="user-fitness-nav-desc">进入场地预约与使用管理</span>
       </a>
       <% if (typeof bandAccess !== 'undefined' && bandAccess) { %>
+      <a class="user-fitness-nav-link" href="/user/exercise-focus">
+        <span class="user-fitness-nav-title">每周锻炼监测</span>
+        <span class="user-fitness-nav-desc">选择本周关注幼儿，填写观察和教师沟通</span>
+      </a>
       <a class="user-fitness-nav-link" href="/user/bands">
         <span class="user-fitness-nav-title">手环健康监测</span>
         <span class="user-fitness-nav-desc">本班手环实时体温、心率、血氧与曲线</span>
+      </a>
+      <a class="user-fitness-nav-link" href="/user/bands/trace">
+        <span class="user-fitness-nav-title">操场活动轨迹</span>
+        <span class="user-fitness-nav-desc">查看本班幼儿的南操场分区轨迹与停留时间</span>
       </a>
       <a class="user-fitness-nav-link" href="/user/screen">
         <span class="user-fitness-nav-title">班级数据大屏</span>
@@ -551,6 +559,7 @@
     <div>
       <div class="eyebrow">重点关注维护</div>
       <h2>本班重点关注</h2>
+      <% if (typeof bandAccess !== 'undefined' && bandAccess) { %><a class="btn primary" href="/user/exercise-focus" style="margin:12px 0;">每周锻炼监测 →</a><% } %>
       <div class="muted">
         仅可维护
         <strong><%= assignedClass && assignedClass.name ? assignedClass.name : '当前班级' %></strong>

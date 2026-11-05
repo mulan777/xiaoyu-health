@@ -4468,3 +4468,62 @@ table.modern-class-table td:nth-child(8) .table-row-actions form.inline-form { w
 /* 20260926 体测明细宽表：桌面 1200px，窄屏降到 900px（对应 admin-fitness.ejs 原内联 min-width） */
 .fitness-wide-table{min-width:1200px}
 @media (max-width:900px){ .fitness-wide-table{min-width:900px} }
+
+/* ===== 2026-09-27 手机端工作台概览 v3（≤860px）：2x2 小卡片+淡色底纹，完整显示 ===== */
+@media (max-width: 860px) {
+  .stats-grid.overview-stats.admin-data-stats { grid-template-columns: 1fr 1fr !important; gap: 9px !important; margin-bottom: 14px !important; }
+  .stats-grid.overview-stats.admin-data-stats .stat-card {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    justify-content: center !important;
+    gap: 3px !important;
+    padding: 13px 13px 11px !important;
+    min-height: 92px !important;
+    border-radius: 15px !important;
+    border: none !important; }
+  .stats-grid.overview-stats.admin-data-stats .stat-card .stat-label {
+    width: 100% !important;
+    flex: 0 0 auto !important;
+    font-size: 11px !important;
+    font-weight: 500 !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    max-width: none !important;
+    letter-spacing: 0 !important;
+    color: #64748b !important; }
+  .stats-grid.overview-stats.admin-data-stats .stat-card .stat-number {
+    font-size: 27px !important;
+    line-height: 1.1 !important;
+    letter-spacing: -0.02em !important; }
+  .stats-grid.overview-stats.admin-data-stats .stat-card .muted {
+    width: 100% !important;
+    font-size: 10.5px !important;
+    line-height: 1.45 !important;
+    white-space: normal !important;
+    display: block !important;
+    overflow: visible !important;
+    color: #94a3b8 !important; }
+  /* 四卡淡色底纹+数字配色，区分维度又不花哨 */
+  .stats-grid.overview-stats.admin-data-stats .stat-card:nth-child(1) { background: linear-gradient(135deg, #eff6ff, #f8fafc) !important; }
+  .stats-grid.overview-stats.admin-data-stats .stat-card:nth-child(1) .stat-number { color: #2563eb !important; }
+  .stats-grid.overview-stats.admin-data-stats .stat-card:nth-child(2) { background: linear-gradient(135deg, #f0fdf4, #f8fafc) !important; }
+  .stats-grid.overview-stats.admin-data-stats .stat-card:nth-child(2) .stat-number { color: #16a34a !important; }
+  .stats-grid.overview-stats.admin-data-stats .stat-card:nth-child(3) { background: linear-gradient(135deg, #f5f3ff, #f8fafc) !important; }
+  .stats-grid.overview-stats.admin-data-stats .stat-card:nth-child(3) .stat-number { color: #7c3aed !important; }
+  .stats-grid.overview-stats.admin-data-stats .stat-card:nth-child(4) { background: linear-gradient(135deg, #fff7ed, #f8fafc) !important; }
+  .stats-grid.overview-stats.admin-data-stats .stat-card:nth-child(4) .stat-number { color: #ea580c !important; }
+  /* 底部悬浮导航(58px+10px)留出安全区，防压住最后一张卡 */
+  .admin-main, .admin-main.shell-main { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)) !important; }
+  .admin-analytics-card { padding: 14px !important; }
+  .admin-analytics-card h3 { font-size: 15px !important; line-height: 1.45 !important; }
+  .admin-analytics-card p { font-size: 12.5px !important; }
+}
+
+/* 2026-09-27 修复：hero 欢迎卡「超级管理员」eyebrow 自带 12px 左内边距，导致与下方标题左对齐线偏离 */
+.admin-hero .eyebrow { padding-left: 0 !important; margin-left: 0 !important; }
+
+/* 2026-09-27 v4：手机端 2x2 统计卡文字居中 */
+@media (max-width: 860px) {
+  .stats-grid.overview-stats.admin-data-stats .stat-card { align-items: center !important; text-align: center !important; }
+}

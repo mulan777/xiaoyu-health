@@ -62,17 +62,19 @@
         // 1. 📊 态势与感知
         const monitorItems = [
           {perm:'ops.overview', panel:'overview', label:'工作台概览', icon:'📊'},
-          {perm:'data.fitness', href:'/admin/screen', target:'_blank', label:'全园感知大屏 ↗', icon:'🖥️', badge:'新窗口'},
+          {perm:'data.fitness', href:'/admin/screen', target:'_blank', label:'全园感知大屏', icon:'🖥️', badge:'新窗口'},
           {perm:'data.bands', href:'/admin/bands', label:'手环健康监测', icon:'⌚'},
           {perm:'data.bands', href:'/admin/bands/trace', label:'操场活动轨迹', icon:'🏃'},
           {perm:'data.bands', panel:'alert', label:'心率警报', icon:'🚨'},
-          {perm:'data.bands', panel:'report', label:'健康日报', icon:'📋'}
+          {perm:'data.bands', panel:'report', label:'健康日报', icon:'📋'},
+          {perm:'data.bands.view', href:'/admin/bands/command', label:'手环下发管理', icon:'📳'}
         ].filter(i => hasPerm(i.perm));
 
         // 2. 🏃 体测与关怀
         const careItems = [
           {perm:'data.fitness', href:'/admin/fitness', label:'体测数据管理', icon:'🏃'},
-          {perm:'booking.attention', panel:'attention', label:'重点关注管理', icon:'❤️'}
+          {perm:'booking.attention', panel:'attention', label:'重点关注管理', icon:'❤️'},
+          {perm:'booking.attention.view', href:'/admin/exercise-focus', label:'每周锻炼监测', icon:'📋'}
         ].filter(i => hasPerm(i.perm));
 
         // 3. 🏫 基础与教务
@@ -200,9 +202,7 @@
     <section id="overview-panel" class="admin-panel is-active">
       <div class="panel-heading">
         <div>
-          <div class="eyebrow">概览</div>
           <h2>工作台概览</h2>
-          
         </div>
       </div>
 
@@ -1159,7 +1159,7 @@
       <% const quickAttentionTags = ['咳嗽', '感冒恢复期', '扭伤擦伤', '情绪波动', '减少跑跳', '避免对抗', '观察体力', '补水提醒']; %>
       <% const selectedAttentionTags = selectedAttentionChild ? String(selectedAttentionChild.attention_tags || '').split(',').map(function(item) { return item.trim(); }).filter(Boolean) : []; %>
       <% const selectedAttentionExtraTags = selectedAttentionTags.filter(function(tag) { return !quickAttentionTags.includes(tag); }).join(','); %>
-      <div class="panel-heading"><div><div class="eyebrow">重点关注管理</div><h2>动态重点关注提醒</h2></div></div>
+      <div class="panel-heading"><div><div class="eyebrow">重点关注管理</div><h2>动态重点关注提醒</h2></div><a class="btn primary" href="/admin/exercise-focus">每周锻炼监测</a></div>
       <div class="panel-grid">
         <div class="card stat-card">
           <div class="stat-label">当前生效中的重点关注人数</div>

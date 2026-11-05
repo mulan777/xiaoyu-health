@@ -1,0 +1,108 @@
+/* Shared screen layout: readable type, content-driven panels and touch controls. */
+html, body { width:100%; min-width:0; height:auto; min-height:100%; overflow-x:clip; overflow-y:auto; zoom:1; }
+.screen-root { width:100%; min-height:100dvh; height:auto; padding:clamp(12px,1vw,24px); gap:14px; }
+.screen-header { height:auto; min-height:72px; flex:0 0 auto; flex-wrap:wrap; gap:14px; padding:14px 18px; margin:0; }
+.brand-section,.brand-meta,.header-right,.scope-bar { min-width:0; }
+.brand-section { flex:1 1 320px; }
+.brand-meta h1 { font-size:clamp(18px,1.3vw,28px); line-height:1.35; overflow-wrap:anywhere; }
+.brand-meta .sub-title { font-size:13px; line-height:1.6; }
+.header-right { flex-wrap:wrap; gap:10px; }
+.scope-bar { flex-wrap:wrap; border-radius:16px; gap:6px; }
+.scope-chip,.theme-toggle-btn { min-height:40px; font-size:13px; white-space:nowrap; }
+.clock-display .time { font-size:clamp(22px,1.6vw,32px); }
+.clock-display .date { font-size:12px; }
+.screen-grid { display:grid; flex:1 0 auto; min-width:0; grid-template-columns:minmax(260px,1fr) minmax(560px,2.2fr) minmax(280px,1.1fr); gap:14px; align-items:stretch; }
+.screen-grid > * { min-width:0; }
+.col-stack { gap:14px; min-width:0; }
+.tech-panel { min-width:0; }
+.panel-header { height:auto; min-height:46px; flex:0 0 auto; padding:10px 14px; flex-wrap:wrap; gap:6px 12px; }
+.panel-title { font-size:15px; line-height:1.5; }
+.panel-tag { font-size:12px; line-height:1.6; overflow-wrap:anywhere; }
+.panel-body { padding:12px; }
+.chart-container { height:260px; min-height:240px; flex:1 0 240px; }
+.center-top-metrics { grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+.metric-card { padding:12px; min-width:0; min-height:108px; gap:7px; }
+.m-label-row { font-size:13px; gap:6px; flex-wrap:wrap; }
+.m-value-row { flex-wrap:wrap; gap:4px; min-width:0; }
+.m-value-row .number { font-size:clamp(24px,1.8vw,36px); line-height:1.2; }
+.metric-card.bp .number { font-size:clamp(22px,1.5vw,30px); }
+.m-value-row .unit,.m-status-row { font-size:12px; line-height:1.5; }
+.m-status-row { white-space:normal; overflow:visible; text-overflow:clip; }
+.band-pills-row { gap:8px; margin:10px 0; }
+.mini-pill,.mini-pill b,.int-pill { font-size:12px; line-height:1.6; }
+.trend-block { flex:1 0 330px; min-height:330px; padding:12px; }
+.trend-header { flex-wrap:wrap; gap:10px; font-size:14px; line-height:1.6; margin-bottom:8px; position:relative; z-index:2; }
+#trendTitle { flex:1 1 220px; min-width:0; }
+.trend-tabs { display:flex; flex:0 0 auto; gap:6px; flex-wrap:wrap; }
+.trend-tab { min-height:40px; padding:7px 15px; font-size:13px; touch-action:manipulation; }
+#curveChart { min-height:250px; height:250px; flex:1 0 250px; }
+#curveEmpty { pointer-events:none!important; inset:85px 12px 12px!important; text-align:center; font-size:14px!important; line-height:1.7; }
+.screen-request-status { flex:1 0 100%; font-size:12px; line-height:1.5; color:var(--text-sub); }
+.screen-request-status:empty { display:none; }
+.screen-request-status.is-error { color:var(--accent-rose); }
+.center-bottom-row { height:auto; flex:0 0 auto; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+.feed-box { min-height:190px; padding:12px; }
+.feed-title { font-size:13px; flex-wrap:wrap; gap:5px; line-height:1.6; }
+.feed-list { max-height:230px; min-height:110px; }
+.feed-row { min-height:40px; flex-wrap:wrap; gap:4px 8px; font-size:12px; }
+.feed-time,.feed-name { font-size:12px; }
+.attn-container { min-height:220px; max-height:360px; overflow-y:auto; }
+.att-name { font-size:14px; }.att-class,.att-reason { font-size:12px; line-height:1.6; }
+.att-row-1 { flex-wrap:wrap; gap:4px 8px; }.att-reason { white-space:normal; overflow:visible; }
+.growth-summary { flex-wrap:wrap; gap:8px; }.gs-card { min-width:0; flex:1 1 80px; }.gs-row2 { flex-wrap:wrap; }.gs-label,.gs-badge { font-size:12px; }
+.screen-footer { height:auto; flex:0 0 auto; min-height:40px; flex-wrap:wrap; gap:10px; font-size:12px; padding:6px; margin:0; }
+.footer-left,.footer-metrics { flex-wrap:wrap; gap:8px 16px; }
+.heatmap-wrap { min-height:220px; }.heat-plane { min-height:220px; }
+@media (min-width:1800px) and (min-height:950px) {
+  .screen-grid { min-height:calc(100dvh - 160px); }
+  .center-top-metrics { grid-template-columns:repeat(6,minmax(0,1fr)); }
+  .col-stack .chart-container { height:auto; flex:1 0 250px; }
+  .trend-block { flex:1 0 330px; }
+}
+@media (max-width:1439px), (max-height:760px) {
+  .screen-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .screen-grid > .tech-panel { grid-column:1 / -1; grid-row:1; }
+  .center-top-metrics { grid-template-columns:repeat(6,minmax(0,1fr)); }
+  .col-stack { display:grid; grid-template-rows:auto; align-content:start; }
+  .tech-panel { flex:none!important; }
+  .screen-root { min-height:100dvh; }
+  .trend-block { min-height:350px; }
+}
+@media (max-width:1100px) {
+  .center-top-metrics { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .screen-header { display:grid; grid-template-columns:minmax(0,1fr) auto; }
+  .brand-section { grid-column:1 / -1; }.header-right { justify-content:flex-end; }
+  .scope-bar { max-width:100%; }.clock-display .date { display:none; }
+}
+@media (max-width:768px) {
+  .screen-root { display:flex; padding:12px; }
+  .screen-header { display:flex; flex-direction:column; align-items:stretch; padding:14px; }
+  .brand-section { flex:0 0 auto; }.header-right { width:auto; justify-content:flex-start; padding-top:0; border:0; }
+  .scope-bar { width:auto; white-space:normal; overflow:visible; }
+  .screen-grid { display:flex; flex-direction:column; }.col-stack { display:flex; flex-direction:column; }
+  .screen-grid > .tech-panel { order:0; }.screen-grid > .col-stack { order:1; }
+  .tech-panel { margin:0; }.center-top-metrics { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .metric-card { padding:10px; min-height:100px; }.m-value-row .number { font-size:25px; }.metric-card.bp .number { font-size:21px; }
+  .center-bottom-row { grid-template-columns:1fr; }.feed-list { max-height:220px; }
+  .screen-footer { flex-direction:row; text-align:left; padding:10px 0; }
+}
+@media (max-width:480px) {
+  .center-top-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .trend-tabs { width:100%; }.trend-tab { flex:1; padding:8px; }
+  .panel-header { padding:10px; }.panel-title { font-size:14px; }
+}
+
+/* Let chart content determine panel height instead of overflowing a fixed basis. */
+.trend-block { flex:1 0 auto; }
+#ratingChart,#growthChart,#radarChart { height:260px; min-height:240px; flex:1 0 260px; }
+/* Reserve status space so background updates do not move the reading position. */
+.screen-request-status { display:block!important; height:34px; min-height:34px; max-height:34px; overflow:hidden; line-height:1.4; }
+.clock-display .time { font-variant-numeric:tabular-nums; }
+@media (max-width:768px) {
+  .screen-root { min-height:100svh; }
+  .trend-header { display:grid; grid-template-columns:minmax(0,1fr); gap:8px; }
+  .chart-container,.chart-container canvas,#heatPlane,#heatPlane canvas { touch-action:pan-y pinch-zoom!important; }
+  .feed-list,.attn-container { height:auto!important; max-height:none!important; overflow:visible!important; }
+  .screen-header,.tech-panel,.metric-card { backdrop-filter:none!important; -webkit-backdrop-filter:none!important; }
+  .attention-card:hover { transform:none; }
+}

@@ -1,386 +1,44 @@
-<%- include('partials/header', { pageClass: 'admin-page' }) %>
-<% var data = typeof data !== 'undefined' ? data : null; %>
-<% var bands = typeof bands !== 'undefined' ? bands : []; %>
-<style>
-  .trace-wrap { max-width: 960px; margin: 0 auto; padding: 12px 12px 78px; }
-  .trace-card { background: #fff; border-radius: 18px; padding: 16px; box-shadow: 0 2px 10px rgba(15,23,42,.06); margin-bottom: 14px; }
-  .trace-card h3 { margin: 0 0 12px; font-size: 15.5px; color: #334155; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-  .trace-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-  .trace-form select, .trace-form input { padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 14px; background: #f8fafc; }
-  .trace-form button { padding: 8px 18px; border: 0; border-radius: 10px; background: #6366f1; color: #fff; font-size: 14px; cursor: pointer; }
-
-  /* ===== 回放地图 ===== */
-  .map-box { position: relative; border-radius: 14px; overflow: hidden; background: #eef2f7; touch-action: pan-y; cursor: grab; }
-  .map-box.dragging { cursor: grabbing; }
-  .map-box img { display: block; width: 100%; height: auto; pointer-events: none; }
-  .btn-live { padding: 8px 14px; border: 0; border-radius: 999px; background: #e2e8f0; color: #475569; font-size: 13px; cursor: pointer; font-weight: 600; }
-  .btn-live.on { background: #10b981; color: #fff; box-shadow: 0 2px 8px rgba(16,185,129,.4); }
-  .btn-live:disabled { opacity: .45; cursor: default; }
-  .zone-overlay { position: absolute; inset: 0; display: flex; pointer-events: none; transition: background .3s; }
-  .zone-overlay .z { flex: 1; border-left: 2px dashed rgba(99,102,241,.5); position: relative; transition: background .3s, box-shadow .3s; }
-  .zone-overlay .z:first-child { border-left: none; }
-  .zone-overlay .z .zl { position: absolute; top: 6px; left: 50%; transform: translateX(-50%);
-    background: rgba(255,255,255,.85); color: #64748b; font-size: 11px; padding: 2px 8px; border-radius: 999px; white-space: nowrap; transition: all .3s; }
-  .zone-overlay .z.active { background: rgba(99,102,241,.16); box-shadow: inset 0 0 0 3px rgba(99,102,241,.45); }
-  .zone-overlay .z.active .zl { background: #6366f1; color: #fff; font-weight: 600; }
-  .play-marker { position: absolute; width: 34px; height: 34px; margin: -17px 0 0 -17px; border-radius: 50%;
-    background: #6366f1; color: #fff; display: none; align-items: center; justify-content: center;
-    font-size: 11px; font-weight: 700; border: 3px solid #fff; box-shadow: 0 3px 10px rgba(67,56,202,.45);
-    transition: opacity .4s; z-index: 5; }
-  .play-marker.pulse::after { content: ''; position: absolute; inset: -6px; border-radius: 50%;
-    border: 2px solid rgba(99,102,241,.55); animation: mkpulse 1.4s ease-out infinite; }
-  @keyframes mkpulse { 0% { transform: scale(.8); opacity: 1; } 100% { transform: scale(1.5); opacity: 0; } }
-
-  /* ===== 播放器 ===== */
-  .player { display: flex; align-items: center; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
-  .player .btn-play { width: 44px; height: 44px; border-radius: 50%; border: 0; background: #6366f1; color: #fff;
-    font-size: 18px; cursor: pointer; flex-shrink: 0; box-shadow: 0 3px 8px rgba(67,56,202,.35); }
-  .player .btn-play:disabled { background: #c7d2fe; cursor: default; }
-  .player input[type=range] { flex: 1; min-width: 120px; accent-color: #6366f1; height: 30px; }
-  .player .now-time { font-variant-numeric: tabular-nums; font-size: 14px; font-weight: 700; color: #4338ca; min-width: 46px; text-align: center; }
-  .player select { padding: 6px 8px; border: 1px solid #e2e8f0; border-radius: 9px; font-size: 13px; background: #f8fafc; }
-  .player .zone-now { font-size: 12.5px; padding: 3px 12px; border-radius: 999px; color: #fff; }
-  .player-hint { margin-top: 6px; font-size: 11px; color: #94a3b8; }
-
-  /* ===== 时间带(与播放联动) ===== */
-  .ribbon { display: flex; height: 36px; border-radius: 10px; overflow: hidden; margin-top: 12px; cursor: pointer; }
-  .ribbon .seg { display: flex; align-items: center; justify-content: center; font-size: 11px; color: #fff; min-width: 0; overflow: hidden; white-space: nowrap;
-    opacity: .35; transition: opacity .25s, box-shadow .25s; }
-  .ribbon .seg.past { opacity: 1; }
-  .ribbon .seg.now { opacity: 1; box-shadow: inset 0 0 0 3px rgba(255,255,255,.85); font-weight: 700; }
-  .seg-lane { margin-top: 6px; font-size: 11px; color: #64748b; display: flex; justify-content: space-between; }
-
-  .stay-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-  .stay-item { border-radius: 12px; padding: 10px 8px; text-align: center; color: #fff; }
-  .stay-item .n { font-size: 20px; font-weight: 700; }
-  .stay-item .t { font-size: 11px; opacity: .9; }
-  .tl-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  .tl-table th, .tl-table td { padding: 8px 6px; border-bottom: 1px solid #f1f5f9; text-align: left; }
-  .tl-badge { display: inline-block; padding: 2px 10px; border-radius: 999px; color: #fff; font-size: 12px; }
-  .conf-low { font-size: 11px; color: #b45309; }
-  .z1 { background: #f59e0b; } .z2 { background: #10b981; } .z3 { background: #3b82f6; }
-  .zout { background: #94a3b8; }
-  .empty-tip { color: #94a3b8; font-size: 13px; text-align: center; padding: 18px 0; }
-  @media (max-width: 640px) {
-    .stay-grid { grid-template-columns: repeat(2, 1fr); }
-    .tl-table th:nth-child(4), .tl-table td:nth-child(4) { display: none; }
-    .zone-overlay .z .zl { font-size: 10px; padding: 1px 6px; }
-  }
-</style>
-<div class="trace-wrap">
-  <div class="trace-card">
-    <h3>🏃 南操场活动轨迹</h3>
-    <form method="get" action="/admin/bands/trace" class="trace-form">
-      <input type="date" name="date" value="<%= queryDate %>">
-      <select name="band_mac">
-        <option value="">— 选择孩子 —</option>
-        <% bands.forEach(function(b){ %>
-          <option value="<%= b.band_mac %>" <%= selectedBand === b.band_mac ? 'selected' : '' %>><%= b.class_name || '未分班' %> · <%= b.display_name %>（…<%= b.band_mac.slice(-4) %>）</option>
-        <% }); %>
-      </select>
-      <button type="submit">查看</button>
-    </form>
+<%- include('partials/header', { pageClass: 'admin-page trace-page' }) %>
+<% const _base = typeof traceBase === 'undefined' ? '/admin/bands/trace' : traceBase;
+ const _data = data && !data.error ? data : null;
+ const _segments = _data && _data.trace ? _data.trace.segments || [] : [];
+ const _covered = _segments.filter(s => s.zone !== '覆盖外');
+ const _child = bands.find(b => b.band_mac === selectedBand);
+ const _duration = _covered.reduce((sum,s) => sum + (new Date(s.end.replace(' ','T')) - new Date(s.start.replace(' ','T'))) / 60000 + .5, 0);
+ const _zones = ['1区(西)', '2区(中)', '3区(东)'];
+ const _visited = new Set(_covered.map(s => s.zone)).size;
+%>
+<link rel="stylesheet" href="/static/band-trace.css?v=20261010b">
+<main class="trace-wrap">
+  <div class="trace-heading"><div><div class="trace-eyebrow">南操场 · <%= teacherView ? teacherClassName : '全园活动' %></div><h1>操场活动轨迹</h1><p>看见活动分区，了解孩子的户外活动。</p></div><a class="trace-link" href="<%= teacherView ? '/user/screen' : '/admin/screen' %>">查看感知大屏 →</a></div>
+  <form class="trace-filters" action="<%= _base %>" method="get">
+    <label>幼儿<select name="band_mac" aria-label="选择幼儿"><% bands.forEach(b => { %><option value="<%= b.band_mac %>" <%= selectedBand === b.band_mac ? 'selected' : '' %>><%= b.class_name %> · <%= b.display_name || b.child_name %></option><% }); %><% if (!bands.length) { %><option value="">本班暂无已绑定手环</option><% } %></select></label>
+    <label>活动日期<input type="date" name="date" value="<%= queryDate %>" aria-label="活动日期"></label>
+    <button class="trace-primary" type="submit" <%= !bands.length ? 'disabled' : '' %>>查看活动</button><a href="<%= _base %>" class="trace-link">最近一次活动</a>
+  </form>
+  <div class="trace-notice" role="status"><% if (data && data.error) { %>活动记录暂时加载失败，请稍后重试。<% } else if (autoLoaded && _covered.length) { %>已自动载入最近一次活动：<strong><%= queryDate %></strong><%= isHistorical ? '（历史记录）' : '（今天）' %>。可切换幼儿或日期查看。<% } else if (_covered.length) { %>正在查看 <strong><%= queryDate %></strong><%= isHistorical ? ' 的历史活动记录' : ' 的活动记录' %>。<% } else { %>该日期暂无操场定位记录，地图仍可查看。可选择其他日期，或点击“最近一次活动”。<% } %></div>
+  <section class="trace-summary" aria-label="活动概览">
+    <div><span>当前幼儿</span><strong><%= _child ? _child.display_name || _child.child_name : '尚未绑定' %></strong><small><%= _child ? _child.class_name : '绑定手环后自动显示活动' %></small></div>
+    <div><span>覆盖内活动</span><strong id="traceDuration"><%= Math.round(_duration) %><em>分钟</em></strong><small>不含信号覆盖中断时段</small></div>
+    <div><span>经过分区</span><strong id="traceVisited"><%= _visited %><em>/ 3 个</em></strong><small>器械区与跑道活动区域</small></div>
+    <div><span>定位采样</span><strong id="traceSamples"><%= _data ? _data.sample_count || 0 : 0 %><em>条</em></strong><small>按信号强度归纳活动分区</small></div>
+  </section>
+  <div class="trace-layout">
+    <section class="trace-card trace-map-card"><div class="trace-card-heading"><h2>操场分区回放</h2><span class="trace-date"><%= queryDate %><%= isHistorical ? ' · 历史' : ' · 今天' %></span></div>
+      <div class="trace-map" id="mapBox">
+        <svg class="trace-map-image" viewBox="0 420 1600 370" preserveAspectRatio="none" role="img" aria-label="南操场示意图：器械区、跑道中段、跑道东段"><image href="/static/img/playground-map.jpg" width="1600" height="1131" /></svg>
+        <div class="trace-zone-overlays"><% _zones.forEach((z,i) => { %><div id="traceZone<%= i %>" class="trace-zone"><span><%= z %></span></div><% }); %></div>
+        <div id="traceMarker" class="trace-marker" hidden><span>所在分区</span><b>●</b></div>
+        <div id="traceMapEmpty" class="trace-map-empty" <%= _covered.length ? 'hidden' : '' %>>暂无活动记录<span>操场图已就绪，选择有记录的日期即可回放</span></div>
+      </div>
+      <div class="trace-current" id="traceCurrent" aria-live="polite">正在准备活动回放</div>
+      <div class="trace-player"><button id="btnPlay" class="trace-primary" aria-label="播放活动回放" disabled>▶ 播放</button><span id="nowTime">--:--</span><input id="seekBar" type="range" min="0" max="1000" value="1000" aria-label="活动回放进度" disabled><label>速度<select id="speedSel" aria-label="回放速度"><option value="10">10 倍</option><option value="30" selected>30 倍</option><option value="60">60 倍</option></select></label><button id="btnLive" class="trace-secondary" <%= !selectedBand ? 'disabled' : '' %>>刷新记录</button></div>
+      <p class="trace-caption">拖动进度条或点击下方时段可跳转。按信号推算活动分区；标记表示所在分区，不代表精确位置。</p>
+    </section>
+    <section class="trace-card"><div class="trace-card-heading"><h2>分区停留</h2><span>分钟</span></div><div id="traceStay" class="trace-stay"></div><div class="trace-legend"><% _zones.forEach((z,i) => { %><span><i class="trace-color-<%= i %>"></i><%= z %></span><% }); %><span><i class="trace-color-gap"></i>覆盖外 / 信号中断</span></div><p class="trace-caption">常规采集时段为 9:00–11:00，历史记录按实际采样显示。没有信号的时段不会补画为连续轨迹。</p></section>
   </div>
-
-  <% if (data && data.error) { %>
-    <div class="trace-card"><div class="empty-tip">数据加载失败：<%= data.error %></div></div>
-  <% } else if (data && data.trace) { %>
-    <% var segs = data.trace.segments.filter(function(s){ return s.zone !== '覆盖外'; }); %>
-    <div class="trace-card">
-      <h3>🗺️ 位置回放 <span style="font-weight:400;font-size:12px;color:#94a3b8"><%= data.info && data.info.display_name ? data.info.display_name + ' · ' + (data.info.class_name||'') : '' %> <%= queryDate %></span>
-        <button class="btn-live" id="btnLive" disabled>📍 实时跟随</button></h3>
-
-      <div class="map-box" id="mapBox">
-        <img src="/static/img/playground-map.jpg" alt="南操场平面图">
-        <div class="zone-overlay">
-          <div class="z" data-zone="1区(西)" id="zov1"><span class="zl">1区 · 西</span></div>
-          <div class="z" data-zone="2区(中)" id="zov2"><span class="zl">2区 · 中</span></div>
-          <div class="z" data-zone="3区(东)" id="zov3"><span class="zl">3区 · 东</span></div>
-        </div>
-        <div class="play-marker" id="playMarker"></div>
-      </div>
-
-      <div class="player">
-        <button class="btn-play" id="btnPlay" disabled>▶</button>
-        <span class="now-time" id="nowTime">--:--</span>
-        <input type="range" id="seekBar" min="0" max="1000" value="0" disabled>
-        <select id="speedSel">
-          <option value="10">×10</option>
-          <option value="30" selected>×30</option>
-          <option value="60">×60</option>
-          <option value="120">×120</option>
-        </select>
-        <span class="zone-now" id="zoneNow" style="display:none"></span>
-      </div>
-      <div class="player-hint" id="playerHint">加载轨迹后点 ▶ 播放，进度条可拖动，色带可点击跳转</div>
-
-      <% if (segs.length) { %>
-      <div class="ribbon" id="ribbon">
-        <% var t0 = new Date(segs[0].start.replace(' ','T')).getTime();
-           var t1 = new Date(segs[segs.length-1].end.replace(' ','T')).getTime() + 30000;
-           var totalMin = (t1 - t0) / 60000; %>
-        <% segs.forEach(function(s){ var d=(new Date(s.end.replace(' ','T'))-new Date(s.start.replace(' ','T')))/60000+0.5; var pct=Math.max(3, d/totalMin*100); %>
-          <div class="seg <%= s.zone.indexOf('1区')===0?'z1':(s.zone.indexOf('2区')===0?'z2':'z3') %>"
-               data-start="<%= s.start %>" data-end="<%= s.end %>" data-zone="<%= s.zone %>" style="width:<%= pct %>%"><%= s.zone.slice(0,2) %></div>
-        <% }); %>
-      </div>
-      <div class="seg-lane"><span><%= segs[0].start.slice(11,16) %></span><span><%= segs[segs.length-1].end.slice(11,16) %></span></div>
-      <% } %>
-    </div>
-
-    <div class="trace-card">
-      <h3>⏱️ 分区停留</h3>
-      <% var stayKeys = Object.keys(data.stayMin); %>
-      <% if (!stayKeys.length) { %><div class="empty-tip">当天暂无南操场覆盖数据（手环未经过三台网关覆盖范围）</div><% } %>
-      <div class="stay-grid">
-        <% ['1区(西)','2区(中)','3区(东)'].forEach(function(z){ if (data.stayMin[z] == null) return; %>
-          <div class="stay-item <%= z.indexOf('1区')===0?'z1':(z.indexOf('2区')===0?'z2':'z3') %>">
-            <div class="n"><%= data.stayMin[z] %><span style="font-size:12px">分</span></div>
-            <div class="t"><%= z %></div>
-          </div>
-        <% }); %>
-      </div>
-    </div>
-
-    <div class="trace-card">
-      <h3>📋 时间线明细</h3>
-      <% if (!segs.length) { %><div class="empty-tip">当天无记录</div><% } else { %>
-      <table class="tl-table">
-        <thead><tr><th>开始</th><th>结束</th><th>区域</th><th>信号</th><th>置信</th></tr></thead>
-        <tbody>
-          <% data.trace.segments.forEach(function(s){ var cls = s.zone==='覆盖外'?'zout':(s.zone.indexOf('1区')===0?'z1':(s.zone.indexOf('2区')===0?'z2':'z3')); %>
-            <tr>
-              <td><%= s.start.slice(11,19) %></td>
-              <td><%= s.end.slice(11,19) %></td>
-              <td><span class="tl-badge <%= cls %>"><%= s.zone %></span></td>
-              <td><%= s.avg_rssi == null ? '—' : s.avg_rssi + ' dBm' %></td>
-              <td><%- s.confidence === 'high' ? '高' : (s.confidence === 'low' ? '<span class="conf-low">低(覆盖边缘)</span>' : '—') %></td>
-            </tr>
-          <% }); %>
-        </tbody>
-      </table>
-      <% } %>
-      <div style="margin-top:8px;font-size:11px;color:#94a3b8">采样 <%= data.sample_count %> 条 · 定位原理：三网关蓝牙信号最强区域判定（边缘信号自动降置信）</div>
-    </div>
-
-    <% if (segs.length) { %>
-    <script>
-    (function () {
-      var segs = <%- JSON.stringify(segs.map(function(s){ return { start: s.start, end: s.end, zone: s.zone }; })).replace(/</g, '\\u003c') %>;
-      var ZX = { '1区(西)': 17, '2区(中)': 50, '3区(东)': 83 };
-      var ZC = { '1区(西)': '#f59e0b', '2区(中)': '#10b981', '3区(东)': '#3b82f6' };
-      var ZS = { '1区(西)': 'zov1', '2区(中)': 'zov2', '3区(东)': 'zov3' };
-      var T0 = new Date(segs[0].start.replace(' ', 'T')).getTime();
-      var T1 = new Date(segs[segs.length - 1].end.replace(' ', 'T')).getTime() + 30000;
-      var SPAN = T1 - T0;
-
-      // 关键帧构建:每段「中点」为锚点(单调递增),任意时刻在相邻锚点间缓动插值 → 全程连续滑动,无瞬移
-      var keyframes = [];
-      function buildKeyframes() {
-        keyframes = segs.map(function (s, i) {
-          var sT = new Date(s.start.replace(' ', 'T')).getTime();
-          var eT = new Date(s.end.replace(' ', 'T')).getTime() + 30000;
-          return { t: (sT + eT) / 2, x: ZX[s.zone], y: 0.30 + 0.18 * ((i * 7 + 3) % 5) / 4 };
-        });
-      }
-      buildKeyframes();
-
-      var btn = document.getElementById('btnPlay');
-      var bar = document.getElementById('seekBar');
-      var nowTime = document.getElementById('nowTime');
-      var zoneNow = document.getElementById('zoneNow');
-      var marker = document.getElementById('playMarker');
-      var hint = document.getElementById('playerHint');
-      var ribbon = document.getElementById('ribbon');
-      var speedSel = document.getElementById('speedSel');
-      var segEls = ribbon ? Array.prototype.slice.call(ribbon.querySelectorAll('.seg')) : [];
-      var playing = false, curT = null, timer = null, lastFrame = 0;
-
-      btn.disabled = false;
-      bar.disabled = false;
-
-      function segAt(t) {
-        for (var i = 0; i < segs.length; i++) {
-          var s = new Date(segs[i].start.replace(' ', 'T')).getTime();
-          var e = new Date(segs[i].end.replace(' ', 'T')).getTime() + 30000;
-          if (t >= s && t < e) return i;
-        }
-        return -1;
-      }
-
-      function render(t) {
-        curT = t;
-        var idx = segAt(t);
-        var d = new Date(t);
-        var p = function (n) { return String(n).padStart(2, '0'); };
-        nowTime.textContent = p(d.getHours()) + ':' + p(d.getMinutes());
-        bar.value = Math.round((t - T0) / SPAN * 1000);
-
-        // 分区高亮
-        ['zov1', 'zov2', 'zov3'].forEach(function (id) { document.getElementById(id).classList.remove('active'); });
-        segEls.forEach(function (el, i) {
-          el.classList.toggle('past', i < idx);
-          el.classList.toggle('now', i === idx);
-        });
-
-        if (idx < 0) { // 覆盖外:标记淡出
-          marker.style.opacity = '0';
-          zoneNow.style.display = 'none';
-          return;
-        }
-        var seg = segs[idx];
-        // 关键帧插值模型:每段中点为锚点,任意时刻在前后锚点间缓动插值 → 全程连续滑动,无瞬移
-        var box = document.getElementById('mapBox');
-        var img = box.querySelector('img');
-        var boxH = img.clientHeight || box.clientHeight;
-        var kf = keyframes;
-        var x, yFrac;
-        if (t <= kf[0].t) { x = kf[0].x; yFrac = kf[0].y; }
-        else if (t >= kf[kf.length - 1].t) { x = kf[kf.length - 1].x; yFrac = kf[kf.length - 1].y; }
-        else {
-          var k = 1;
-          while (k < kf.length - 1 && kf[k].t < t) k++;
-          var k0 = kf[k - 1], k1 = kf[k];
-          var p = (t - k0.t) / (k1.t - k0.t);
-          p = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2; // easeInOutQuad
-          x = k0.x + (k1.x - k0.x) * p;
-          yFrac = k0.y + (k1.y - k0.y) * p;
-        }
-        marker.style.display = 'flex';
-        marker.style.opacity = '1';
-        marker.style.left = x + '%';
-        marker.style.top = (boxH * yFrac) + 'px';
-        marker.classList.add('pulse');
-        marker.style.background = ZC[seg.zone];
-        marker.textContent = String(idx + 1);
-        // 当前分区标签
-        zoneNow.style.display = '';
-        zoneNow.textContent = seg.zone;
-        zoneNow.style.background = ZC[seg.zone];
-        document.getElementById(ZS[seg.zone]).classList.add('active');
-      }
-
-      function tick() {
-        var now = Date.now();
-        var dt = (now - lastFrame) / 1000;
-        lastFrame = now;
-        var t = curT + dt * Number(speedSel.value) * 1000;
-        if (t >= T1) { t = T1; pause(); }
-        render(t);
-      }
-
-      function play() {
-        if (playing) return;
-        playing = true;
-        btn.textContent = '⏸';
-        if (curT == null || curT >= T1) curT = T0;
-        lastFrame = Date.now();
-        timer = setInterval(tick, 120);
-      }
-      function pause() {
-        playing = false;
-        btn.textContent = '▶';
-        clearInterval(timer);
-        if (marker) marker.classList.remove('pulse');
-      }
-      btn.addEventListener('click', function () { playing ? pause() : play(); });
-      bar.addEventListener('input', function () {
-        pause();
-        render(T0 + Number(bar.value) / 1000 * SPAN);
-      });
-      if (ribbon) ribbon.addEventListener('click', function (ev) {
-        var rect = ribbon.getBoundingClientRect();
-        var frac = (ev.clientX - rect.left) / rect.width;
-        pause();
-        render(T0 + Math.max(0, Math.min(1, frac)) * SPAN);
-      });
-
-      // ===== 地图滑动 scrub:手指/鼠标在地图上横滑 = 拖时间线 =====
-      var box = document.getElementById('mapBox');
-      var dragging = false;
-      function scrubTo(clientX) {
-        var rect = box.getBoundingClientRect();
-        var frac = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-        pause();
-        liveOff();
-        render(T0 + frac * SPAN);
-      }
-      box.addEventListener('pointerdown', function (ev) {
-        if (ev.target.closest && ev.target.closest('#playMarker')) return;
-        dragging = true;
-        box.classList.add('dragging');
-        scrubTo(ev.clientX);
-        ev.preventDefault();
-      });
-      window.addEventListener('pointermove', function (ev) {
-        if (dragging) { scrubTo(ev.clientX); ev.preventDefault(); }
-      });
-      window.addEventListener('pointerup', function () {
-        dragging = false;
-        box.classList.remove('dragging');
-      });
-
-      // ===== 实时跟随:30秒轮询最新数据,自动跳到最新时刻 =====
-      var btnLive = document.getElementById('btnLive');
-      var liveTimer = null, livePlaying = false;
-      btnLive.disabled = false;
-
-      function liveOff() {
-        if (!livePlaying) return;
-        livePlaying = false;
-        clearInterval(liveTimer);
-        btnLive.classList.remove('on');
-        btnLive.textContent = '📍 实时跟随';
-      }
-      function liveOn() {
-        pause();
-        livePlaying = true;
-        btnLive.classList.add('on');
-        btnLive.textContent = '🟢 跟随中';
-        fetchLive();
-        liveTimer = setInterval(fetchLive, 30000);
-      }
-      function fetchLive() {
-        fetch('/admin/bands/trace/api?date=' + encodeURIComponent('<%= queryDate %>') + '&band_mac=' + encodeURIComponent('<%= selectedBand %>'))
-          .then(function (r) { return r.json(); })
-          .then(function (j) {
-            if (!j.ok || !j.data || !j.data.trace) return;
-            var ns = (j.data.trace.segments || []).filter(function (s) { return s.zone !== '覆盖外'; });
-            if (!ns.length) return;
-            // 无缝换数据:保持播放器引用的段与 T0/T1 更新
-            segs = ns;
-            T0 = new Date(ns[0].start.replace(' ', 'T')).getTime();
-            T1 = new Date(ns[ns.length - 1].end.replace(' ', 'T')).getTime() + 30000;
-            SPAN = T1 - T0;
-            buildKeyframes(); // 重建关键帧
-            // 色带重建
-            if (ribbon) {
-              var t0d = ns[0].start, t1d = ns[ns.length - 1].end;
-              var tot = (T1 - T0) / 60000;
-              ribbon.innerHTML = ns.map(function (s) {
-                var d = (new Date(s.end.replace(' ', 'T')) - new Date(s.start.replace(' ', 'T'))) / 60000 + 0.5;
-                var cls = s.zone.indexOf('1区') === 0 ? 'z1' : (s.zone.indexOf('2区') === 0 ? 'z2' : 'z3');
-                return '<div class="seg ' + cls + '" data-start="' + s.start + '" data-end="' + s.end + '" data-zone="' + s.zone + '" style="width:' + Math.max(3, d / tot * 100) + '%">' + s.zone.slice(0, 2) + '</div>';
-              }).join('');
-              segEls = Array.prototype.slice.call(ribbon.querySelectorAll('.seg'));
-            }
-            render(T1 - 30000); // 跳到最新位置
-            marker.classList.add('pulse');
-          })
-          .catch(function () { /* 网络抖动静默保留旧画面 */ });
-      }
-      btnLive.addEventListener('click', function () { livePlaying ? liveOff() : liveOn(); });
-
-      // 初始定位到第一段中间,直观呈现"人在哪"
-      render(T0 + 30000);
-      if (hint) hint.textContent = '点 ▶ 播放看孩子怎么跑，×30 = 1秒顶30秒，拖进度条/点色带可跳转';
-    })();
-    </script>
-    <% } %>
-  <% } else if (selectedBand) { %>
-    <div class="trace-card"><div class="empty-tip">该日期无轨迹数据</div></div>
-  <% } else { %>
-    <div class="trace-card"><div class="empty-tip">选择孩子和日期后查看南操场活动轨迹</div></div>
-  <% } %>
-</div>
+  <section class="trace-card"><div class="trace-card-heading"><h2>活动时间线</h2><span id="traceTimelineCount"><%= _segments.length %> 个时段</span></div><div id="traceRibbon" class="trace-ribbon" aria-label="活动分区时间线"></div><div id="traceTimeline" class="trace-timeline"></div></section>
+</main>
+<script id="tracePayload" type="application/json"><%- JSON.stringify({data:_data,base:_base,date:queryDate,bandMac:selectedBand,zones:_zones,isHistorical:isHistorical}).replace(/</g,'\\u003c') %></script>
+<script src="/static/band-trace.js?v=20261010b" defer></script>
 <%- include('partials/footer') %>

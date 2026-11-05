@@ -1,0 +1,39 @@
+/* Application pages: tablet content must reflow before typography shrinks. */
+@media (max-width:1366px) {
+  .container { width:100%!important; max-width:100%!important; padding-left:16px!important; padding-right:16px!important; box-sizing:border-box; }
+  .admin-main,.shell-main,.user-fitness-main,.card,.toolbar,.form-grid,.visual-grid { min-width:0; }
+  .card { max-width:100%; box-sizing:border-box; }
+  .toolbar,.toolbar-links,.admin-hero-actions,.user-analysis-batch-form { flex-wrap:wrap!important; gap:10px; }
+  .admin-hero,.dashboard-head { flex-wrap:wrap; gap:12px; }
+  .form-grid { grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr))!important; }
+  .form-grid > * { min-width:0; max-width:100%; }
+  input,select,textarea { box-sizing:border-box; max-width:100%; min-width:0; }
+  .table-wrap,.table-scroll,.compare-data-table-wrap { max-width:100%; overflow-x:auto!important; -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain; }
+  .table-wrap table { font-size:13px; }
+  .stat-card,.stats-grid > *,.trend-insight-card { min-width:0; }
+  .stat-info { min-width:0; }.stat-label { white-space:normal!important; line-height:1.5; }
+  .stats-grid.overview-stats { grid-template-columns:repeat(3,minmax(0,1fr))!important; }
+  .stat-number { font-size:clamp(24px,2.5vw,32px); }
+  .visual-grid,.trend-insight-grid { grid-template-columns:repeat(2,minmax(0,1fr))!important; }
+  .band-band-grid { grid-template-columns:repeat(auto-fill,minmax(min(230px,100%),1fr))!important; }
+  .band-band-card { min-width:0; }.band-band-card .metrics { grid-template-columns:repeat(2,minmax(0,1fr))!important; }
+  .band-band-card .metrics .m { flex-wrap:wrap; min-width:0; }.band-band-card .child { white-space:normal; }
+  .bc-grid { grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr))!important; }
+  .bc-form { flex-wrap:wrap; }.bc-form .fld { min-width:0; flex:1 1 180px; }
+  .layout-canvas-wrap,.layout-board-wrap,.venue-board-wrap { max-width:100%; overflow:auto; }
+}
+@media (min-width:861px) and (max-width:1366px) {
+  .admin-layout.shell-layout { grid-template-columns:190px minmax(0,1fr)!important; gap:16px!important; }
+  .admin-sidebar.shell-sidebar { display:block!important; width:190px!important; min-width:190px!important; max-width:190px!important; flex-basis:190px!important; padding:14px!important; }
+  .user-fitness-layout { grid-template-columns:190px minmax(0,1fr)!important; gap:16px!important; }
+  .user-fitness-nav-link { padding:12px!important; }.user-fitness-nav-title { font-size:14px; line-height:1.5; }
+  .topbar { gap:14px; padding-left:16px; padding-right:16px; }.topbar .nav { flex-wrap:wrap; gap:8px; }
+}
+@media (max-width:860px) {
+  .visual-grid,.trend-insight-grid { grid-template-columns:1fr!important; }
+  .stats-grid.overview-stats { grid-template-columns:repeat(2,minmax(0,1fr))!important; }
+  .btn,input:not([type=checkbox]):not([type=radio]),select { min-height:42px; }
+  .container { padding-bottom:100px!important; }
+}
+
+@media(max-width:1366px){.venue-map-wrapper{max-width:100%;overflow:auto!important;overscroll-behavior-x:contain}.venue-editor-drawer:not(.open){visibility:hidden;pointer-events:none}}

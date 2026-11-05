@@ -24,3 +24,8 @@ tmp_patch_*.py
 backup-*
 data.db
 *.bak*
+
+# Python
+__pycache__/
+*.pyc
+docs/class-api.keys.local.md

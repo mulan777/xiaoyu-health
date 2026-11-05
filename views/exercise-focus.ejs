@@ -1,0 +1,66 @@
+<%- include('partials/header') %>
+<link rel="stylesheet" href="/static/exercise-focus.css?v=<%= cssVersion %>">
+<div class="ef-wrap">
+  <nav class="ef-crumb" aria-label="页面导航"><a href="<%= teacher ? '/user?view=attention' : '/admin?panel=attention' %>">← 重点关注</a><a href="<%= teacher ? '/user/bands' : '/admin/bands' %>">手环健康监测</a></nav>
+  <section class="ef-hero">
+    <div><div class="ef-eyebrow">体格锻炼观察与跟进</div><h1>每周锻炼监测</h1><p>按周选择关注幼儿，记录活动观察与教师沟通。</p><span><%= w %> — <%= weekEnd %></span></div>
+    <div class="ef-hero-actions"><% if (members.some(m=>m.active) || records.length) { %><a class="ef-button ef-primary" href="<%= base %>/export?<%= new URLSearchParams({week:w,...(classId?{classId:String(classId)}:{})}).toString() %>">导出 Excel 原表</a><% } %></div>
+  </section>
+  <% if(message){ %><div class="ef-notice" role="status"><%= message %></div><% } %>
+  <form method="get" action="<%= base %>" class="ef-filters">
+    <label>选择周次<input type="date" name="week" value="<%= w %>" required><small>选任意一天，自动定位到周一至周日</small></label>
+    <% if(!teacher){ %><label>班级<select name="classId"><option value="">全部手环班级</option><% classes.forEach(c=>{ %><option value="<%= c.id %>" <%= Number(c.id)===classId?'selected':'' %>><%= c.name %><%= enabled.includes(Number(c.id))?'':'（历史记录）' %></option><% }); %></select></label><% } %>
+    <button type="submit" class="ef-button ef-secondary">查看</button><a class="ef-week-link" href="<%= url({week:new Date(new Date(w+'T00:00:00Z').getTime()-7*86400000).toISOString().slice(0,10)}) %>">上一周</a><a class="ef-week-link" href="<%= url({week:new Date(new Date(w+'T00:00:00Z').getTime()+7*86400000).toISOString().slice(0,10)}) %>">下一周</a>
+  </form>
+  <% if(!teacher){ %><div class="ef-class-tabs"><a class="<%= !classId?'active':'' %>" href="<%= base %>?week=<%= w %>">全园汇总</a><% classes.forEach(c=>{ %><a class="<%= Number(c.id)===classId?'active':'' %>" href="<%= base %>?week=<%= w %>&classId=<%= c.id %>"><%= c.name %></a><% }); %></div><% } %>
+  <div class="ef-stats"><div><strong><%= members.filter(m=>m.active).length %></strong><span>本周关注幼儿</span></div><div><strong><%= records.length %></strong><span>监测记录</span></div><div><strong><%= records.filter(r=>r.data.communication).length %></strong><span>已记录教师沟通</span></div><div><strong><%= members.filter(m=>m.active&&!Number(m.record_count)).length %></strong><span>尚未填写观察</span></div></div>
+  <% if(isReadonly){ %><div class="ef-notice">当前为只读账号，可查看记录并导出 Excel。</div><% } %>
+  <div class="ef-layout">
+    <aside class="ef-roster ef-panel">
+      <div class="ef-heading"><h2>本周重点关注</h2><span class="ef-tag"><%= members.filter(m=>m.active).length %> 人</span></div>
+      <p class="ef-help">每周自主选择，允许不选，不限制人数。每周名单独立保存。</p>
+      <% if(!classId){ %><p class="ef-help">选择上方班级可维护名单、填写记录。</p><% } %>
+      <% if(canWrite){ %>
+      <details class="ef-selection" <%= !members.some(m=>m.active)?'open':'' %>><summary>勾选 / 调整本周名单</summary>
+        <form method="post" action="<%= base %>/selection" id="ef-selection-form">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="classId" value="<%= classId %>"><input type="hidden" name="week" value="<%= w %>"><input type="hidden" name="revision" value="<%= revision %>">
+          <input type="search" id="ef-search" placeholder="搜索幼儿" aria-label="搜索幼儿">
+          <div class="ef-checkbox-list"><% roster.forEach(ch=>{ %><label class="ef-child-option" data-name="<%= ch.display_name %>"><input type="checkbox" name="childIds" value="<%= ch.id %>" <%= members.some(m=>Number(m.child_id)===Number(ch.id)&&m.active)?'checked':'' %>><span><%= ch.display_name %><%= ch.historical?'（历史名单）':'' %></span></label><% }); %></div>
+          <p class="ef-help">取消勾选会保留已有观察记录。</p><button class="ef-button ef-primary" type="submit">保存本周名单</button>
+        </form>
+      </details><% } %>
+      <div class="ef-member-list"><% members.filter(m=>m.active||Number(m.record_count)).forEach(m=>{ %>
+        <div class="ef-member <%= Number(m.child_id)===childId?'active':'' %>"><div class="ef-avatar"><%= m.display_name.slice(0,1) %></div><div class="ef-member-info"><strong><%= m.display_name %></strong><small><%= m.class_name %><%= m.active?'':' · 已取消关注' %></small><span><%= Number(m.record_count)?m.record_count+' 条观察记录':'尚未填写观察' %></span></div>
+          <% if(m.active&&!isReadonly&&(teacher||hasPerm('booking.attention.edit'))&&enabled.includes(Number(m.class_id))){ %><a class="ef-text-button" href="<%= base %>?week=<%= w %>&classId=<%= m.class_id %>&childId=<%= m.child_id %>#ef-editor">填写</a><% } %>
+        </div><% }); %></div>
+      <% if(!members.some(m=>m.active||Number(m.record_count))){ %><div class="ef-empty">本周还没有选择关注幼儿。<br>可按实际需要勾选，也可以保持为空。</div><% } %>
+    </aside>
+    <div class="ef-main">
+      <% if(selectedMember){ %>
+      <section class="ef-panel" id="ef-editor">
+        <div class="ef-heading"><div><div class="ef-eyebrow"><%= editing?'编辑监测记录':'新增监测记录' %></div><h2><%= selectedMember.display_name %><span class="ef-subtitle"><%= selectedMember.class_name %></span></h2></div><a href="<%= url({}) %>" class="ef-text-button">返回记录</a></div>
+        <form method="post" action="<%= base %>/record" id="ef-record-form" data-base="<%= base %>">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="classId" value="<%= classId %>"><input type="hidden" name="week" value="<%= w %>"><input type="hidden" name="childId" value="<%= childId %>"><input type="hidden" name="recordId" value="<%= editing?editing.id:'' %>"><input type="hidden" name="recordRevision" value="<%= editing?editing.revision:'' %>">
+          <fieldset <%= canWrite?'':'disabled' %>>
+            <div class="ef-form-grid"><label>观察日期<input type="date" name="date" min="<%= w %>" max="<%= weekEnd %>" value="<%= date %>" required></label><label>活动开始<input type="time" name="start" value="<%= editing?editing.start_time:'' %>" required></label><label>活动结束<input type="time" name="end" value="<%= editing?editing.end_time:'' %>" required></label><label>检查者<input name="inspector" maxlength="80" value="<%= data.inspector||'' %>" placeholder="填写检查者"></label><label>带班教师<input name="teacher" maxlength="80" value="<%= data.teacher||'' %>" placeholder="填写带班教师"></label><label>保育员<input name="caregiver" maxlength="80" value="<%= data.caregiver||'' %>" placeholder="填写保育员"></label></div>
+            <div class="ef-heart-panel"><div><span class="ef-eyebrow">手环自动带入</span><div id="ef-metrics" role="status"><% if(editing){ const h=editing.metrics; %><strong><%= h.avg==null?(h.reason||'暂无心率数据'):(h.avg+' 次/分') %></strong><% if(h.sample_count){ %><span>活动时段平均 · 最低 <%= h.min %> / 最高 <%= h.max %> · <%= h.sample_count %> 次有效采样</span><% } %><% }else{ %><strong>填写活动时段后查看心率</strong><% } %></div></div><button type="button" class="ef-button ef-secondary" id="ef-refresh">查询心率</button></div>
+            <p class="ef-help">心率为该活动时段平均值，保存时自动带入。无数据会标明原因。面色、饮食、睡眠及强度评价由教师观察填写。</p>
+            <% if(editing){ %><label class="ef-refresh-label"><input type="checkbox" name="refreshMetrics" value="1" id="ef-refresh-save">保存时重新读取该时段心率</label><% } %>
+            <% sections.forEach((section,si)=>{ %><details class="ef-field-section" <%= si===0?'open':'' %>><summary><span><%= String(si+1).padStart(2,'0') %></span><%= section %></summary><div class="ef-observations"><% groups.filter(g=>g.section===section).forEach(g=>{ %><div class="ef-choice-group"><div class="ef-choice-title"><%= g.label %><small><%= g.multi?'可多选':'单选' %></small></div><div class="ef-choices"><% if(!g.multi){ %><label><input type="radio" name="<%= g.key %>" value="" <%= !data[g.key]?'checked':'' %>><span>未填写</span></label><% } %><% g.options.forEach(opt=>{ const checked=g.multi?(Array.isArray(data[g.key])&&data[g.key].includes(opt)):data[g.key]===opt; %><label><input type="<%= g.multi?'checkbox':'radio' %>" name="<%= g.key %>" value="<%= opt %>" <%= checked?'checked':'' %>><span><%= opt %></span></label><% }); %></div></div><% }); %></div></details><% }); %>
+            <div class="ef-communication"><label for="ef-communication">教师沟通</label><p class="ef-help">记录沟通时间、对象、观察反馈、调整建议与后续跟进。</p><textarea id="ef-communication" name="communication" rows="5" maxlength="6000" placeholder="例如：活动后与带班教师沟通，说明观察到的表现、采取的措施及后续反馈……"><%= data.communication||'' %></textarea><label for="ef-notes">补充观察</label><textarea id="ef-notes" name="notes" rows="2" maxlength="3000" placeholder="其他器材、其他反应或需要补充的情况"><%= data.notes||'' %></textarea></div>
+            <div class="ef-save-bar"><button type="submit" class="ef-button ef-primary">保存监测记录</button><span>可分次补充，未观察的项目可留空。</span></div>
+          </fieldset>
+        </form>
+      </section><% } %>
+      <section class="ef-panel" id="ef-records"><div class="ef-heading"><h2>本周观察与沟通记录</h2><span class="ef-tag"><%= records.length %> 条</span></div>
+        <% if(!records.length){ %><div class="ef-empty ef-empty-main"><div class="ef-empty-symbol">＋</div><strong>从一次活动观察开始</strong><p>先勾选本周关注幼儿，再点“填写”。<br>每名幼儿可以记录多次活动。</p></div><% } %>
+        <div class="ef-record-list"><% records.forEach(r=>{ %><article class="ef-record"><header><div><strong><%= r.display_name %></strong><span><%= r.class_name %></span></div><span class="ef-tag <%= r.data.communication?'ef-tag-green':'' %>"><%= r.data.communication?'已记录沟通':'尚未记录沟通' %></span></header><div class="ef-record-date"><%= r.date_text %> · <%= r.start_time %> — <%= r.end_time %></div><div class="ef-record-chips"><span><%= (r.data.activity||[]).join('、')||'活动内容未填写' %></span><span>平均心率 <%= r.metrics.avg==null?'暂无数据':r.metrics.avg+' 次/分' %></span><% if(r.data.intensity){ %><span><%= r.data.intensity %></span><% } %></div><div class="ef-record-communication"><b>教师沟通</b><p><%= r.data.communication||'尚未填写，可稍后补充。' %></p></div>
+          <details class="ef-record-details"><summary>查看完整观察</summary><dl><% groups.forEach(g=>{ const val=Array.isArray(r.data[g.key])?r.data[g.key].join('、'):r.data[g.key]; %><div><dt><%= g.label %></dt><dd><%= val||'未填写' %></dd></div><% }); %><div><dt>检查者 / 带班教师 / 保育员</dt><dd><%= [r.data.inspector||'未填写',r.data.teacher||'未填写',r.data.caregiver||'未填写'].join(' / ') %></dd></div><div><dt>心率采样</dt><dd><%= r.metrics.sample_count?(r.metrics.sample_count+' 次；最低 '+r.metrics.min+'，最高 '+r.metrics.max+' 次/分'):(r.metrics.reason||'暂无数据') %></dd></div><div><dt>补充观察</dt><dd><%= r.data.notes||'未填写' %></dd></div></dl></details>
+          <footer><span><%= r.author_name||'教师' %> · 更新于 <%= r.updated_text %></span><% if(!isReadonly&&(teacher||hasPerm('booking.attention.edit'))&&enabled.includes(Number(r.class_id))){ %><a class="ef-text-button" href="<%= base %>?week=<%= w %>&classId=<%= r.class_id %>&recordId=<%= r.id %>#ef-editor">编辑 / 补充</a><% } %></footer>
+        </article><% }); %></div>
+      </section>
+    </div>
+  </div>
+</div>
+<script src="/static/exercise-focus.js?v=<%= cssVersion %>" defer></script>
+<%- include('partials/footer') %>

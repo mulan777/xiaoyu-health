@@ -46,6 +46,7 @@ const mountScreenRoutes = require('./routes/screen');
 const mountUserBandRoutes = require('./routes/user-bands');
 const mountBandTraceRoutes = require('./routes/band-trace');
 const mountWxRoutes = require('./routes/wx');
+const mountClassApiRoutes = require('./routes/class-api');
 const { initBandJobs } = require('./lib/band-jobs');
 
 const app = express();
@@ -541,6 +542,7 @@ async function bootstrap() {
   // ========== 数据大屏路由 ==========
   const screenHelpers = mountScreenRoutes(app);
   mountWxRoutes(app);
+  mountClassApiRoutes(app);
 
   // ========== 只读日报/警报查看页（2026-09-16：推给谁谁能点开，免后台 data.bands 权限） ==========
   // 日报卡片/心率警报卡片跳转这里；未登录 → 记录回跳地址 → 企微无感登录后自动跳回
@@ -591,6 +593,7 @@ async function bootstrap() {
   mountUserRoutes(app, upload, userRouteCtx);
   mountUserBandRoutes(app, screenHelpers);
   mountBandTraceRoutes(app);
+  await require('./routes/exercise-focus')(app);
 
   // ========== 健康检查 ==========
   app.get('/health', asyncHandler(async (req, res) => {

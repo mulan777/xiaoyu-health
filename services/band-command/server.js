@@ -21,6 +21,7 @@ const mysql = require('mysql2/promise');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const {messageFrames, createTeacherLink} = require('./teacher-link');
 
 const MQTT_URL = process.env.MQTT_URL || 'mqtt://127.0.0.1:7628';
 const MQTT_USER = process.env.MQTT_USER || 'user';
@@ -47,6 +48,26 @@ let msgIdSeq = Math.floor(Date.now() / 1000) % 1000000000;
 const stats = { startedAt: new Date().toISOString(), published: 0, acks: 0, thresholdTriggers: 0, errors: 0 };
 
 const pool = mysql.createPool(MYSQL);
+const teacherLink = createTeacherLink({query: (...args) => pool.query(...args), vibrate: cmdVibrate, isBusy: isMacBusy, pickGw});
+let teacherTickRunning = false;
+teacherLink.recover().catch(e => console.error('[teacher-recover]', e.message));
+setInterval(async () => {
+  if (teacherTickRunning) return;
+  teacherTickRunning = true;
+  try { await teacherLink.tick(); } catch(e) { console.error('[teacher-link]', e.message); }
+  finally { teacherTickRunning = false; }
+}, 2000);
+
+// Gateway response packets do not identify a MAC or echo our msgId. Serialize
+// gateway operations so two teachers cannot consume one another's write receipt.
+const gatewayOperations = new Map();
+function gatewayOperation(gw, task) {
+  const previous = gatewayOperations.get(gw) || Promise.resolve();
+  const result = previous.catch(() => {}).then(task);
+  gatewayOperations.set(gw, result);
+  result.finally(() => { if (gatewayOperations.get(gw) === result) gatewayOperations.delete(gw); }).catch(() => {});
+  return result;
+}
 
 async function getSettings() {
   const [rows] = await pool.query('SELECT * FROM band_command_settings WHERE id=1');
@@ -93,10 +114,13 @@ function publish(obj) {
 }
 
 // 同一 mac 是否已有进行中的连接/写入命令（防单槽 pendingConn/pendingSend 被覆盖，2026-09-27）
-function isMacBusy(mac) { return pendingConn.has(mac) || pendingSend.has(mac); }
+function isMacBusy(mac) { return pendingConn.has(mac) || pendingSend.has(mac) || vibrateTimers.has(mac); }
 
 // 连接手环（两步走第一步）：等 ready
 function connBand(mac, gwAddr, keepTime, timeoutMs) {
+  return gatewayOperation(gwAddr, () => connBandDirect(mac, gwAddr, keepTime, timeoutMs));
+}
+function connBandDirect(mac, gwAddr, keepTime, timeoutMs) {
   return new Promise((resolve) => {
     const msgId = ++msgIdSeq;
     pendingConn.set(mac, { msgId, gw_addr: gwAddr, resolve, timer: null });
@@ -117,6 +141,9 @@ function connBand(mac, gwAddr, keepTime, timeoutMs) {
 }
 // 写数据（两步走第二步）
 function sendFrames(mac, gwAddr, buffers, keepTime) {
+  return gatewayOperation(gwAddr, () => sendFramesDirect(mac, gwAddr, buffers, keepTime));
+}
+function sendFramesDirect(mac, gwAddr, buffers, keepTime) {
   return new Promise((resolve) => {
     const msgId = ++msgIdSeq;
     const entry = { msgId, gw_addr: gwAddr, timer: null, resolve: null };
@@ -139,34 +166,64 @@ function sendFrames(mac, gwAddr, buffers, keepTime) {
 }
 
 /* ---------- 高层命令 ---------- */
-async function cmdVibrate(mac, seconds, triggerSource, cmdDesc) {
+async function cmdVibrate(mac, seconds, triggerSource, cmdDesc, options = {}) {
   seconds = Math.max(1, Math.min(60, seconds | 0));
-  // 同 mac 已有进行中命令 → 不覆盖槽位（覆盖会让前一个 Promise 永久挂起），2026-09-27
   if (isMacBusy(mac)) return { ok: false, busy: true, error: '该手环已有进行中的命令，请稍后再试' };
   const gw = pickGw(mac);
   if (!gw) { const id = await insertCommand({ band_mac: mac, cmd_type: 'vibrate', cmd_desc: cmdDesc, trigger_source: triggerSource, payload: `${seconds}s` }); await updateCommand(id, { status: 'failed', error_msg: '手环不在任何网关覆盖内(120秒无广播)' }); return { ok: false, error: '手环不在网关覆盖范围', cmdId: id }; }
-  const child = await loadChildByMac(mac);
-  const keepTime = seconds + 8;
-  const id = await insertCommand({ band_mac: mac, child_id: child?.child_id, child_name: child?.child_name, gw_addr: gw.gw_addr, cmd_type: 'vibrate', cmd_desc: cmdDesc || `找手环震动${seconds}秒`, trigger_source: triggerSource, payload: `${seconds}s` });
-  const conn = await connBand(mac, gw.gw_addr, keepTime, 15000);
-  if (!conn.ok) { await updateCommand(id, { status: 'failed', error_msg: conn.error, sent_at: new Date() }); return { ok: false, error: conn.error, cmdId: id }; }
-  updateCommand(id, { status: 'sent', sent_at: new Date() }).catch(() => {});
-  const wr = await sendFrames(mac, gw.gw_addr, [FIND_BAND_ON()], keepTime);
-  if (!wr.ok) { await updateCommand(id, { status: 'failed', error_msg: wr.error }); return { ok: false, error: wr.error, cmdId: id }; }
-  // 等 a0050301 回执（最多 6 秒）
-  const acked = await waitAck(mac, 'a0050301', 6000);
-  if (acked) {
-    await updateCommand(id, { status: 'acked', ack_raw: 'a0050301', ack_at: new Date() });
-    // 到时自动发关
-    const t = setTimeout(async () => {
-      vibrateTimers.delete(mac);
-      try { await sendFrames(mac, gw.gw_addr, [FIND_BAND_OFF()], keepTime); await waitAck(mac, 'a0050300', 5000); } catch (e) {}
-    }, seconds * 1000);
-    vibrateTimers.set(mac, t);
-    return { ok: true, cmdId: id, detail: `震动${seconds}秒已触发` };
+  // Lock before the first await; retain the lock through the automatic OFF command.
+  vibrateTimers.set(mac, null);
+  let id, closeScheduled = false, onAck, messageAcked = false, messageError = null;
+  try {
+    const child = options.child || await loadChildByMac(mac);
+    // Allow for connecting, writing and waiting for the OFF receipt, too.
+    const keepTime = seconds + 40;
+    id = await insertCommand({ band_mac: mac, child_id: child?.child_id, child_name: child?.child_name, gw_addr: gw.gw_addr, cmd_type: 'vibrate', cmd_desc: cmdDesc || `找手环震动${seconds}秒`, trigger_source: triggerSource, payload: `${seconds}s` });
+    const conn = await connBand(mac, gw.gw_addr, keepTime, 15000);
+    if (!conn.ok) { await updateCommand(id, { status: 'failed', error_msg: conn.error, sent_at: new Date() }); return { ok: false, error: conn.error, cmdId: id }; }
+    updateCommand(id, { status: 'sent', sent_at: new Date() }).catch(() => {});
+    if (options.text) {
+      const textAck = waitAck(mac, 'a0040b01', 6000);
+      const textWrite = await sendFrames(mac, gw.gw_addr, messageFrames(options.text, process.env.BAND_MESSAGE_ENCODING || 'utf16le'), keepTime);
+      if (!textWrite.ok) textAck.cancel();
+      messageAcked = !!(await textAck);
+      if (!messageAcked) {
+        messageError = '教师文字提醒未确认：' + (textWrite.error || '手环未回执，需核对屏幕显示');
+        await updateCommand(id, {error_msg: messageError});
+      }
+    }
+    // Register before publishing: a fast device receipt must not be missed.
+    onAck = waitAck(mac, 'a0050301', 14000);
+    const wr = await sendFrames(mac, gw.gw_addr, [FIND_BAND_ON()], keepTime);
+    const stop = async () => {
+      onAck.cancel();
+      try {
+        const offAck = waitAck(mac, 'a0050301', 14000); // YT9 8.2: 01 means setting succeeded, including OFF.
+        const off = await sendFrames(mac, gw.gw_addr, [FIND_BAND_OFF()], keepTime);
+        if (!off.ok) offAck.cancel();
+        const confirmed = await offAck;
+        if (!off.ok || !confirmed) {
+          await updateCommand(id, { error_msg: '已尝试按时关闭震动，但关闭未确认：' + (off.error || '手环未回执') });
+        }
+      } catch (e) {
+        await updateCommand(id, { error_msg: '关闭震动失败：' + e.message }).catch(() => {});
+      } finally { vibrateTimers.delete(mac); }
+    };
+    // Schedule OFF even when the write/ON receipt is missing: absence of a receipt
+    // does not prove that the device did not receive the ON frame.
+    vibrateTimers.set(mac, setTimeout(stop, seconds * 1000));
+    closeScheduled = true;
+    if (!wr.ok) { onAck.cancel(); await updateCommand(id, { status: 'failed', error_msg: wr.error + '；已安排关闭震动' }); return { ok: false, error: wr.error, cmdId: id }; }
+    if (triggerSource !== 'teacher_link' && triggerSource !== 'teacher_test') {
+      await teacherLink.enqueue(mac, id, seconds, cmdDesc || '手动震动提醒')
+        .catch(e => console.error('[teacher-enqueue]', e.message));
+    }
+    const acked = await onAck;
+    await updateCommand(id, acked ? { status: 'acked', ack_raw: 'a0050301', ack_at: new Date() } : { status: 'sent' });
+    return { ok: true, cmdId: id, acked: !!acked, messageAcked, messageError, detail: acked ? `震动${seconds}秒已触发，已安排自动关闭` : `已发送${seconds}秒震动指令，手环未回执，已安排自动关闭` };
+  } finally {
+    if (!closeScheduled) { if (onAck) onAck.cancel(); vibrateTimers.delete(mac); }
   }
-  // 开命令写入成功但无 ACK：result 只代表空口已发，按 sent 处理不报失败
-  return { ok: true, cmdId: id, detail: '指令已发出，手环信号弱未回执', acked: false };
 }
 
 async function cmdHrInterval(mac, intervalCode) {
@@ -203,15 +260,21 @@ async function cmdHrSwitch(mac, on) {
 
 /* ---------- 回执等待 ---------- */
 function waitAck(mac, hexPrefix, timeoutMs) {
-  return new Promise((resolve) => {
-    const w = { pattern: hexPrefix.toLowerCase(), resolve, timer: setTimeout(() => {
+  let cancel;
+  const promise = new Promise((resolve) => {
+    const w = { pattern: hexPrefix.toLowerCase(), resolve, timer: null };
+    cancel = () => {
+      clearTimeout(w.timer);
       const arr = ackWaiters.get(mac) || [];
       const i = arr.indexOf(w); if (i >= 0) arr.splice(i, 1);
       resolve(false);
-    }, timeoutMs) };
+    };
+    w.timer = setTimeout(cancel, timeoutMs);
     if (!ackWaiters.has(mac)) ackWaiters.set(mac, []);
     ackWaiters.get(mac).push(w);
   });
+  promise.cancel = () => cancel();
+  return promise;
 }
 
 /* ---------- 网关选择：最近 120 秒广播里 RSSI 最强的网关 ---------- */
@@ -236,7 +299,7 @@ function handleGwData(msg) {
     else prev.ts = Date.now();
   }
   // 心率阈值监听
-  checkThreshold(infos);
+  checkThreshold(infos).catch(e => console.error('[threshold]', e.message));
 
   // response 包（GwData 上的 pkt_type=response）：conn_addr_request / conn_send_data 的 result
   // 网关回执带 gw_addr（和 msgId，若有）；必须按 gw_addr(+msgId) 匹配对应 pending，不匹配的跳过，
@@ -304,7 +367,7 @@ async function checkThreshold(infos) {
   for (const dev of infos) {
     const mac = String(dev.addr || '').toLowerCase();
     const hr = parseHr(dev.adv_raw);
-    if (!hr || hr < s.hr_threshold) continue;
+    if (!hr || hr < s.hr_threshold || await teacherLink.isTeacher(mac)) continue;
     const last = hrCooldown.get(mac) || 0;
     if (now - last < s.hr_cooldown_seconds * 1000) continue;
     hrCooldown.set(mac, now);
@@ -345,6 +408,34 @@ const server = http.createServer(async (req, res) => {
   try {
     if (!requireAuth(req, res, url)) return;
     if (p === '/api/health') return json(res, 200, { ok: true, service: 'band-command', uptime_s: Math.round(process.uptime()), ...stats, gwKnown: gwByMac.size });
+    if (p === '/api/teacher-bands' && req.method === 'GET') {
+      const rows = await teacherLink.mappings(true);
+      const [recent] = await pool.query(`SELECT n.*, c.name AS class_name FROM band_teacher_notifications n
+        JOIN classes c ON c.id=n.class_id ORDER BY n.id DESC LIMIT 30`);
+      return json(res, 200, {ok:true,bands:rows.map(t => ({...t,online:!!pickGw(t.band_mac),busy:isMacBusy(t.band_mac)})),notifications:recent});
+    }
+    if (p === '/api/teacher-bands/duration' && req.method === 'POST') {
+      const b = await body(req), seconds = Number(b.seconds);
+      if (!Number.isInteger(seconds) || seconds < 1 || seconds > 60) return json(res,400,{ok:false,error:'教师震动时长必须是 1–60 秒的整数'});
+      const conn = await pool.getConnection();
+      try {
+        await conn.beginTransaction();
+        await conn.query('UPDATE band_teacher_mapping SET vibrate_seconds=?',[seconds]);
+        await conn.query("UPDATE band_teacher_notifications SET vibrate_seconds=? WHERE status='queued'",[seconds]);
+        await conn.commit();
+      } catch(e) { await conn.rollback(); throw e; } finally { conn.release(); }
+      await teacherLink.mappings(true);
+      return json(res,200,{ok:true,seconds});
+    }
+    if (p === '/api/teacher-bands/test' && req.method === 'POST') {
+      const b = await body(req);
+      const mac = String(b.band_mac || '').toLowerCase().replace(/[:\s-]/g,'');
+      const teacher = (await teacherLink.mappings()).find(t => t.band_mac === mac && t.enabled);
+      if (!teacher) return json(res,400,{ok:false,error:'请选择已启用的教师手环'});
+      const text = `${teacher.class_name} 教师联动测试`;
+      const result = await cmdVibrate(mac,teacher.vibrate_seconds || 15,'teacher_test',text,{text});
+      return json(res,result.ok?200:result.busy?409:500,result);
+    }
     if (p === '/api/settings') {
       if (req.method === 'GET') return json(res, 200, await getSettings());
       if (req.method === 'POST') {
@@ -364,8 +455,10 @@ const server = http.createServer(async (req, res) => {
           const v = b.hr_watch_enabled;
           watch = (v === false || v === 0 || v === '0' || v === 'false' || v === null) ? 0 : 1;
         }
+        const vibrateSeconds = Number(b.vibrate_seconds ?? s.vibrate_seconds);
+        if (!Number.isInteger(vibrateSeconds) || vibrateSeconds < 1 || vibrateSeconds > 60) return json(res, 400, { ok: false, error: '震动时长必须是 1–60 秒的整数' });
         const next = {
-          vibrate_seconds: Math.max(1, Math.min(60, Number(b.vibrate_seconds ?? s.vibrate_seconds) | 0)),
+          vibrate_seconds: vibrateSeconds,
           hr_interval: [1, 2, 3].includes(Number(b.hr_interval)) ? Number(b.hr_interval) : s.hr_interval,
           hr_threshold: hrThreshold,
           hr_cooldown_seconds: Math.max(30, Math.min(3600, Number(b.hr_cooldown_seconds ?? s.hr_cooldown_seconds) | 0)),
@@ -381,7 +474,9 @@ const server = http.createServer(async (req, res) => {
       const mac = String(b.band_mac || '').toLowerCase().replace(/[^a-f0-9]/g, '');
       if (!mac) return json(res, 400, { ok: false, error: 'band_mac 必填' });
       const s = await getSettings();
-      const r = await cmdVibrate(mac, Number(b.seconds || s.vibrate_seconds), 'manual', b.desc || null);
+      const seconds = Number(b.seconds ?? s.vibrate_seconds);
+      if (!Number.isInteger(seconds) || seconds < 1 || seconds > 60) return json(res, 400, { ok: false, error: '震动时长必须是 1–60 秒的整数' });
+      const r = await cmdVibrate(mac, seconds, 'manual', b.desc || null);
       return json(res, r.ok ? 200 : (r.busy ? 409 : 500), r);
     }
     if (p === '/api/heart-rate/interval' && req.method === 'POST') {
@@ -412,7 +507,11 @@ const server = http.createServer(async (req, res) => {
          LEFT JOIN classes c ON c.id = ch.class_id
          WHERE r.created_at >= ? AND r.id IN (
            SELECT MAX(id) FROM band_records WHERE created_at >= ? GROUP BY band_mac)`, [cutoff, cutoff]);
-      return json(res, 200, { bands: rows.filter(r => gwByMac.has(r.band_mac)) });
+      const teachers = await teacherLink.mappings();
+      return json(res, 200, { bands: rows.filter(r => pickGw(r.band_mac)).map(r => {
+        const t = teachers.find(t => t.band_mac === r.band_mac);
+        return t ? {...r,child_name:t.label,class_name:t.class_name,is_teacher:true} : r;
+      }) });
     }
     if (p === '/api/commands' && req.method === 'GET') {
       const page = Math.max(1, Number(url.searchParams.get('page') || 1) | 0);

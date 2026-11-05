@@ -845,154 +845,17 @@
 
 
     /* ========== 平板横版自适应 (769px ~ 1366px: iPad 横屏/安卓平板, 2026-09-16 杰哥要求) ========== */
-    @media screen and (min-width: 769px) and (max-width: 1366px) {
-      html, body { height: 100vh; }
-      .screen-root { padding: 8px 12px 6px; }
-      .screen-header {
-        height: 52px;
-        flex-basis: 52px;
-        margin-bottom: 8px;
-        padding: 0 10px;
-      }
-      .brand-logo-img { width: 36px; height: 36px; }
-      .brand-meta h1 { font-size: 16px; }
-      .clock-display .time { font-size: 20px; }
-      .screen-grid {
-        grid-template-columns: 230px 1fr 240px;
-        gap: 10px;
-      }
-      .panel-header { height: 32px; flex-basis: 32px; }
-      .center-top-metrics {
-        grid-template-columns: repeat(3, 1fr);
-        gap: 6px;
-        margin-bottom: 6px;
-      }
-      .metric-card { padding: 7px 9px; }
-      .m-value-row .number { font-size: 20px; }
-      .center-bottom-row {
-        height: 96px;
-        flex-basis: 96px;
-        gap: 6px;
-      }
-      .feed-list { overflow-y: auto; }
-      .trend-block { padding: 5px 8px 3px; }
-      #curveChart { min-height: 0; }
-      .screen-footer { height: 22px; flex-basis: 22px; margin-top: 4px; }
-    }
+    
 
     /* 更窄的平板（≤1100px: 如 iPad 1024 横屏）再收紧边栏 */
-    @media screen and (min-width: 769px) and (max-width: 1100px) {
-      .screen-grid {
-        grid-template-columns: 200px 1fr 210px;
-        gap: 8px;
-      }
-      .screen-root { padding: 6px 10px 4px; }
-      .scope-bar { gap: 6px; flex-wrap: wrap; }
-      .clock-display .date { display: none; }
-      .brand-meta .sub-title { font-size: 10px; }
-    }
+    
 
     /* ========== 手机端专用独立流式排版 (仅在宽度 <= 768px 的真机窄屏生效，完全不影响电脑大屏) ========== */
-    @media screen and (max-width: 768px) {
-      html, body {
-        width: 100% !important;
-        height: auto !important;
-        min-height: 100vh !important;
-        overflow-x: hidden !important;
-        overflow-y: auto !important;
-      }
-      .screen-root {
-        width: 100% !important;
-        height: auto !important;
-        min-height: 100vh !important;
-        display: block !important;
-        padding: 10px 8px 30px 8px !important;
-      }
-      .screen-header {
-        height: auto !important;
-        flex-direction: column !important;
-        align-items: stretch !important;
-        gap: 10px !important;
-        padding: 12px 10px !important;
-        margin-bottom: 12px !important;
-      }
-      .brand-section {
-        justify-content: flex-start !important;
-      }
-      .scope-bar {
-        width: 100% !important;
-        overflow-x: auto !important;
-        white-space: nowrap !important;
-        padding: 4px 0 !important;
-        -webkit-overflow-scrolling: touch;
-      }
-      .scope-bar::-webkit-scrollbar {
-        display: none;
-      }
-      .header-right {
-        display: flex !important;
-        justify-content: space-between !important;
-        align-items: center !important;
-        width: 100% !important;
-        border-top: 1px dashed rgba(226, 232, 240, 0.8) !important;
-        padding-top: 8px !important;
-      }
-      body.theme-dark .header-right {
-        border-top-color: rgba(51, 65, 85, 0.6) !important;
-      }
-      .screen-grid {
-        display: flex !important;
-        flex-direction: column !important;
-        gap: 14px !important;
-        height: auto !important;
-      }
-      .col-stack {
-        display: flex !important;
-        flex-direction: column !important;
-        gap: 14px !important;
-        height: auto !important;
-      }
-      .tech-panel {
-        height: auto !important;
-        flex: none !important;
-        margin-bottom: 0 !important;
-      }
-      .chart-container {
-        height: 250px !important;
-        min-height: 250px !important;
-      }
-      .center-top-metrics {
-        grid-template-columns: repeat(2, 1fr) !important;
-        gap: 8px !important;
-      }
-      .band-subgrid {
-        grid-template-columns: 1fr !important;
-        height: auto !important;
-        gap: 12px !important;
-      }
-      #curveChart {
-        height: 230px !important;
-      }
-      #feedList {
-        max-height: 240px !important;
-      }
-      #attnList {
-        max-height: 300px !important;
-      }
-      .screen-footer {
-        flex-direction: column !important;
-        gap: 8px !important;
-        padding: 16px 4px 8px 4px !important;
-        text-align: center !important;
-      }
-      .footer-metrics {
-        justify-content: center !important;
-        flex-wrap: wrap !important;
-        gap: 12px !important;
-      }
-    }
+    
 
   </style>
+  <link rel="stylesheet" href="/static/screen-responsive.css?v=20261010c" />
+  <link rel="stylesheet" href="/static/screen-details.css?v=20261012a" />
 </head>
 <body>
 
@@ -1083,7 +946,7 @@
         <div class="panel-body">
           <!-- 5 大体征核心卡片（新增异常告警卡） -->
           <div class="center-top-metrics">
-            <div class="metric-card hr">
+            <div class="metric-card hr" data-metric="hr">
               <div class="m-label-row">
                 <span>平均心率</span>
                 <span class="icon">💓</span>
@@ -1095,7 +958,7 @@
               <div class="m-status-row" id="avgHrSub">基线 60-140</div>
             </div>
 
-            <div class="metric-card sp">
+            <div class="metric-card sp" data-metric="sp">
               <div class="m-label-row">
                 <span>平均血氧</span>
                 <span class="icon">🫁</span>
@@ -1107,7 +970,7 @@
               <div class="m-status-row" id="avgSpo2Sub">标准 ≥95%</div>
             </div>
 
-            <div class="metric-card tp">
+            <div class="metric-card tp" data-metric="tp">
               <div class="m-label-row">
                 <span>平均体温</span>
                 <span class="icon">🌡</span>
@@ -1119,7 +982,7 @@
               <div class="m-status-row" id="avgTpSub">标准 36.0-37.3</div>
             </div>
 
-            <div class="metric-card bp">
+            <div class="metric-card bp" data-metric="bp">
               <div class="m-label-row">
                 <span>平均血压</span>
                 <span class="icon">🩸</span>
@@ -1131,7 +994,7 @@
             </div>
 
             <!-- 第 5 个卡片：今日异常/预警指标 -->
-            <div class="metric-card alert" id="metricCardAlert">
+            <div class="metric-card alert" id="metricCardAlert" data-metric="alert">
               <div class="m-label-row">
                 <span>体征预警</span>
                 <span class="icon">⚠️</span>
@@ -1144,7 +1007,7 @@
             </div>
 
             <!-- 第 6 个卡片:全园平均步数 -->
-            <div class="metric-card steps">
+            <div class="metric-card steps" data-metric="steps">
               <div class="m-label-row">
                 <span>平均步数</span>
                 <span class="icon">👣</span>
@@ -1165,12 +1028,13 @@
           <!-- 实时动态走势曲线（清晰图例与双 Y 轴分布） -->
           <div class="trend-block">
             <div class="trend-header">
-              <span id="trendTitle">动态健康走势 (近1小时)</span>
-              <span class="trend-tabs">
-                <button type="button" class="trend-tab active" data-min="60">近1小时</button>
-                <button type="button" class="trend-tab" data-min="360">近6小时</button>
-                <button type="button" class="trend-tab" data-min="1440">近24小时</button>
-              </span>
+              <span id="trendTitle">动态健康走势 (今天 9:00-11:00)</span>
+              <div class="trend-tabs" role="group" aria-label="走势时间范围">
+                <button type="button" class="trend-tab active" data-mode="today" aria-pressed="true">今天</button>
+                <button type="button" class="trend-tab" aria-pressed="false" data-mode="yesterday">昨天</button>
+                <button type="button" class="trend-tab" aria-pressed="false" data-mode="week">近一周</button>
+              </div>
+              <div class="screen-request-status" id="screenRequestStatus" role="status" aria-live="polite"></div>
             </div>
             <div class="chart-container" id="curveChart"></div>
             <div id="curveEmpty" style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;font-size:12px;color:var(--text-muted);">
@@ -1192,7 +1056,7 @@
 
             <div class="feed-box">
               <div class="feed-title">
-                <span>📡 实时监测流 (5s刷新)</span>
+                <span>📡 监测动态 · 每分钟同步</span>
               </div>
               <div class="feed-list" id="recentList">
                 <!-- 数据流水 -->
@@ -1238,15 +1102,18 @@
     <footer class="screen-footer">
       <div class="footer-left">
         <span class="footer-item">最后同步：<b id="footUpdated">--</b></span>
-        <span class="footer-item">全园幼儿：<b id="footChildren">-</b></span>
+        <span class="footer-item">本班幼儿：<b id="footChildren">-</b></span>
         <span class="footer-item">体测记录：<b id="footFitness">-</b></span>
         <span class="footer-item">手环累计：<b id="footBands">-</b></span>
       </div>
-      <a class="back-btn" href="/admin">返回后台工作台 →</a>
+      <a class="back-btn" href="/user">返回教师工作台 →</a>
     </footer>
   </div>
 
+  <%- include("partials/screen-details") %>
+  <script src="/static/screen-details.js?v=20261012a"></script>
   <script src="/static/echarts.min.js"></script>
+  <script src="/static/screen-runtime.js?v=20261010c"></script>
   <script>
   // ========== 全局主题切换功能 ==========
   function applyTheme(theme) {
@@ -1275,8 +1142,8 @@
     applyTheme(target);
     localStorage.setItem('fish_screen_theme', target);
     // 强制触发图表自适应和重新拉取渲染
-    if (typeof load === 'function') {
-      load();
+    if (typeof window.refreshScreenData === 'function') {
+      window.refreshScreenData();
     }
     if (window.dispatchEvent) {
       window.dispatchEvent(new Event('resize'));
@@ -1293,19 +1160,13 @@
 <script>
   (function () {
     'use strict';
-    if (!window.echarts) return;
+    if (!window.echarts) console.warn('图表组件未加载，时间范围切换仍可使用');
 
-    var charts = {};
-    function initChart(id) {
-      if (!charts[id] && document.getElementById(id)) {
-        charts[id] = echarts.init(document.getElementById(id));
-      }
-      return charts[id];
-    }
-    function setOpt(id, opt) {
-      var c = initChart(id);
-      if (c) c.setOption(opt, true);
-    }
+    var interaction = window.createScreenInteraction();
+    var chartView = window.createScreenCharts(interaction);
+    var charts = chartView.charts;
+    var initChart = chartView.init;
+    var setOpt = chartView.set;
 
     // 时钟
     function pad(n) { return String(n).padStart(2, '0'); }
@@ -1323,7 +1184,8 @@
     setInterval(tick, 1000);
 
     var __teacherView = <% if (typeof teacherView !== 'undefined' && teacherView) { %>true<% } else { %>false<% } %>;
-    var state = __teacherView ? { scope: 'class', classId: Number(document.querySelector('.scope-chip.active').getAttribute('data-class-id')) || 0, trendMin: 60 } : { scope: 'all', classId: 0, trendMin: 60 };
+    var state = __teacherView ? { scope: 'class', classId: Number(document.querySelector('.scope-chip.active').getAttribute('data-class-id')) || 0, rangeMode: 'today' } : { scope: 'all', classId: 0, rangeMode: 'today' };
+    var detailsView = window.createScreenDetails({ getState: function () { return state; }, apiBase: __teacherView ? '/user/screen/api' : '/admin/screen/api' });
 
     function rebuildScopeChips(classes) {
       if (__teacherView) return; // 教师视图锁定本班，不重绘班级切换
@@ -1344,18 +1206,46 @@
           btn.classList.add('active');
           state.scope = btn.getAttribute('data-scope');
           state.classId = Number(btn.getAttribute('data-class-id')) || 0;
-          load();
+          load(true);
         });
       });
     }
 
-    function load() {
-      var url = '/admin/screen/api/overview?scope=' + state.scope + (state.classId ? '&classId=' + state.classId : '') + '&intervalMin=' + state.trendMin;
-      fetch(url, { headers: { 'X-Requested-With': 'fetch' }, credentials: 'same-origin' })
-        .then(function (r) { return r.json(); })
-        .then(render)
-        .catch(function (e) { console.error('[screen]', e); });
+    function setInnerHTML(el, html) {
+      if (!el || el.__lastHtml === html) return;
+      var top = el.scrollTop;
+      el.innerHTML = html;
+      if (top) el.scrollTop = top;
+      el.__lastHtml = html;
     }
+
+    var requestSequence = 0;
+    var activeRequest = null;
+    function load(showStatus) {
+      var sequence = ++requestSequence;
+      if (activeRequest) activeRequest.abort();
+      activeRequest = new AbortController();
+      var status = document.getElementById('screenRequestStatus');
+      if (status && showStatus) { status.textContent = '正在加载所选时间范围…'; status.classList.remove('is-error'); }
+      var url = '/user/screen/api/overview?rangeMode=' + state.rangeMode;
+      fetch(url, { headers: { 'X-Requested-With': 'fetch' }, credentials: 'same-origin', signal: activeRequest.signal })
+        .then(function (r) { if (!r.ok) throw new Error('加载失败，请稍后重试'); return r.json(); })
+        .then(function (d) {
+          if (sequence !== requestSequence) return;
+          if (!d || !d.ok) throw new Error('暂时无法读取数据');
+          interaction.defer('overview', function () {
+            if (sequence !== requestSequence) return;
+            render(d);
+            if (status) { status.textContent = ''; status.classList.remove('is-error'); }
+          });
+        })
+        .catch(function (e) {
+          if (e.name === 'AbortError' || sequence !== requestSequence) return;
+          if (status) { status.textContent = '数据暂未加载成功，请再次点选时间范围重试。'; status.classList.add('is-error'); }
+          console.error('[screen]', e);
+        });
+    }
+    window.refreshScreenData = function () { load(true); };
 
     function render(d) {
       if (!d || !d.ok) return;
@@ -1363,7 +1253,7 @@
 
       document.getElementById('screenTitle').textContent = '小鱼健康 · ' + d.scopeLabel + '感知大屏';
       document.getElementById('screenSub').textContent = d.scope === 'all' ? '全园体测 × 手环健康动态感知中心' : '班级体测 × 手环健康动态监测（' + d.scopeLabel + '）';
-      var trendLabel = state.trendMin <= 60 ? '近1小时' : (state.trendMin <= 360 ? '近6小时' : '近24小时');
+      var trendLabel = state.rangeMode === 'yesterday' ? '昨天 9:00-11:00' : (state.rangeMode === 'week' ? '近一周 (每天 9:00-11:00)' : '今天 9:00-11:00');
       document.getElementById('trendTitle').textContent = '动态健康走势 (' + trendLabel + ')';
       document.getElementById('footUpdated').textContent = d.updatedAt ? d.updatedAt.slice(11) : '--';
       document.getElementById('footChildren').textContent = d.totals.children;
@@ -1683,6 +1573,8 @@
 
     // ---------- 4. 手环动态监测核心（5 卡片 + 双轴趋势曲线） ----------
     function renderBands(d) {
+      detailsView.update(d);
+      var periodLabel = state.rangeMode === "yesterday" ? "昨天" : state.rangeMode === "week" ? "近一周" : "今天";
       var bs = d.bandSummary || {};
       var alerts = d.bandAlerts || [];
       var activeAlertsNum = alerts.filter(function (x) { return x.status === 'active'; }).length;
@@ -1697,15 +1589,15 @@
 
       // 4 大卡片均值
       var ah = d.avgHealth || {};
-      var sampleTxt = ah.sampleCount ? (ah.sampleCount + ' 台有效') : '基线参考';
+      function sampleTxt(metric) { var count = ah.sampleCounts ? ah.sampleCounts[metric] : ah.sampleCount; return count ? count + ' 台有效' : '暂无有效上报'; }
       document.getElementById('avgHr').textContent = ah.avgHr != null ? ah.avgHr : '--';
-      document.getElementById('avgHrSub').textContent = sampleTxt;
+      document.getElementById('avgHrSub').textContent = sampleTxt('hr');
       document.getElementById('avgSpo2').textContent = ah.avgSpo2 != null ? ah.avgSpo2 : '--';
-      document.getElementById('avgSpo2Sub').textContent = sampleTxt;
+      document.getElementById('avgSpo2Sub').textContent = sampleTxt('sp');
       document.getElementById('avgTp').textContent = ah.avgTp != null ? ah.avgTp : '--';
-      document.getElementById('avgTpSub').textContent = sampleTxt;
+      document.getElementById('avgTpSub').textContent = sampleTxt('tp');
       document.getElementById('avgBp').textContent = ah.avgBp != null ? ah.avgBp : '--';
-      document.getElementById('avgBpSub').textContent = sampleTxt;
+      document.getElementById('avgBpSub').textContent = sampleTxt('bp');
 
       // 第 5 个指标卡：体征预警（今日累计；进行中单独红显）
       var alertTotalNum = document.getElementById('alertTotalNum');
@@ -1717,7 +1609,7 @@
         alertTotalSub.style.color = '#dc2626';
       } else {
         alertTotalNum.style.color = '#059669';
-        alertTotalSub.textContent = '今日预警均已恢复';
+        alertTotalSub.textContent = periodLabel + '预警均已恢复';
         alertTotalSub.style.color = '#059669';
       }
 
@@ -1726,7 +1618,7 @@
       var totalStepsSub = document.getElementById('totalStepsSub');
       if (bs.avgSteps != null && bs.avgSteps > 0) {
         totalStepsEl.textContent = bs.avgSteps.toLocaleString();
-        totalStepsSub.textContent = '今日平均 · ' + (bs.stepBands || 0) + ' 台手环上报';
+        totalStepsSub.textContent = periodLabel + '平均 · ' + (bs.stepBands || 0) + ' 台手环上报';
       } else {
         totalStepsEl.textContent = '--';
         totalStepsSub.textContent = '等待手环上报步数';
@@ -1824,7 +1716,7 @@
         });
       } else {
         if (charts.curveChart) { charts.curveChart.dispose(); delete charts.curveChart; }
-        chartEl.style.display = 'none';
+        chartEl.style.display = 'block';
         emptyEl.style.display = 'flex';
       }
 
@@ -1838,11 +1730,11 @@
       var activeAlerts = alerts.filter(function (x) { return x.status === 'active'; });
       var alertCountEl = document.getElementById('alertCountTag');
       alertCountEl.innerHTML = alerts.length
-        ? ('今日 <b style="color:#e11d48;">' + alerts.length + '</b> 起' + (activeAlerts.length ? ' · <b style="color:#dc2626;">' + activeAlerts.length + ' 起进行中</b>' : ' · 均已恢复正常'))
-        : '<span style="color:#059669;">今日无异常</span>';
+        ? (periodLabel + ' <b style="color:#e11d48;">' + alerts.length + '</b> 起' + (activeAlerts.length ? ' · <b style="color:#dc2626;">' + activeAlerts.length + ' 起进行中</b>' : ' · 均已恢复正常'))
+        : '<span style="color:#059669;">' + periodLabel + '无异常</span>';
       var alertBox = document.getElementById('bandAlerts');
       if (alerts.length) {
-        alertBox.innerHTML = alerts.slice(0, 8).map(function (a) {
+        setInnerHTML(alertBox, alerts.slice(0, 8).map(function (a) {
           var name = a.child_name ? ((a.child_display || (String(a.child_name||'').length>1 ? String(a.child_name).slice(0,-1)+'*' : a.child_name)) + (a.class_name ? ' · ' + a.class_name : '')) : a.band_mac;
           var kindTxt = a.kind === 'hr_high' ? ('心率偏高 ' + (a.heart_rate != null ? a.heart_rate : '--')) : (a.kind === 'hr_low' ? ('心率偏低 ' + (a.heart_rate != null ? a.heart_rate : '--')) : 'SOS 紧急');
           var isActive = a.status === 'active';
@@ -1854,16 +1746,16 @@
             + '<span class="feed-name" style="' + (isActive ? 'color:#be123c;' : 'color:#64748b;text-decoration:line-through;') + '">' + name + '</span>'
             + '<span class="feed-val hr">' + (isActive ? '🔴 ' : '✅ ') + kindTxt + durTxt + '</span>'
             + '</div>';
-        }).join('');
+        }).join(''));
       } else {
-        alertBox.innerHTML = '<div style="font-size:11px;color:#059669;padding:8px 4px;text-align:center;font-weight:600;">✨ 当前各监测项运转平稳，无异常预警</div>';
+        setInnerHTML(alertBox, '<div style="font-size:11px;color:#059669;padding:8px 4px;text-align:center;font-weight:600;">✨ 当前各监测项运转平稳，无异常预警</div>');
       }
 
       // 最近流水
       var recs = d.recentBands || [];
       var recBox = document.getElementById('recentList');
       if (recs.length) {
-        recBox.innerHTML = recs.slice(0, 4).map(function (r) {
+        setInnerHTML(recBox, recs.slice(0, 4).map(function (r) {
           return '<div class="feed-row">'
             + '<span class="feed-time">' + r.t.slice(11, 19) + '</span>'
             + '<span class="feed-name">' + (r.child_display || (r.child_name ? (String(r.child_name).length>1 ? String(r.child_name).slice(0,-1)+'*' : r.child_name) : r.band_mac.slice(-5))) + '</span>'
@@ -1871,9 +1763,9 @@
             + '<span class="feed-val tp">' + (r.tp ? (r.tp + '°') : '--') + '</span>'
             + '<span class="feed-val sp">' + (r.sp ? (r.sp + '%') : '--') + '</span>'
             + '</div>';
-        }).join('');
+        }).join(''));
       } else {
-        recBox.innerHTML = '<div style="font-size:11px;color:var(--text-muted);padding:8px 4px;text-align:center;">暂无近期上报数据</div>';
+        setInnerHTML(recBox, '<div style="font-size:11px;color:var(--text-muted);padding:8px 4px;text-align:center;">暂无近期上报数据</div>');
       }
     }
 
@@ -1883,7 +1775,7 @@
       document.getElementById('attnTag').innerHTML = '共 <b>' + (d.attentionTotal || 0) + '</b> 人';
       var box = document.getElementById('attnList');
       if (list.length) {
-        box.innerHTML = list.map(function (r) {
+        setInnerHTML(box, list.map(function (r) {
           var color = r.vest?.color || '#0284c7';
           var why = r.reason || r.tags || '重点关注';
           return '<div class="attention-card">'
@@ -1892,25 +1784,19 @@
             + '<div class="att-row-1"><span class="att-name">' + (r.display_name || (String(r.name||'').length>1 ? String(r.name).slice(0,-1)+'*' : r.name)) + '</span><span class="att-class">' + (r.class_name || '') + '</span></div>'
             + '<div class="att-reason" title="' + why + '">' + why + '</div>'
             + '</div></div>';
-        }).join('');
+        }).join(''));
       } else {
-        box.innerHTML = '<div style="font-size:11px;color:var(--text-muted);text-align:center;padding:18px 0;">当前展示范围暂无重点关注人员</div>';
+        setInnerHTML(box, '<div style="font-size:11px;color:var(--text-muted);text-align:center;padding:18px 0;">当前展示范围暂无重点关注人员</div>');
       }
     }
 
-    window.addEventListener('resize', function () {
-      Object.keys(charts).forEach(function (k) {
-        if (charts[k]) charts[k].resize();
-      });
-    });
-
-    load();
+    load(true);
     /* 20260926：原先无条件 5s 轮询，页面被切到后台（或投屏机器锁屏）时仍在打接口。
        现在只在页面可见时轮询；重新可见时立刻补一次，避免看到过期数据。 */
     var pollTimer = setInterval(function () {
       if (document.hidden) return;
       load();
-    }, 5000);
+    }, 60000); // 20261009 CPU事故降频 5s→15s→60s(杰哥:实时概念1分钟)
     document.addEventListener('visibilitychange', function () {
       if (!document.hidden) load();
     });
@@ -1946,14 +1832,15 @@
       if (e.key === 'f' || e.key === 'F') { toggleFullscreen(); }
     });
 
-    // 动态走势区间切换
+    // 数据区间切换（今天/昨天/近一周，均限 9:00-11:00 运动窗）
     document.querySelectorAll('.trend-tab').forEach(function (btn) {
       btn.addEventListener('click', function () {
-        var min = Number(btn.getAttribute('data-min')) || 60;
-        if (min === state.trendMin) return;
-        state.trendMin = min;
-        document.querySelectorAll('.trend-tab').forEach(function (b) { b.classList.toggle('active', b === btn); });
-        load();
+        var m = btn.getAttribute('data-mode') || 'today';
+        var errorStatus = document.getElementById('screenRequestStatus');
+        if (m === state.rangeMode && !(errorStatus && errorStatus.classList.contains('is-error'))) return;
+        state.rangeMode = m;
+        document.querySelectorAll('.trend-tab').forEach(function (b) { b.classList.toggle('active', b === btn); b.setAttribute('aria-pressed', String(b === btn)); });
+        load(true);
       });
     });
   })();

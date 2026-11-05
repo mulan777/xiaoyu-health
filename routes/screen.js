@@ -3,8 +3,11 @@
  * v4 (2026-09-08)：平台浅色风；重点关注按展示班级过滤；生长趋势时间正序；
  *                  雷达图当前系列标注批次日期；新增最近上报滚动数据。
  */
-const { asyncHandler } = require('../lib/helpers');
+const { asyncHandler, requireRole, requirePermission } = require('../lib/helpers');
 const { dbQuery, getSettings } = require('../lib/db');
+const { recentClassRecords } = require('../lib/band-recent');
+const { createBandCache } = require('../lib/band-cache');
+const cachedTotals = createBandCache(300000, 32);
 const { buildFitnessSummaries, buildRadarChartData } = require('../lib/fitness-analytics');
 const { buildDisplayMap } = require('../lib/name-masking');
 const { SOUTH_GW_ZONES } = require('../lib/positioning');
@@ -142,7 +145,7 @@ module.exports = function mountScreenRoutes(app) {
   app.get('/screen/api/overview', (req, res) => res.redirect(301, '/admin/screen/api/overview'));
 
   // ========== 大屏页面 ==========
-  app.get('/admin/screen', requireLogin, asyncHandler(async (req, res) => {
+  app.get('/admin/screen', requireRole('admin'), requirePermission('data.bands.view'), asyncHandler(async (req, res) => {
     const [classes, settings] = await Promise.all([
       dbQuery(
         `SELECT id, name, grade_level
@@ -170,17 +173,54 @@ module.exports = function mountScreenRoutes(app) {
    *   bandClassId     手环数据过滤（0=全部手环，>0=仅该班手环——教师端大屏用）
    * 返回 res.json 同构的数据对象。
    */
-  async function buildScreenOverview(scope, classId, intervalMin, bandClassId, date) {
-    // 动态走势区间与分桶: 近1h=1min桶(60点) / 近6h=5min桶(72点) / 近24h=15min桶(96点)
-    intervalMin = Math.min(1440, Math.max(30, Number(intervalMin) || 60));
-    // 历史日期回放（2026-09-28）：传 date=YYYY-MM-DD 时把 NOW() 窗口平移到该日的同一时刻
-    let timeWindowSql = "r.bp_time >= DATE_SUB(NOW(), INTERVAL " + intervalMin + " MINUTE)";
-    if (date && /^\d{4}-\d{2}-\d{2}$/.test(String(date))) {
-      const d = String(date);
-      timeWindowSql = "r.bp_time >= DATE_SUB('" + d + " 23:59:59', INTERVAL " + intervalMin + " MINUTE) AND r.bp_time <= '" + d + " 23:59:59'";
+  // ========== 大屏 overview 结果缓存（2026-10-09 CPU 100% 事故修复）==========
+  // 22万行/日聚合单次1~6秒 + 前端5s轮询多屏并发 → MySQL 打满。同参数请求5秒内共用一份结果。
+  const _overviewCache = new Map();
+  const OVERVIEW_CACHE_MS = 60000;
+  async function buildScreenOverviewCached(scope, classId, rangeMode, bandClassId) {
+    rangeMode = ['today', 'yesterday', 'week'].includes(String(rangeMode)) ? String(rangeMode) : 'today';
+    const key = [scope, classId, rangeMode, bandClassId].join('|');
+    const hit = _overviewCache.get(key);
+    const now = Date.now();
+    if (hit && now - hit.ts < OVERVIEW_CACHE_MS) return hit.data;
+    // single-flight：同key正在计算时直接复用同一个Promise，杜绝N个页面同时各算一套打满MySQL
+    if (hit && hit.p) return hit.p;
+    const promise = buildScreenOverview(scope, classId, rangeMode, bandClassId)
+      .then((data) => { _overviewCache.set(key, { ts: Date.now(), data }); return data; })
+      .catch((err) => { _overviewCache.delete(key); throw err; });
+    _overviewCache.set(key, { ts: now, p: promise });
+    if (_overviewCache.size > 64) {
+      const oldest = [..._overviewCache.entries()].sort((a, b) => a[1].ts - b[1].ts)[0];
+      if (oldest && !oldest[1].p) _overviewCache.delete(oldest[0]);
     }
-    const bucketSec = intervalMin <= 60 ? 60 : (intervalMin <= 360 ? 300 : 900);
-    const timeFmt = intervalMin > 360 ? "'%m-%d %H:%i'" : "'%H:%i'";
+    return promise;
+  }
+
+  async function buildScreenOverview(scope, classId, rangeMode, bandClassId) {
+    // 2026-10-09 改版：数据只看每天 09:00-11:00 运动窗（band-bridge 落库侧同步只留该窗口）
+    // rangeMode: today(默认) / yesterday / week
+    const mode = ['today', 'yesterday', 'week'].includes(String(rangeMode)) ? String(rangeMode) : 'today';
+    // 曲线分桶：today/yesterday=2小时窗按5分钟桶(24点)，week=7天按每天一个桶
+    let timeWindowSql, bucketSec, timeFmt;
+    if (mode === 'week') {
+      // 近一周：每天 09:00-11:00 的数据，按天分桶
+      timeWindowSql = "r.bp_time >= DATE_SUB(CURDATE(), INTERVAL 6 DAY) + INTERVAL 9 HOUR AND r.bp_time < CURDATE() + INTERVAL 11 HOUR AND TIME(r.bp_time) >= '09:00:00' AND TIME(r.bp_time) < '11:00:00'";
+      bucketSec = 86400;
+      timeFmt = "'%m-%d'";
+    } else {
+      // 今天 / 昨天：单日 09:00-11:00 两小时窗，5 分钟桶
+      const dayExpr = mode === 'yesterday' ? 'DATE_SUB(CURDATE(), INTERVAL 1 DAY)' : 'CURDATE()';
+      timeWindowSql = "r.bp_time >= " + dayExpr + " + INTERVAL 9 HOUR AND r.bp_time < " + dayExpr + " + INTERVAL 11 HOUR";
+      bucketSec = 300;
+      timeFmt = "'%H:%i'";
+    }
+    // Group calendar days directly: Unix-day buckets can split a local date.
+    const bucketExpr = mode === 'week' ? 'DATE(r.bp_time)' : `FLOOR(UNIX_TIMESTAMP(r.bp_time) / ${bucketSec})`;
+    const bucketLabel = mode === 'week' ? `DATE_FORMAT(r.bp_time, ${timeFmt})` : `DATE_FORMAT(FROM_UNIXTIME(${bucketSec} * ${bucketExpr}), ${timeFmt})`;
+    // 手环卡片（bandOverview）取数窗口：today/yesterday=当日9-11点起，week=近7天每天9-11
+    const ovWinStart = mode === 'week'
+      ? 'DATE_SUB(CURDATE(), INTERVAL 6 DAY) + INTERVAL 9 HOUR'
+      : (mode === 'yesterday' ? 'DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 9 HOUR' : 'CURDATE() + INTERVAL 9 HOUR');
     const bandScopeSql = bandClassId
       ? 'AND r.band_mac IN (SELECT m2.band_mac FROM band_mapping m2 JOIN children ch2 ON ch2.id = m2.child_id WHERE ch2.class_id = ' + Number(bandClassId) + ')'
       : '';
@@ -193,19 +233,19 @@ module.exports = function mountScreenRoutes(app) {
                 AVG(CASE WHEN r.spo2 > 0 THEN r.spo2 END) AS avg_spo2,
                 AVG(CASE WHEN r.body_temp > 0 THEN r.body_temp END) AS avg_tp
            FROM band_records r
-          WHERE ${timeWindowSql}
+          WHERE ${timeWindowSql} AND NOT EXISTS (SELECT 1 FROM band_teacher_mapping t WHERE t.band_mac=r.band_mac)
             ${bandClassId ? 'AND r.band_mac IN (SELECT m2.band_mac FROM band_mapping m2 JOIN children ch2 ON ch2.id = m2.child_id WHERE ch2.class_id = ' + Number(bandClassId) + ')' : ''}
-          GROUP BY FLOOR(UNIX_TIMESTAMP(r.bp_time) / ${bucketSec})
+          GROUP BY ${bucketExpr}
           ORDER BY t ASC`),
       // 运动强度画像（2026-09-27）：同一分桶下按心率区间统计「手环数」（不是条数，避免高频上报的手环刷屏）
       dbQuery(
         `SELECT t, MAX(hr) AS hr, COUNT(DISTINCT band_mac) AS bands FROM (
-            SELECT DATE_FORMAT(FROM_UNIXTIME(${bucketSec} * FLOOR(UNIX_TIMESTAMP(r.bp_time) / ${bucketSec})), ${timeFmt}) AS t,
-                   FLOOR(UNIX_TIMESTAMP(r.bp_time) / ${bucketSec}) AS bk,
+            SELECT ${bucketLabel} AS t,
+                   ${bucketExpr} AS bk,
                    r.band_mac,
                    MAX(r.heart_rate) AS hr
               FROM band_records r
-             WHERE ${timeWindowSql}
+             WHERE ${timeWindowSql} AND NOT EXISTS (SELECT 1 FROM band_teacher_mapping t WHERE t.band_mac=r.band_mac)
                AND r.heart_rate > 0
                ${bandScopeSql}
              GROUP BY bk, t, r.band_mac
@@ -217,22 +257,15 @@ module.exports = function mountScreenRoutes(app) {
               ELSE 'warmup' END
           ORDER BY t ASC`),
       dbQuery(
-        `SELECT b.band_mac,
-                MAX(b.bp_time) AS last_time,
-                COUNT(*) AS total_records,
-                (SELECT heart_rate FROM band_records b2 WHERE b2.band_mac = b.band_mac AND b2.bp_time >= CURDATE() ORDER BY b2.id DESC LIMIT 1) AS heart_rate,
-                (SELECT body_temp  FROM band_records b2 WHERE b2.band_mac = b.band_mac AND b2.bp_time >= CURDATE() ORDER BY b2.id DESC LIMIT 1) AS body_temp,
-                (SELECT systolic   FROM band_records b2 WHERE b2.band_mac = b.band_mac AND b2.bp_time >= CURDATE() ORDER BY b2.id DESC LIMIT 1) AS systolic,
-                (SELECT diastolic  FROM band_records b2 WHERE b2.band_mac = b.band_mac AND b2.bp_time >= CURDATE() ORDER BY b2.id DESC LIMIT 1) AS diastolic,
-                (SELECT spo2       FROM band_records b2 WHERE b2.band_mac = b.band_mac AND b2.bp_time >= CURDATE() ORDER BY b2.id DESC LIMIT 1) AS spo2,
-                (SELECT steps      FROM band_records b2 WHERE b2.band_mac = b.band_mac AND b2.bp_time >= CURDATE() ORDER BY b2.id DESC LIMIT 1) AS steps,
-                (SELECT battery    FROM band_records b2 WHERE b2.band_mac = b.band_mac AND b2.bp_time >= CURDATE() ORDER BY b2.id DESC LIMIT 1) AS battery,
-                (SELECT sos        FROM band_records b2 WHERE b2.band_mac = b.band_mac AND b2.bp_time >= CURDATE() ORDER BY b2.id DESC LIMIT 1) AS sos
-           FROM band_records b
-          WHERE b.bp_time >= CURDATE()
-            ${bandClassId ? 'AND b.band_mac IN (SELECT m3.band_mac FROM band_mapping m3 JOIN children ch3 ON ch3.id = m3.child_id WHERE ch3.class_id = ' + Number(bandClassId) + ')' : ''}
-          GROUP BY b.band_mac
-          ORDER BY last_time DESC`),
+        `SELECT r.band_mac, g.last_time, g.total_records,
+                r.heart_rate, r.body_temp, r.systolic, r.diastolic,
+                r.spo2, r.steps, r.battery, r.sos
+           FROM (SELECT r.band_mac, MAX(r.id) AS max_id, MAX(r.bp_time) AS last_time, COUNT(*) AS total_records
+                   FROM band_records r
+                  WHERE ${timeWindowSql} AND NOT EXISTS (SELECT 1 FROM band_teacher_mapping t WHERE t.band_mac=r.band_mac) ${bandScopeSql}
+                  GROUP BY r.band_mac) g
+           JOIN band_records r ON r.id = g.max_id
+          ORDER BY g.last_time DESC`),
       // 重点关注管理（预约管理 - 重点关注管理的人）
       dbQuery(
         `SELECT ch.id, ch.name, ch.class_id, c.name AS class_name,
@@ -241,22 +274,29 @@ module.exports = function mountScreenRoutes(app) {
            FROM children ch
            LEFT JOIN classes c ON c.id = ch.class_id
           WHERE ch.enabled = 1 AND ch.needs_attention = 1
+            ${bandClassId ? 'AND ch.class_id = ' + Number(bandClassId) : ''}
           ORDER BY c.name, ch.name`),
       // 最近上报（滚动列表）
-      dbQuery(
-        `SELECT r.id, r.band_mac, r.bp_time, r.heart_rate, r.body_temp, r.spo2, r.systolic, r.diastolic, r.sos,
-                m.child_id, ch.name AS child_name
-           FROM band_records r
-           LEFT JOIN band_mapping m ON m.band_mac = r.band_mac
-           LEFT JOIN children ch ON ch.id = m.child_id
-          ${bandClassId ? 'WHERE ch.class_id = ' + Number(bandClassId) : ''}
-          ORDER BY r.id DESC
-          LIMIT 10`),
-      dbQuery(`SELECT
+      bandClassId
+        ? recentClassRecords(Number(bandClassId), 10, timeWindowSql)
+        : dbQuery(`
+          SELECT r.id, r.band_mac, r.bp_time, r.heart_rate, r.body_temp, r.spo2, r.systolic, r.diastolic, r.sos,
+                  m.child_id, ch.name AS child_name
+             FROM band_records r
+             LEFT JOIN band_mapping m ON m.band_mac = r.band_mac
+             LEFT JOIN children ch ON ch.id = m.child_id
+            WHERE ${timeWindowSql} AND NOT EXISTS (SELECT 1 FROM band_teacher_mapping t WHERE t.band_mac=r.band_mac)
+            ORDER BY r.bp_time DESC
+            LIMIT 10`),
+      cachedTotals(String(bandClassId || 0), () => bandClassId ? dbQuery(`SELECT
+        (SELECT COUNT(*) FROM children WHERE enabled = 1 AND class_id = ?) AS children,
+        (SELECT COUNT(*) FROM fitness_records fr JOIN children ch ON ch.id = fr.child_id WHERE ch.class_id = ?) AS fitnessRecords,
+        COUNT(*) AS bandRecords, COALESCE(SUM(b.sos = 1), 0) AS sosCount
+        FROM band_records b JOIN band_mapping m ON m.band_mac = b.band_mac
+        JOIN children ch ON ch.id = m.child_id WHERE ch.class_id = ?`, [bandClassId, bandClassId, bandClassId]) : dbQuery(`SELECT
         (SELECT COUNT(*) FROM children WHERE enabled = 1) AS children,
         (SELECT COUNT(*) FROM fitness_records) AS fitnessRecords,
-        (SELECT COUNT(*) FROM band_records) AS bandRecords,
-        (SELECT COUNT(*) FROM band_records WHERE sos = 1) AS sosCount`),
+        COUNT(*) AS bandRecords, COALESCE(SUM(sos = 1), 0) AS sosCount FROM band_records b WHERE NOT EXISTS (SELECT 1 FROM band_teacher_mapping t WHERE t.band_mac=b.band_mac)`)),
       getSettings()
     ]);
 
@@ -318,16 +358,23 @@ module.exports = function mountScreenRoutes(app) {
     }
 
     // ---------- 手环：聚合健康 ----------
+    // 2026-10-09：数据只录 9-11 点运动窗，实时在线判定仅在当前处于窗口内才有意义；
+    // 窗口外（11点后/昨天/周视图）一律显示离线，避免「永远离线」误解。
     const nowTs = Date.now();
+    const bjNow = new Date(nowTs + 8 * 3600 * 1000);
+    const bjMin = bjNow.getUTCHours() * 60 + bjNow.getUTCMinutes();
+    const inSportWindow = bjMin >= 9 * 60 && bjMin < 11 * 60;
     const bands = bandOverview.map((r) => {
       const raw = r.last_time instanceof Date
         ? r.last_time.getTime()
         : (r.last_time ? new Date(String(r.last_time).replace(' ', 'T')).getTime() : 0);
       const lastTime = Number.isFinite(raw) ? raw : 0;
+      // 服务器/MySQL 均为北京时间(CST)，last_time 解析即本地时间，直接用 UNIX 差值
+      const online = mode === 'today' && inSportWindow && lastTime ? (nowTs - lastTime) < 6 * 60 * 1000 : false;
       return {
         ...r,
         last_time: fmtDateTime(r.last_time),
-        online: lastTime ? (nowTs - lastTime) < 6 * 60 * 1000 : false,
+        online,
         minutes_ago: lastTime ? Math.max(0, Math.round((nowTs - lastTime) / 60000)) : null
       };
     });
@@ -344,14 +391,16 @@ module.exports = function mountScreenRoutes(app) {
       avgSpo2: avgOf(spVals),
       avgTp: avgOf(tpVals),
       avgBp: (sysVals.length && diaVals.length) ? `${avgOf(sysVals)}/${avgOf(diaVals)}` : null,
-      sampleCount: Math.max(hrVals.length, spVals.length, tpVals.length)
+      sampleCount: Math.max(hrVals.length, spVals.length, tpVals.length),
+      sampleCounts: { hr: hrVals.length, sp: spVals.length, tp: tpVals.length, bp: Math.min(sysVals.length, diaVals.length) }
     };
 
     const mappingRows = await dbQuery(
-      `SELECT m.band_mac, m.child_id, ch.name AS child_name, c.name AS class_name
+      `SELECT m.band_mac, m.child_id, ch.name AS child_name, c.name AS class_name, c.id AS class_id
          FROM band_mapping m
          LEFT JOIN children ch ON ch.id = m.child_id
-         LEFT JOIN classes c ON c.id = ch.class_id`);
+         LEFT JOIN classes c ON c.id = ch.class_id
+        WHERE NOT EXISTS (SELECT 1 FROM band_teacher_mapping t WHERE t.band_mac=m.band_mac) ${bandClassId ? 'AND ch.class_id = ?' : ''}`, bandClassId ? [bandClassId] : []);
   { const dm = await loadStudentDisplayMap(); for (const _r of (Array.isArray(mappingRows) ? mappingRows : [])) {
       if (_r.name && !_r.display_name) _r.display_name = maskChildName(dm, _r.class_name, _r.name);
       if (_r.child_name && !_r.child_display) _r.child_display = maskChildName(dm, _r.class_name, _r.child_name);
@@ -360,6 +409,26 @@ module.exports = function mountScreenRoutes(app) {
       if (_r.child_name) _r.child_name = _r.child_display || _r.child_name;
   } }
     const infoByMac = new Map(mappingRows.map((m) => [String(m.band_mac).toLowerCase(), m]));
+    // A watch without a report remains visible as "no report", never as a zero reading.
+    const detailByMac = new Map(bands.map((b) => [String(b.band_mac).toLowerCase(), b]));
+    for (const m of mappingRows) {
+      const mac = String(m.band_mac).toLowerCase();
+      if (!detailByMac.has(mac)) detailByMac.set(mac, { band_mac: mac });
+    }
+    const bandDetails = [...detailByMac.values()].map((b) => {
+      const m = infoByMac.get(String(b.band_mac).toLowerCase()) || {};
+      const value = (key) => b[key] == null ? null : Number(b[key]);
+      return {
+        band_mac: String(b.band_mac).toLowerCase(),
+        child_name: m.child_name || '', class_name: m.class_name || '', class_id: Number(m.class_id) || 0,
+        hr: value('heart_rate'), sp: value('spo2'), tp: value('body_temp'),
+        systolic: value('systolic'), diastolic: value('diastolic'), steps: value('steps'),
+        last_time: b.last_time || '', online: !!b.online, has_record: !!b.last_time,
+        included: { hr: inRange(b.heart_rate, 30, 250), sp: inRange(b.spo2, 50, 100),
+          tp: inRange(b.body_temp, 35, 40), bp: inRange(b.systolic, 40, 250) && inRange(b.diastolic, 25, 160),
+          steps: Number.isFinite(Number(b.steps)) && Number(b.steps) > 0 }
+      };
+    });
     const mappedMacs = new Set(mappingRows.map((m) => String(m.band_mac).toLowerCase()));
     const stepVals = bands.map((b) => Number(b.steps)).filter((v) => Number.isFinite(v) && v > 0);
     const bandSummary = {
@@ -383,10 +452,11 @@ module.exports = function mountScreenRoutes(app) {
               TIMESTAMPDIFF(SECOND, a.first_time, a.last_time) AS dur_sec,
               TIMESTAMPDIFF(SECOND, a.first_time, NOW()) AS dur_now_sec
          FROM band_alerts a
-        WHERE a.last_time >= CURDATE()
+        WHERE NOT EXISTS (SELECT 1 FROM band_teacher_mapping t WHERE t.band_mac=a.band_mac) AND a.last_time >= ${mode === 'week' ? 'DATE_SUB(CURDATE(), INTERVAL 6 DAY)' : (mode === 'yesterday' ? 'DATE_SUB(CURDATE(), INTERVAL 1 DAY)' : 'CURDATE()')}
+          AND a.last_time < ${mode === 'yesterday' ? 'CURDATE()' : 'CURDATE() + INTERVAL 1 DAY'}
           ${bandClassId ? 'AND a.class_name = (SELECT name FROM classes WHERE id = ' + Number(bandClassId) + ')' : ''}
         ORDER BY (a.status = 'active') DESC, a.last_time DESC
-        LIMIT 60`, []
+        `, []
     );
   { const dm = await loadStudentDisplayMap(); for (const _r of (Array.isArray(alertRows) ? alertRows : [])) {
       if (_r.child_name && !_r.child_display) _r.child_display = maskChildName(dm, _r.class_name, _r.child_name);
@@ -442,6 +512,7 @@ module.exports = function mountScreenRoutes(app) {
     return {
       ok: true,
       scope,
+      rangeMode: mode,
       scopeLabel: scope === 'class' ? (className || '本班') : '全园',
       updatedAt: fmtDateTime(new Date()),
       displayClasses,
@@ -454,6 +525,7 @@ module.exports = function mountScreenRoutes(app) {
       growthTrend,
       avgHealth,
       bandSummary,
+      bandDetails,
       bandAlerts,
       recentBands: recentBandsList,
       curveData: (bandBuckets || []).map((r) => ({
@@ -471,12 +543,52 @@ module.exports = function mountScreenRoutes(app) {
     };
   }
 
-  // 管理端路由（行为不变）
-  app.get('/admin/screen/api/overview', requireLogin, asyncHandler(async (req, res) => {
+  // 管理端路由（2026-10-09 改版：rangeMode=today/yesterday/week，数据窗口=每天09:00-11:00）
+  app.get('/admin/screen/api/overview', requireRole('admin'), requirePermission('data.bands.view'), asyncHandler(async (req, res) => {
     const scope = req.query.scope === 'class' ? 'class' : 'all';
     const classId = scope === 'class' ? (Number(req.query.classId) || 0) : 0;
-    const data = await buildScreenOverview(scope, classId, req.query.intervalMin, 0, req.query.date);
+    const data = await buildScreenOverviewCached(scope, classId, req.query.rangeMode, classId);
     res.json(Object.assign({ ok: true }, data));
+  }));
+
+  const cachedAlerts = createBandCache(30000, 128);
+  async function buildScreenAlerts(classId, query) {
+    const mode = ['today', 'yesterday', 'week', 'all'].includes(String(query.rangeMode)) ? String(query.rangeMode) : 'today';
+    const mac = String(query.bandMac || '').toLowerCase();
+    if (mac && !/^[0-9a-f]{12}$/.test(mac)) return { ok: false, error: '手表编号格式错误' };
+    const metric = query.metric === 'hr' ? 'hr' : 'all';
+    const status = ['active', 'resolved'].includes(query.status) ? query.status : 'all';
+    const page = Math.min(100000, Math.max(1, Math.floor(Number(query.page) || 1)));
+    return cachedAlerts([classId, mode, mac, metric, status, page].join('|'), async () => {
+      const where = ['NOT EXISTS (SELECT 1 FROM band_teacher_mapping t WHERE t.band_mac=a.band_mac)'], params = [];
+      if (classId) { where.push('a.class_name = (SELECT name FROM classes WHERE id = ?)'); params.push(classId); }
+      if (mode !== 'all') {
+        where.push(`a.last_time >= ${mode === 'week' ? 'DATE_SUB(CURDATE(), INTERVAL 6 DAY)' : mode === 'yesterday' ? 'DATE_SUB(CURDATE(), INTERVAL 1 DAY)' : 'CURDATE()'}`);
+        where.push(`a.last_time < ${mode === 'yesterday' ? 'CURDATE()' : 'CURDATE() + INTERVAL 1 DAY'}`);
+      }
+      if (mac) { where.push('a.band_mac = ?'); params.push(mac); }
+      if (metric === 'hr') where.push("a.kind IN ('hr_high', 'hr_low')");
+      if (status !== 'all') { where.push('a.status = ?'); params.push(status); }
+      const clause = where.length ? 'WHERE ' + where.join(' AND ') : '';
+      const counts = await dbQuery(`SELECT COUNT(*) AS total, COALESCE(SUM(a.status = 'active'), 0) AS active FROM band_alerts a ${clause}`, params);
+      const total = Number(counts[0].total) || 0;
+      const actualPage = Math.min(page, Math.max(1, Math.ceil(total / 50)));
+      const rows = await dbQuery(`SELECT a.id, a.band_mac, a.kind, a.child_name, a.class_name, a.peak_value,
+        a.first_time, a.last_time, a.status, a.trigger_count, a.resolved_at
+        FROM band_alerts a ${clause} ORDER BY (a.status = 'active') DESC, a.last_time DESC, a.id DESC
+        LIMIT 50 OFFSET ${50 * (actualPage - 1)}`, params);
+      const dm = await loadStudentDisplayMap();
+      return { ok: true, total, active: Number(counts[0].active) || 0, page: actualPage, pageSize: 50, rangeMode: mode,
+        alerts: rows.map(a => ({ ...a, child_name: maskChildName(dm, a.class_name, a.child_name) || '',
+          peak_value: a.peak_value == null ? null : Number(a.peak_value), first_time: fmtDateTime(a.first_time),
+          last_time: fmtDateTime(a.last_time), resolved_at: a.resolved_at ? fmtDateTime(a.resolved_at) : '' })) };
+    });
+  }
+  app.get('/admin/screen/api/alerts', requireRole('admin'), requirePermission('data.bands.view'), asyncHandler(async (req, res) => {
+    const classId = req.query.scope === 'class' ? Math.max(0, Math.floor(Number(req.query.classId) || 0)) : 0;
+    if (req.query.scope === 'class' && !classId) return res.status(400).json({ ok: false, error: '请选择班级' });
+    const data = await buildScreenAlerts(classId, req.query);
+    res.status(data.ok ? 200 : 400).json(data);
   }));
 
   // ========== 南操场实时热力图（30s 轮询） ==========
@@ -494,7 +606,7 @@ module.exports = function mountScreenRoutes(app) {
               AVG(r.rssi) AS avg_rssi,
               MAX(r.bp_time) AS last_time
          FROM band_records r
-        WHERE r.bp_time >= DATE_SUB(NOW(), INTERVAL 3 MINUTE)
+        WHERE NOT EXISTS (SELECT 1 FROM band_teacher_mapping t WHERE t.band_mac=r.band_mac) AND r.bp_time >= DATE_SUB(NOW(), INTERVAL 3 MINUTE)
           AND r.rssi IS NOT NULL
           AND LOWER(r.gw_addr) IN (${placeholders})
         GROUP BY LOWER(r.gw_addr), r.band_mac
@@ -548,5 +660,5 @@ module.exports = function mountScreenRoutes(app) {
     res.json({ ok: true, zones, updatedAt: fmtDateTime(new Date()) });
   }));
 
-  return { buildScreenOverview, buildIntensityData };
+  return { buildScreenOverview, buildScreenOverviewCached, buildIntensityData, buildScreenAlerts };
 };

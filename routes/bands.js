@@ -3,6 +3,8 @@
  */
 const { normalizeText, asyncHandler, requireRole, requirePermission, requireWritable, hasPermission } = require('../lib/helpers');
 const { dbQuery, getSettings, saveSettings } = require('../lib/db');
+const { createBandCache } = require('../lib/band-cache');
+const cachedOverview = createBandCache(30000, 1);
 
 /** 手环 MAC 归一化：兼容 D6:12:D9:00:37:FE / d6-12-d9-... / 含空格等写法，统一为小写 12 位 hex */
 function normalizeBandMac(input) {
@@ -28,17 +30,14 @@ module.exports = function mountBandRoutes(app, upload) {
                LEFT JOIN children ch ON ch.id = m.child_id
                LEFT JOIN classes c ON c.id = ch.class_id
                ORDER BY m.id DESC`),
-      // 性能：band_records 已 35 万+ 行，逐 MAC 的 8 个关联子查询实测 11s；
-      // 改为「聚合派生表 JOIN 最新行」，索引 idx_band_time(band_mac,bp_time)+PRIMARY(id) 全程覆盖扫描，实测 ~300ms
-      dbQuery(`SELECT r.band_mac,
+      // One aggregate pass, shared by concurrent admin page requests.
+      cachedOverview('all', () => dbQuery(`SELECT r.band_mac,
                      r.heart_rate, r.body_temp, r.systolic, r.diastolic,
-                     r.spo2, r.steps, r.battery, r.sos,
-                     g.last_time, g.total_records
-              FROM (SELECT band_mac, MAX(id) AS max_id FROM band_records GROUP BY band_mac) m
-              JOIN band_records r ON r.id = m.max_id
-              JOIN (SELECT band_mac, MAX(bp_time) AS last_time, COUNT(*) AS total_records
-                    FROM band_records GROUP BY band_mac) g ON g.band_mac = r.band_mac
-              ORDER BY g.last_time DESC`),
+                     r.spo2, r.steps, r.battery, r.sos, g.last_time, g.total_records
+              FROM (SELECT band_mac, MAX(id) AS max_id, MAX(bp_time) AS last_time, COUNT(*) AS total_records
+                    FROM band_records b WHERE NOT EXISTS (SELECT 1 FROM band_teacher_mapping t WHERE t.band_mac=b.band_mac) GROUP BY band_mac) g
+              JOIN band_records r ON r.id = g.max_id
+              ORDER BY g.last_time DESC`)),
       dbQuery(`SELECT b.id, b.band_mac, b.gw_addr, b.bp_time, b.heart_rate, b.body_temp, b.systolic, b.diastolic,
                       b.spo2, b.steps, b.battery, b.sos,
                       m.child_id, ch.name AS child_name, c.name AS class_name, c.id AS class_id
@@ -46,6 +45,7 @@ module.exports = function mountBandRoutes(app, upload) {
                LEFT JOIN band_mapping m ON m.band_mac = b.band_mac
                LEFT JOIN children ch ON ch.id = m.child_id
                LEFT JOIN classes c ON c.id = ch.class_id
+               WHERE NOT EXISTS (SELECT 1 FROM band_teacher_mapping t WHERE t.band_mac=b.band_mac)
                ORDER BY b.id DESC LIMIT 30`),
     ]);
 
@@ -116,6 +116,8 @@ module.exports = function mountBandRoutes(app, upload) {
     const childId = req.body.childId ? Number(req.body.childId) : null;
     const remark = normalizeText(req.body.remark || '');
     if (!/^[0-9a-f]{12}$/.test(mac)) return res.redirect('/admin/bands?message=' + encodeURIComponent('MAC 格式不正确（应为 12 位十六进制）'));
+    const teacher = await dbQuery('SELECT band_mac FROM band_teacher_mapping WHERE band_mac=? LIMIT 1', [mac]);
+    if (teacher.length) return res.redirect('/admin/bands?message=' + encodeURIComponent('这是已配置的教师手环，不能绑定幼儿；请到手环下发管理查看教师联动。'));
     await dbQuery(`INSERT INTO band_mapping (band_mac, child_id, remark) VALUES (?, ?, ?)
                    ON DUPLICATE KEY UPDATE child_id = VALUES(child_id), remark = VALUES(remark)`,
       [mac, childId, remark]);
@@ -159,6 +161,7 @@ module.exports = function mountBandRoutes(app, upload) {
        LEFT JOIN band_mapping m ON m.band_mac = b.band_mac
        LEFT JOIN children ch ON ch.id = m.child_id
        LEFT JOIN classes c ON c.id = ch.class_id
+       WHERE NOT EXISTS (SELECT 1 FROM band_teacher_mapping t WHERE t.band_mac=b.band_mac)
        ORDER BY b.id DESC LIMIT 30`);
     res.json({ ok: true, count: rows.length, records: rows });
   }));
